@@ -18,7 +18,11 @@ If you have bcgovr installed and you use RStudio, click the 'Insert BCDevex Badg
 
 # FAIBCompiler
 
-Description of package
+FAIBCompiler comtains the functions to run VRI and PSP compilers. The compilers
+
+- load data from FAIB oracle ground sample databases using package **FAIBOracle**,
+- manipulate tree/stand-level tables, calculate tree/stand-level attributes such as basal area and volume using **FAIBBase**,
+- save and archive them. 
 
 ### Features
 
