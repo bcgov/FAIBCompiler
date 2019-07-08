@@ -1,20 +1,37 @@
 Package: FAIBCompiler
-Title: What the Package Does (One Line, Title Case)
+Title: FAIB compilers
 Version: 0.0.0.9000
 Authors@R: 
-    c(person(given = "First",
-             family = "Last",
+    c(person(given = "Yong",
+             family = "Luo",
              role = c("aut", "cre"),
-             email = "first.last@example.com"),
+             email = "yong.luo@gov.bc.ca"),
       person(given = "Province of British Columbia",
              role = "cph"))
-Description: What the package does (one paragraph).
+Description: Home for VRI and PSP compilers
 License: Apache License (== 2.0) | file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 6.1.1
+Imports:
+  methods,
+  dplyr,
+  data.table,
+  fpCompare,
+  rmarkdown,
+  sp,
+  bcmaps,
+  raster,
+  rgdal,
+  rgeos,
+  nlme,
+  spatstat,
+  jsonlite,
+  openxlsx,
+  SIndexR,
+  FAIBOracle,
+  FAIBBase
 Suggests: 
-    knitr,
-    rmarkdown
-VignetteBuilder: knitr
+    knitr
+
