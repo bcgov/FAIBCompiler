@@ -13,6 +13,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #'
 #' @export
@@ -32,7 +33,7 @@ setMethod(
   signature = c(stumpData = "data.table",
                 stumpPlotHeader = "data.table"),
   definition = function(stumpData, stumpPlotHeader){
-    stmp <- merge_dupUpdate(stumpData,
+    stmp <- FAIBBase::merge_dupUpdate(stumpData,
                             stumpPlotHeader[,.(CLSTR_ID, F_FULL, F_HALF, F_QRTR, F_RAD)],
                             by = "CLSTR_ID", all.x = TRUE)
     stmp[F_FULL == "X", PLOT_WT := 1]

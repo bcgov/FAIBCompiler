@@ -23,6 +23,7 @@
 #' @importFrom data.table ':='
 #' @importFrom dplyr left_join
 #' @importFrom fpCompare %>>% %<<% %==% %!=% %<=% %>=%
+#' @importFrom FAIBBase heightEstimateForBTOP_D heightEstimateForBTOP_H treeVolCalculator
 #'
 #'
 #' @export
@@ -71,7 +72,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
   treeData[is.na(BTOP), HT := round(HEIGHT, 1)]
   treeData[!is.na(BTOP), HT_BTOP := round(HEIGHT, 1)]
 
-  treeData[BTOP == "H", HT := round(heightEstimateForBTOP_H(HT_PROJ), 1)]
+  treeData[BTOP == "H", HT := round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1)]
   ## should add a note here
   treeData[BTOP == "H" & HT_BTOP > HT, HT_BTOP := round(HT, 1)]
   treeData[BTOP == "D", DOB_BTOP := round(DIAM_BTP, 2)]
@@ -82,7 +83,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
   treeData[, DOB_BTOP := NULL]
 
   treeData[DIB_BTOP %<<% 1.1 & DIB_BTOP %>>% 0, DIB_BTOP := 1.1]
-  treeData[BTOP == "D", HT := round(heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
+  treeData[BTOP == "D", HT := round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
                                                             taperEquationForm = equation,
                                                             DIBBTOP = DIB_BTOP,
                                                             DBH = DBH,
@@ -110,7 +111,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     treeData <- cbind(treeData[, paste("LOG_L_", 0:9, sep = "") := NULL],
                       adjustedLogLength)
   }
-  treeVolumes <- treeVolCalculator(FIZorBEC = treeData$BEC,
+  treeVolumes <- FAIBBase::treeVolCalculator(FIZorBEC = treeData$BEC,
                                    species = treeData$SP0,
                                    height = treeData$HT,
                                    DBH = treeData$DBH,

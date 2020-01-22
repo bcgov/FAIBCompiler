@@ -7,6 +7,8 @@
 #'                                    In VRI compiler, this should be the savePath for \code{\link{loadVGIS}}.
 #' @param asciiSourcePath character, Specifies the path that stores data from ascii data base.
 #'                                    In VRI compiler, this should be the savePath for \code{\link{loadASCII}}.
+#' @param coeffPath character, Specifies the path that stores coefficients and spatial lookup tables.
+#'
 #' @param fizmapPath character, Specifies the path to forest inventory zone map. By default,
 #'                              it is set to \code{//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure},
 #'                              which is maintained by FAIB employee.
@@ -22,10 +24,11 @@
 #'
 #' @importFrom data.table ':=' data.table
 #' @importFrom dplyr '%>%'
+#' @importFrom FAIBBase getSpatial
 #'
 #' @rdname mergeOAData
 #' @author Yong Luo
-mergeOAData <- function(oracleSourcePath, asciiSourcePath,
+mergeOAData <- function(oracleSourcePath, asciiSourcePath, coeffPath,
                         fizmapPath, fizmapName, fizmapFormat, outputPath){
   if(dir.exists(file.path(outputPath))){
     unlink(file.path(outputPath), recursive = TRUE)
@@ -63,8 +66,7 @@ mergeOAData <- function(oracleSourcePath, asciiSourcePath,
   vi_a[, SAMP_POINT := substr(CLSTR_ID, 1, 9)]
   externalSpatial <- TRUE
   if(externalSpatial){
-    coeffpath <- gsub("raw_from_oracle", "Coeffs", oracleSourcePath)
-    spatialAttr <- readRDS(file.path(coeffpath, "spatiallookup.rds"))
+    spatialAttr <- readRDS(file.path(coeffPath, "spatiallookup.rds"))
     spatialAttr[,':='(PROJ_ID = NULL,
                       SAMP_NO = NULL)]
     vi_a <- merge(vi_a, spatialAttr, by = "SAMP_POINT", all.x = TRUE)

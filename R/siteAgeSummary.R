@@ -12,6 +12,7 @@
 #'
 #'
 #' @importFrom data.table ':='
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #'
 #' @export
@@ -92,7 +93,7 @@ setMethod(
                               N_HT_TXO = sum(N_height),
                               N_AG_TXO = sum(N_age_bh)),
                            by = c("CLSTR_ID", "SPECIES")])
-    ahs_msp <- merge_dupUpdate(ahs_txo[!is.na(SPECIES),],
+    ahs_msp <- FAIBBase::merge_dupUpdate(ahs_txo[!is.na(SPECIES),],
                                ahs_tls[!is.na(SPECIES),],
                                all = TRUE,
                                by = c("CLSTR_ID", "SPECIES"))
@@ -120,17 +121,17 @@ setMethod(
     ahs_msp[is.na(N_AG_TLS), N_AG_TLS := 0]
     ahs_msp[is.na(N_AG_TXO), N_AG_TXO := 0]
 
-    cl_ah <- merge_dupUpdate(ah_ra, ah_ta,
+    cl_ah <- FAIBBase::merge_dupUpdate(ah_ra, ah_ta,
                              by = "CLSTR_ID", all = TRUE)
-    cl_ah <- merge_dupUpdate(cl_ah, ahs_txo[is.na(SPECIES)],
+    cl_ah <- FAIBBase::merge_dupUpdate(cl_ah, ahs_txo[is.na(SPECIES)],
                              by = "CLSTR_ID", all = TRUE)
-    cl_ah <- merge_dupUpdate(cl_ah, ahs_tls[is.na(SPECIES)],
+    cl_ah <- FAIBBase::merge_dupUpdate(cl_ah, ahs_tls[is.na(SPECIES)],
                              by = "CLSTR_ID", all = TRUE)
     setnames(cl_ah, c("HT_TXO", "AGET_TXO", "AGEB_TXO"),
              c("HT_M_TXO", "AT_M_TXO", "AB_M_TXO"))
     setnames(cl_ah, c("HT_TLS", "AGET_TLS", "AGEB_TLS"),
              c("HT_M_TLS", "AT_M_TLS", "AB_M_TLS"))
 
-    spc_ah <- merge_dupUpdate(ahs_msp, bark_sum, by = c("CLSTR_ID", "SPECIES"), all = TRUE)
+    spc_ah <- FAIBBase::merge_dupUpdate(ahs_msp, bark_sum, by = c("CLSTR_ID", "SPECIES"), all = TRUE)
     return(list(cl_ah = cl_ah, spc_ah = spc_ah))
   })

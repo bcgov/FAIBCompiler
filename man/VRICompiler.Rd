@@ -7,7 +7,8 @@
 \usage{
 VRICompiler(oracleUserName, oraclePassword,
   asciiTxtPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/vri_raw",
-  compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation",
+  compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
+  coeffPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler/Coeffs",
   fizmapPath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
   fizmapName = "FIZ_REG_COMPARTMENT", fizmapFormat = "gdb",
   equation = "KBEC", walkThru = TRUE, logMinLength = 0.1,
@@ -32,6 +33,8 @@ and cluater level;
 Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
 By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
 which is consistent with our rdw system.}
+
+\item{coeffPath}{character, Specifies the path that stores coefficients and spatial lookup tables.}
 
 \item{fizmapPath}{character, Specifies the path to forest inventory zone map. By default,
 it is set to \code{//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure},

@@ -21,6 +21,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #'
 #' @export
@@ -43,7 +44,7 @@ setMethod(
                 weirdUtil = "character",
                 equation = "character"),
   definition = function(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation){
-    allVolumeTrees <- merge_dupUpdate(allVolumeTrees,
+    allVolumeTrees <- FAIBBase::merge_dupUpdate(allVolumeTrees,
                                       unique(clusterPlotHeader[,.(CLSTR_ID, PLOT, PROJ_ID, NO_PLOTS, PLOT_DED,
                                                            BGC_ZONE, PLOT_WT, SAMP_TYP)],
                                              by = c("CLSTR_ID", "PLOT")),

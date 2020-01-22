@@ -20,7 +20,7 @@
 #'                         Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
 #'                         By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
 #'                         which is consistent with our rdw system.
-#'
+#' @param coeffPath character, Specifies the path that stores coefficients and spatial lookup tables.
 #' @param fizmapPath character, Specifies the path to forest inventory zone map. By default,
 #'                              it is set to \code{//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure},
 #'                              which is maintained by FAIB employee.
@@ -71,6 +71,8 @@
 #' @export
 #' @docType methods
 #' @rdname VRICompiler
+#' @importFrom FAIBOracle loadVGIS
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #' @author Yong Luo
 #'
@@ -78,7 +80,8 @@
 VRICompiler <- function(oracleUserName,
                         oraclePassword,
                         asciiTxtPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/vri_raw",
-                        compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation",
+                        compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
+                        coeffPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler/Coeffs",
                         fizmapPath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
                         fizmapName = "FIZ_REG_COMPARTMENT",
                         fizmapFormat = "gdb",
@@ -90,23 +93,22 @@ VRICompiler <- function(oracleUserName,
                         UTOPDIB = 10,
                         utilLevel = 4,
                         weirdUtil = "No"){
+
   cat(paste(Sys.time(), ": Prepare folders under compilation path.\n", sep = ""))
   compilationPaths <- compilerPathSetup(compilationPath)
 
   ## setup the folder to save coefficients and ratios
   ## and update coefficients and ratio annually
-  coeffPath <- file.path(compilationPath, "Coeffs")
   if(!(dir.exists(coeffPath))){
     dir.create(coeffPath)
   }
 
   ### 2. load oracle and txt data for compilation
   cat(paste(Sys.time(), ": Load data from oracle.\n", sep = ""))
-  loadVGIS(userName = oracleUserName,
-           password = oraclePassword,
+  FAIBOracle::loadVGIS(userName = oracleUserName,
+           passWord = oraclePassword,
            saveThem = TRUE,
            savePath = compilationPaths$raw_from_oracle)
-
   alltxtfiletable <- data.table::data.table(alltxtfiles = dir(asciiTxtPath, full.names = FALSE))
   alltxtfiletable[, txtlength := nchar(alltxtfiles)]
   alltxtfiletable[, txtbeg := txtlength-3]
@@ -122,6 +124,7 @@ VRICompiler <- function(oracleUserName,
     cat(paste(Sys.time(), ": Merge data from two sources.\n", sep = ""))
     mergeOAData(oracleSourcePath = compilationPaths$raw_from_oracle,
                 asciiSourcePath = compilationPaths$raw_from_oracle,
+                coeffPath = coeffPath,
                 fizmapPath = fizmapPath,
                 fizmapName = fizmapName,
                 fizmapFormat = fizmapFormat,
@@ -129,6 +132,7 @@ VRICompiler <- function(oracleUserName,
   } else {
     mergeOAData(oracleSourcePath = compilationPaths$raw_from_oracle,
                 asciiSourcePath = "NONE",
+                coeffPath = coeffPath,
                 fizmapPath = fizmapPath,
                 fizmapName = fizmapName,
                 fizmapFormat = fizmapFormat,
@@ -163,7 +167,6 @@ VRICompiler <- function(oracleUserName,
   tree_ms1 <- VRIInit_measuredTree(data.table::copy(samples),
                                    compilationPaths$compilation_sa,
                                    walkThru)
-
   ### 2.3 load vi_d data
   ## vi_d contains call grading data for fully measured trees and enhanced trees
   vi_d <- VRIInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO)],
@@ -213,7 +216,7 @@ VRICompiler <- function(oracleUserName,
   ###################### start the site age compilation
   ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
-  tree_ah1 <- merge_dupUpdate(tree_ah1, samples[,.(CLSTR_ID, PLOT, FIZ = as.character(FIZ))],
+  tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1, samples[,.(CLSTR_ID, PLOT, FIZ = as.character(FIZ))],
                               by = c("CLSTR_ID", "PLOT"), all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
   saveRDS(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
@@ -236,12 +239,12 @@ VRICompiler <- function(oracleUserName,
   ### 5. start the decay, waste and breakage calculation for full/enhanced trees in vi_c
   cat(paste(Sys.time(), ": Compile DWB.\n", sep = ""))
 
-  siteAgeTable <- merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS, AT_M_TXO)],
+  siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS, AT_M_TXO)],
                                   unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
                                          by = "CLSTR_ID"),
                                   by = "CLSTR_ID",
                                   all.x = TRUE)
-  tree_ms6 <- merge_dupUpdate(tree_ms6,
+  tree_ms6 <- FAIBBase::merge_dupUpdate(tree_ms6,
                               unique(samples[,.(CLSTR_ID, PROJ_ID, BGC_ZONE, BGC_SBZN, BGC_VAR,
                                                 TSA, TYPE_CD)],
                                      by = "CLSTR_ID"),

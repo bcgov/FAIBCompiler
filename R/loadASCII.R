@@ -1104,18 +1104,24 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                             idvar = "CLSTR_ID",
                             direction = "wide",
                             sep = "_")
-    ecob <- card122_wide[,.(CLSTR_ID, PLOT_CNT, MOIST_1, MOIST_2, MOIST_3,
-                            NUTR_1, NUTR_2, NUTR_3, SERNO_1, SERNO_2,
-                            SERNO_3, SERPER_1, SERPER_2, SERPER_3)]
-    c12bclnd <- card122_wide[,c("CLSTR_ID", "PLOT_CNT",
-                                paste("L", 1:5, "_1", sep = ""),
-                                paste("L", 1:5, "_2", sep = ""),
-                                paste("L", 1:5, "_3", sep = "")),
-                             with = FALSE]
+    mnss <- names(card122_wide)
+    mnss_needed <- c("CLSTR_ID", "PLOT_CNT", "MOIST_1", "MOIST_2", "MOIST_3",
+                     "NUTR_1", "NUTR_2", "NUTR_3", "SERNO_1", "SERNO_2",
+                     "SERNO_3", "SERPER_1", "SERPER_2", "SERPER_3")
+    mnss_needed <- mnss_needed[mnss_needed %in% mnss]
+
+    ecob <- card122_wide[,mnss_needed, with = FALSE]
+    rm(mnss_needed)
+
+    mnss_needed <- c("CLSTR_ID", "PLOT_CNT", paste("L", 1:5, "_1", sep = ""),
+                     paste("L", 1:5, "_2", sep = ""),
+                     paste("L", 1:5, "_3", sep = ""))
+    mnss_needed <- mnss_needed[mnss_needed %in% mnss]
+
+    c12bclnd <- card122_wide[, mnss_needed, with = FALSE]
     c12eco <- merge(ecoa, ecob,
                     by = "CLSTR_ID")
   } else {
-
     c12eco <- ecoa
   }
 

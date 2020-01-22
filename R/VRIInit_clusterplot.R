@@ -12,6 +12,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom dplyr '%>%'
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #' @export
 #' @docType methods
@@ -70,7 +71,7 @@ VRIInit_clusterplot <- function(dataSourcePath){
          (as.numeric(substr(MEAS_DT, 1, 4)) == 2007 & substr(CLSTR_ID, 1, 4) %in% c("0141", "014M", "0091")),
        PLOT_DED := NO_PLOTS]
   vi_b <- vi_b[,.(CLSTR_ID, PLOT, SAMP_TYP, PLOT_WT, BLOWUP, NO_PLOTS, PLOT_DED)]
-  clusterplot <- merge_dupUpdate(vi_b, vi_a, by = "CLSTR_ID", all.x = TRUE)
+  clusterplot <- FAIBBase::merge_dupUpdate(vi_b, vi_a, by = "CLSTR_ID", all.x = TRUE)
   return(clusterplot)
 }
 

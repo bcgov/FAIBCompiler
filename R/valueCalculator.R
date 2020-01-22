@@ -23,6 +23,7 @@
 #'
 #' @importFrom data.table ':=' data.table
 #' @importFrom dplyr '%>%'
+#' @importFrom FAIBBase merge_dupUpdate
 #' @note
 #'
 #' @export
@@ -76,7 +77,7 @@ setMethod(
     rm(species, grossVolMatrix, grossMerchVolMatrix, callGradeMatrix)
 
     spvspcTable <- unique(lookup_species()[,.(SPECIES, SP_COST)], by = "SPECIES")
-    processData <- merge_dupUpdate(processData, spvspcTable, by = "SPECIES", all.x = TRUE)
+    processData <- FAIBBase::merge_dupUpdate(processData, spvspcTable, by = "SPECIES", all.x = TRUE)
     spcostTable <- lookup_sp_cost()
     spcostTable[, COST := as.numeric(COST)]
     processData[, ':='(VAL_MER = 0,
@@ -89,7 +90,7 @@ setMethod(
       processData[is.na(tempV), tempV := 0]
       processData[is.na(tempVM), tempVM := 0]
       processData[, GRD_SPC := paste(tempG, SP_COST, sep = "")]
-      processData <- merge_dupUpdate(processData, spcostTable, by = "GRD_SPC", all.x = TRUE)
+      processData <- FAIBBase::merge_dupUpdate(processData, spcostTable, by = "GRD_SPC", all.x = TRUE)
       processData[tempV %>>% 0 & is.na(COST), COST := 0]
 
       processData[tempV %>>% 0, paste("LOG_C_", indilog, sep = "") := COST*tempV]

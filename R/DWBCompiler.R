@@ -17,7 +17,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
-#'
+#' @importFrom FAIBBase merge_dupUpdate DBHClassifier
 #'
 #' @export
 #' @docType methods
@@ -41,7 +41,7 @@ setMethod(
     # treeMS <- data.table::copy(tree_ms6)
     # siteAge <- data.table::copy(siteAgeTable)
     # treeLossFactors <- data.table::copy(treelossfactors)
-    loss_fct <- merge_dupUpdate(treeMS[, uniobs := 1:nrow(treeMS)],
+    loss_fct <- FAIBBase::merge_dupUpdate(treeMS[, uniobs := 1:nrow(treeMS)],
                                 treeLossFactors,
                                 by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                                 all.x = TRUE)

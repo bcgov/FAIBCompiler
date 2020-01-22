@@ -139,7 +139,7 @@ lookup_species <- function(){
                                    "Z",     "E",  "Other tree, not on list",   "FD",      "D",     "B",     NA,
                                    "ZC",    "F",  "Other Conifer",             "FD",      "C",     "B",     NA,
                                    "ZH",    "E",  "Other Hardwood",            "AT",      "D",     "AC",    NA))
-  speciestable <- as.data.table(as.data.frame(speciesmatrix))
+  speciestable <- data.table::as.data.table(as.data.frame(speciesmatrix))
   names(speciestable) <- c("SPECIES", "SP0", "DESCRIPTION", "SP_SINDEX", "SP_TYPE", "SP_COST", "LONG_SPECIES")
   speciestable[,':='(SPECIES = as.character(SPECIES),
                      SP0 = as.character(SP0),

@@ -23,6 +23,7 @@
 #'
 #' @importFrom data.table data.table ':=' set rbindlist setnames setkey
 #' @importFrom dplyr '%>%'
+#' @importFrom FAIBBase merge_dupUpdate PHFCalculator
 #' @export
 #' @docType methods
 #' @rdname VRIInit_measuredTree
@@ -53,9 +54,9 @@ VRIInit_measuredTree<- function(clusterplotHeader,
       vi_c[toupper(WALKTHRU_STATUS) == "O", TREE_WT := 0] # tree is out and is not used
       vi_c[toupper(WALKTHRU_STATUS) == "W", TREE_WT := 2] # tree is
     }
-    vi_c <- merge_dupUpdate(vi_c, clusterplotHeader[,.(clusterPlot, SAMP_TYP, PLOT_WT, BLOWUP)],
+    vi_c <- FAIBBase::merge_dupUpdate(vi_c, clusterplotHeader[,.(clusterPlot, SAMP_TYP, PLOT_WT, BLOWUP)],
                             by = "clusterPlot", all.x = TRUE)
-    vi_c[, PHF_TREE := PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
+    vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
                                      treeWeight = TREE_WT, plotWeight = PLOT_WT,
                                      treeBasalArea = BA_TREE)]
 

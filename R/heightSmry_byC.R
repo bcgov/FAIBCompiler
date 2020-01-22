@@ -20,6 +20,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #'
 #' @export
@@ -117,9 +118,9 @@ setMethod(
     standliveNONBTOP[, HT_LRY2 := HT_LRY2/WTH2]
     standliveNONBTOP[, WTH2 := NULL]
 
-    fplotoutput <- merge_dupUpdate(fplotoutput, stand, by = "CLSTR_ID", all.x = TRUE)
-    fplotoutput <- merge_dupUpdate(fplotoutput, standlive, by = "CLSTR_ID", all.x = TRUE)
-    fplotoutput <- merge_dupUpdate(fplotoutput, standliveNONBTOP, by = "CLSTR_ID", all.x = TRUE)
+    fplotoutput <- FAIBBase::merge_dupUpdate(fplotoutput, stand, by = "CLSTR_ID", all.x = TRUE)
+    fplotoutput <- FAIBBase::merge_dupUpdate(fplotoutput, standlive, by = "CLSTR_ID", all.x = TRUE)
+    fplotoutput <- FAIBBase::merge_dupUpdate(fplotoutput, standliveNONBTOP, by = "CLSTR_ID", all.x = TRUE)
     rm(stand, standlive, standliveNONBTOP)
     output <- rbindlist(list(vplotoutput, fplotoutput))
     decimal2cols <- c("HT_LRYALL",  "HT_MNALL",

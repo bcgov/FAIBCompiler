@@ -29,6 +29,7 @@ Imports:
   spatstat,
   jsonlite,
   openxlsx,
+  haven,
   SIndexR,
   FAIBOracle,
   FAIBBase

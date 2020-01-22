@@ -13,6 +13,7 @@
 #' @importFrom dplyr left_join
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
 #' @importFrom SIndexR SIndexR_SpecRemap
+#' @importFrom FAIBBase annualGrowthRateCalculator
 #'
 #' @export
 #' @docType methods
@@ -37,15 +38,15 @@ setMethod(
     siteAgeData[is.na(BARK_THK), BARK_TEMP := BNG_DIAM/20]
     siteAgeData[BARK_THK %>>% 0 & BNG_DIAM %>>% 0, BARK_PCT := 100*((BARK_THK*0.2)/BNG_DIAM)]
     ## CALL annualGrowthRataCalculator function
-    siteAgeData[!is.na(BNG_DIAM), ':='(RATE_5 = annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
+    siteAgeData[!is.na(BNG_DIAM), ':='(RATE_5 = FAIBBase::annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
                                                                            growthIncrement = GROW_5YR,
                                                                            growthYear = 5,
                                                                            barkThickness = BARK_TEMP),
-                                       RATE_10 = annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
+                                       RATE_10 = FAIBBase::annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
                                                                             growthIncrement = GROW_10YR,
                                                                             growthYear = 10,
                                                                             barkThickness = BARK_TEMP),
-                                       RATE_20 = annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
+                                       RATE_20 = FAIBBase::annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
                                                                             growthIncrement = GROW_20YR,
                                                                             growthYear = 20,
                                                                             barkThickness = BARK_TEMP))]

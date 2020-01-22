@@ -1,2 +1,2 @@
 library(testthat)
-test_check("BCForestGroundSample")
+test_check("FAIBCompiler")

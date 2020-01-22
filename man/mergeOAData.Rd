@@ -4,8 +4,8 @@
 \alias{mergeOAData}
 \title{Merge oracle and ascii data for vi_(a, ..i)}
 \usage{
-mergeOAData(oracleSourcePath, asciiSourcePath, fizmapPath, fizmapName,
-  fizmapFormat, outputPath)
+mergeOAData(oracleSourcePath, asciiSourcePath, coeffPath, fizmapPath,
+  fizmapName, fizmapFormat, outputPath)
 }
 \arguments{
 \item{oracleSourcePath}{character, Specifies the path that stores data from oracle data base.
@@ -13,6 +13,8 @@ In VRI compiler, this should be the savePath for \code{\link{loadVGIS}}.}
 
 \item{asciiSourcePath}{character, Specifies the path that stores data from ascii data base.
 In VRI compiler, this should be the savePath for \code{\link{loadASCII}}.}
+
+\item{coeffPath}{character, Specifies the path that stores coefficients and spatial lookup tables.}
 
 \item{fizmapPath}{character, Specifies the path to forest inventory zone map. By default,
 it is set to \code{//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure},

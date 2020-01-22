@@ -21,6 +21,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #'
 #' @export
@@ -43,10 +44,10 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
                                      "NTWB", "D", "DW", "DWB", "VAL"),
                           sep = "")
   ratioTable <- ratioTable[, c("BGC_ZONE", "SP0", "LV_D", ratioVariables), with = FALSE]
-  nonVolTrees <- merge_dupUpdate(nonVolTrees, fixedCoeffTable,
+  nonVolTrees <- FAIBBase::merge_dupUpdate(nonVolTrees, fixedCoeffTable,
                                  by = c("BGC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
-  nonVolTrees <- merge_dupUpdate(nonVolTrees, randomCoeffTable,
+  nonVolTrees <- FAIBBase::merge_dupUpdate(nonVolTrees, randomCoeffTable,
                                  by = c("BGC_ZONE", "SP0", "LV_D", "SAMP_POINT"),
                                  all.x = TRUE)
   nonVolTrees[is.na(INTERCEPT_RDM), INTERCEPT_RDM := 0]
@@ -65,7 +66,7 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
                     SLOPE_RDM = NULL,
                     VOL_WSV_new = NULL)]
 
-  nonVolTrees <- merge_dupUpdate(nonVolTrees, ratioTable,
+  nonVolTrees <- FAIBBase::merge_dupUpdate(nonVolTrees, ratioTable,
                                  by = c("BGC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
   # nonVolTrees[, NET_FCT_METHOD := "Ratio"]

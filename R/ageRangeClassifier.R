@@ -14,6 +14,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
+#' @importFrom FAIBBase speciesCode2speciesType
 #'
 #' @export
 #' @docType methods

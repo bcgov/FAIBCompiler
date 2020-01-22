@@ -14,6 +14,8 @@
 #'
 #' @importFrom data.table data.table ':=' set rbindlist setnames setkey
 #' @importFrom dplyr '%>%'
+#' @importFrom FAIBBase merge_dupUpdate PHFCalculator
+#'
 #' @export
 #' @docType methods
 #' @rdname VRIInit_auxTree
@@ -32,9 +34,9 @@ VRIInit_auxTree<- function(clusterplotHeader,
     vi_i[is.na(LV_D), LV_D := "L"]
     vi_i[, TREE_WT := 1]
     vi_i[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
-    vi_i <- merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP, BLOWUP, PLOT_WT)],
+    vi_i <- FAIBBase::merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP, BLOWUP, PLOT_WT)],
                             by = "clusterplot", all.x = TRUE)
-    vi_i[, PHF_TREE := PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP, treeWeight = TREE_WT,
+    vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP, treeWeight = TREE_WT,
                                      plotWeight = PLOT_WT, treeBasalArea = BA_TREE)]
     return(vi_i[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES,
                    DBH, BA_TREE,

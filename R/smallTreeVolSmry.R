@@ -13,6 +13,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
+#' @importFrom FAIBBase merge_dupUpdate
 #'
 #'
 #' @export
@@ -67,30 +68,30 @@ setMethod(
                        SMTR3_HT = sum(SMTR3_HA),
                        SMTR_HT = sum(SMTR_HA)),
                     by = c("CLSTR_ID")]
-    clustersummaries <- merge_dupUpdate(clustersummaries, smtr_c, by = "CLSTR_ID",
+    clustersummaries <- FAIBBase::merge_dupUpdate(clustersummaries, smtr_c, by = "CLSTR_ID",
                                         all.x = TRUE)
     rm(smtr_c)
     sp_cmp1 <- speciesComp_byC(CSSmryTable = smtr_cs, basedOn = "SMTR_CT1", speciesMaxNO = 12,
                                smallTreeCompile = TRUE)
     setnames(sp_cmp1, "SPB_CPCT", "ST1_CMP")
-    clustersummaries <- merge_dupUpdate(clustersummaries, sp_cmp1, by = "CLSTR_ID", all.x = TRUE)
+    clustersummaries <- FAIBBase::merge_dupUpdate(clustersummaries, sp_cmp1, by = "CLSTR_ID", all.x = TRUE)
     rm(sp_cmp1)
 
     sp_cmp2 <- speciesComp_byC(CSSmryTable = smtr_cs, basedOn = "SMTR_CT2", speciesMaxNO = 12,
                                smallTreeCompile = TRUE)
     setnames(sp_cmp2, "SPB_CPCT", "ST2_CMP")
-    clustersummaries <- merge_dupUpdate(clustersummaries, sp_cmp2, by = "CLSTR_ID", all.x = TRUE)
+    clustersummaries <- FAIBBase::merge_dupUpdate(clustersummaries, sp_cmp2, by = "CLSTR_ID", all.x = TRUE)
     rm(sp_cmp2)
 
     sp_cmp3 <- speciesComp_byC(CSSmryTable = smtr_cs, basedOn = "SMTR_CT3", speciesMaxNO = 12,
                                smallTreeCompile = TRUE)
     setnames(sp_cmp3, "SPB_CPCT", "ST3_CMP")
-    clustersummaries <- merge_dupUpdate(clustersummaries, sp_cmp3, by = "CLSTR_ID", all.x = TRUE)
+    clustersummaries <- FAIBBase::merge_dupUpdate(clustersummaries, sp_cmp3, by = "CLSTR_ID", all.x = TRUE)
     rm(sp_cmp3)
     sp_cmp4 <- speciesComp_byC(CSSmryTable = smtr_cs, basedOn = "SMTR_TOT", speciesMaxNO = 12,
                                smallTreeCompile = TRUE)
     setnames(sp_cmp4, "SPB_CPCT", "STT_CMP")
-    clustersummaries <- merge_dupUpdate(clustersummaries, sp_cmp4, by = "CLSTR_ID", all.x = TRUE)
+    clustersummaries <- FAIBBase::merge_dupUpdate(clustersummaries, sp_cmp4, by = "CLSTR_ID", all.x = TRUE)
     rm(sp_cmp4)
     return(list(clusterSummaries = clustersummaries, clusterSpeciesSummaries = smtr_cs))
   })
