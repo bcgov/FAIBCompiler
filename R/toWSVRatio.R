@@ -51,8 +51,9 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   allstrata <- needCombs[SP0 != "X",]
   strata_missspecies <- needCombs[SP0 == "X",]
 
+
   ## the first attempt by
-  ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean(na.rm = TRUE))),
+  ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                 .SDcols = volVariables,
                                 by = c("BGC_ZONE",  "LV_D",  "SP0")]
 
@@ -79,7 +80,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
     all_trees_ratio[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
     all_trees_ratio[is.na(BGC_REG), BGC_REG := "INTERIOR"]
 
-    ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean(na.rm = TRUE))),
+    ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                   .SDcols = volVariables,
                                   by = c("BGC_REG", "SP0", "LV_D")]
 
@@ -101,7 +102,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
     if(nrow(strata_failed) > 0){ ## initiate third attempt
       # The third attempt is to combine all bec zones regardless of coastal and interior
-      ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean(na.rm = TRUE))),
+      ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                     .SDcols = volVariables,
                                     by = c("SP0", "LV_D")]
 
@@ -123,7 +124,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
       if(nrow(strata_failed) > 0){ # initiate the last attempt
         # The forth attempt is to regardless bec and lv_d
-        ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean(na.rm = TRUE))),
+        ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                       .SDcols = volVariables,
                                       by = c("SP_TYPE", "LV_D")]
 
@@ -147,7 +148,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   } # end of second attempt
 
   if(nrow(strata_missspecies) > 0){
-    ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean(na.rm = TRUE))),
+    ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                   .SDcols = volVariables,
                                   by = c("BGC_ZONE", "LV_D")]
 
