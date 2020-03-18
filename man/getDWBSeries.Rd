@@ -10,17 +10,11 @@
 \usage{
 getDWBSeries(species, ageRangeClass, PSYUB, FIZ, source)
 
+\S4method{getDWBSeries}{character,character,character,character,character}(species, ageRangeClass, PSYUB, FIZ, source)
 
-  \S4method{getDWBSeries}{character,character,character,character,character}(species,
-  ageRangeClass, PSYUB, FIZ, source)
+\S4method{getDWBSeries}{character,character,character,missing,character}(species, ageRangeClass, PSYUB, source)
 
-
-  \S4method{getDWBSeries}{character,character,character,missing,character}(species,
-  ageRangeClass, PSYUB, source)
-
-
-  \S4method{getDWBSeries}{character,character,missing,character,character}(species,
-  ageRangeClass, FIZ, source)
+\S4method{getDWBSeries}{character,character,missing,character,character}(species, ageRangeClass, FIZ, source)
 }
 \arguments{
 \item{species}{character, Tree basic species code, which is SP0 in VRI original data.}

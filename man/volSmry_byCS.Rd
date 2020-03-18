@@ -13,20 +13,15 @@
 \usage{
 volSmry_byCS(treeMC, utilLevel, weirdUtil, equation)
 
-\S4method{volSmry_byCS}{data.table,numeric,character,character}(treeMC,
-  utilLevel, weirdUtil, equation)
+\S4method{volSmry_byCS}{data.table,numeric,character,character}(treeMC, utilLevel, weirdUtil, equation)
 
-\S4method{volSmry_byCS}{data.table,missing,character,character}(treeMC,
-  weirdUtil, equation)
+\S4method{volSmry_byCS}{data.table,missing,character,character}(treeMC, weirdUtil, equation)
 
-\S4method{volSmry_byCS}{data.table,numeric,missing,character}(treeMC,
-  utilLevel, equation)
+\S4method{volSmry_byCS}{data.table,numeric,missing,character}(treeMC, utilLevel, equation)
 
-\S4method{volSmry_byCS}{data.table,numeric,numeric,character}(treeMC,
-  utilLevel, weirdUtil, equation)
+\S4method{volSmry_byCS}{data.table,numeric,numeric,character}(treeMC, utilLevel, weirdUtil, equation)
 
-\S4method{volSmry_byCS}{data.table,numeric,character,missing}(treeMC,
-  utilLevel, weirdUtil)
+\S4method{volSmry_byCS}{data.table,numeric,character,missing}(treeMC, utilLevel, weirdUtil)
 
 \S4method{volSmry_byCS}{data.table,missing,missing,missing}(treeMC)
 }

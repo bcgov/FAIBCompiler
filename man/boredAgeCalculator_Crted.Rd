@@ -8,9 +8,7 @@
 \usage{
 boredAgeCalculator_Crted(boredAge, boredHeight, treeHeight, species, FIZ)
 
-
-  \S4method{boredAgeCalculator_Crted}{numeric,numeric,numeric,character,character}(boredAge,
-  boredHeight, treeHeight, species, FIZ)
+\S4method{boredAgeCalculator_Crted}{numeric,numeric,numeric,character,character}(boredAge, boredHeight, treeHeight, species, FIZ)
 }
 \arguments{
 \item{boredAge}{numeric, Age at bored height}

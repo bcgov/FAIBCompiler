@@ -4,8 +4,15 @@
 \alias{mergeOAData}
 \title{Merge oracle and ascii data for vi_(a, ..i)}
 \usage{
-mergeOAData(oracleSourcePath, asciiSourcePath, coeffPath, fizmapPath,
-  fizmapName, fizmapFormat, outputPath)
+mergeOAData(
+  oracleSourcePath,
+  asciiSourcePath,
+  coeffPath,
+  fizmapPath,
+  fizmapName,
+  fizmapFormat,
+  outputPath
+)
 }
 \arguments{
 \item{oracleSourcePath}{character, Specifies the path that stores data from oracle data base.

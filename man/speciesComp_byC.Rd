@@ -9,13 +9,9 @@
 \usage{
 speciesComp_byC(CSSmryTable, basedOn, speciesMaxNO, smallTreeCompile)
 
+\S4method{speciesComp_byC}{data.table,character,numeric,logical}(CSSmryTable, basedOn, speciesMaxNO, smallTreeCompile)
 
-  \S4method{speciesComp_byC}{data.table,character,numeric,logical}(CSSmryTable,
-  basedOn, speciesMaxNO, smallTreeCompile)
-
-
-  \S4method{speciesComp_byC}{data.table,character,numeric,missing}(CSSmryTable,
-  basedOn, speciesMaxNO)
+\S4method{speciesComp_byC}{data.table,character,numeric,missing}(CSSmryTable, basedOn, speciesMaxNO)
 }
 \arguments{
 \item{CSSmryTable}{data.table, Summarized volume components for both measured and counted trees at cluster and species level.

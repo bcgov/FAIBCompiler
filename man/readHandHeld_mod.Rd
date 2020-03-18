@@ -5,8 +5,13 @@
 \alias{readHandHeld_mod}
 \title{load json data from handheld and save tables into target folder}
 \usage{
-readHandHeld_mod(fileName, savePath = getwd(), saveFormat = "rdata",
-  saveName = "myHandHeldFile", overWrite = FALSE)
+readHandHeld_mod(
+  fileName,
+  savePath = getwd(),
+  saveFormat = "rdata",
+  saveName = "myHandHeldFile",
+  overWrite = FALSE
+)
 }
 \arguments{
 \item{fileName}{character, JSON file name.}

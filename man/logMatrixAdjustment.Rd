@@ -12,36 +12,33 @@
 \alias{logMatrixAdjustment,data.table,numeric,missing,missing,missing-method}
 \title{Adjust log length matrix}
 \usage{
-logMatrixAdjustment(logLengthMatrix, height, stumpHeight, logMinLength,
-  logDefaultLength)
+logMatrixAdjustment(
+  logLengthMatrix,
+  height,
+  stumpHeight,
+  logMinLength,
+  logDefaultLength
+)
 
+\S4method{logMatrixAdjustment}{data.table,numeric,numeric,numeric,numeric}(
+  logLengthMatrix,
+  height,
+  stumpHeight,
+  logMinLength,
+  logDefaultLength
+)
 
-  \S4method{logMatrixAdjustment}{data.table,numeric,numeric,numeric,numeric}(logLengthMatrix,
-  height, stumpHeight, logMinLength, logDefaultLength)
+\S4method{logMatrixAdjustment}{data.table,numeric,missing,numeric,numeric}(logLengthMatrix, height, logMinLength, logDefaultLength)
 
+\S4method{logMatrixAdjustment}{data.table,numeric,numeric,missing,numeric}(logLengthMatrix, height, stumpHeight, logDefaultLength)
 
-  \S4method{logMatrixAdjustment}{data.table,numeric,missing,numeric,numeric}(logLengthMatrix,
-  height, logMinLength, logDefaultLength)
+\S4method{logMatrixAdjustment}{data.table,numeric,numeric,numeric,missing}(logLengthMatrix, height, stumpHeight, logMinLength)
 
+\S4method{logMatrixAdjustment}{data.table,numeric,missing,missing,numeric}(logLengthMatrix, height, logDefaultLength)
 
-  \S4method{logMatrixAdjustment}{data.table,numeric,numeric,missing,numeric}(logLengthMatrix,
-  height, stumpHeight, logDefaultLength)
+\S4method{logMatrixAdjustment}{data.table,numeric,missing,numeric,missing}(logLengthMatrix, height, logMinLength)
 
-
-  \S4method{logMatrixAdjustment}{data.table,numeric,numeric,numeric,missing}(logLengthMatrix,
-  height, stumpHeight, logMinLength)
-
-
-  \S4method{logMatrixAdjustment}{data.table,numeric,missing,missing,numeric}(logLengthMatrix,
-  height, logDefaultLength)
-
-
-  \S4method{logMatrixAdjustment}{data.table,numeric,missing,numeric,missing}(logLengthMatrix,
-  height, logMinLength)
-
-
-  \S4method{logMatrixAdjustment}{data.table,numeric,missing,missing,missing}(logLengthMatrix,
-  height)
+\S4method{logMatrixAdjustment}{data.table,numeric,missing,missing,missing}(logLengthMatrix, height)
 }
 \arguments{
 \item{logLengthMatrix}{data.table, A matrix of log length for each tree, NA is accepted in the matrix.

@@ -10,8 +10,7 @@
 \usage{
 boredAgeCalculator_Bore(officeBoredAge, fieldBoredAge)
 
-\S4method{boredAgeCalculator_Bore}{numeric,numeric}(officeBoredAge,
-  fieldBoredAge)
+\S4method{boredAgeCalculator_Bore}{numeric,numeric}(officeBoredAge, fieldBoredAge)
 
 \S4method{boredAgeCalculator_Bore}{numeric,missing}(officeBoredAge)
 

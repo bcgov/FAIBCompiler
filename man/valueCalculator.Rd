@@ -6,12 +6,9 @@
 \alias{valueCalculator,character,data.table,data.table,data.table-method}
 \title{Calcualte tree value-VRI specific}
 \usage{
-valueCalculator(species, grossVolMatrix, grossMerchVolMatrix,
-  callGradeMatrix)
+valueCalculator(species, grossVolMatrix, grossMerchVolMatrix, callGradeMatrix)
 
-
-  \S4method{valueCalculator}{character,data.table,data.table,data.table}(species,
-  grossVolMatrix, grossMerchVolMatrix, callGradeMatrix)
+\S4method{valueCalculator}{character,data.table,data.table,data.table}(species, grossVolMatrix, grossMerchVolMatrix, callGradeMatrix)
 }
 \arguments{
 \item{species}{character, Species codes in BC inventory system.}
@@ -36,6 +33,9 @@ number of rows and columns) of \code{callGradeMatrix} and \code{grossMerchVolMat
 they are provided. Furthermore, be aware of the correspondingness among the matrix.
 In the function, two lookup table are hardcoded (i.e., \code{spv_spc} and \code{sp_cost}).
 This function is part of the \code{log_valu_2017.sas}.
+}
+\note{
+
 }
 \author{
 Yong Luo

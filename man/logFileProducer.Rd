@@ -9,24 +9,29 @@
 \alias{logFileProducer,character,character,data.table,missing,missing,missing-method}
 \title{To display a table to log file}
 \usage{
-logFileProducer(reason, action, displayTable, displayColumn,
-  changedVariable, fromTo)
+logFileProducer(
+  reason,
+  action,
+  displayTable,
+  displayColumn,
+  changedVariable,
+  fromTo
+)
 
+\S4method{logFileProducer}{character,character,data.table,character,character,character}(
+  reason,
+  action,
+  displayTable,
+  displayColumn,
+  changedVariable,
+  fromTo
+)
 
-  \S4method{logFileProducer}{character,character,data.table,character,character,character}(reason,
-  action, displayTable, displayColumn, changedVariable, fromTo)
+\S4method{logFileProducer}{character,character,data.table,missing,character,character}(reason, action, displayTable, changedVariable, fromTo)
 
+\S4method{logFileProducer}{character,character,data.table,character,missing,missing}(reason, action, displayTable, displayColumn)
 
-  \S4method{logFileProducer}{character,character,data.table,missing,character,character}(reason,
-  action, displayTable, changedVariable, fromTo)
-
-
-  \S4method{logFileProducer}{character,character,data.table,character,missing,missing}(reason,
-  action, displayTable, displayColumn)
-
-
-  \S4method{logFileProducer}{character,character,data.table,missing,missing,missing}(reason,
-  action, displayTable)
+\S4method{logFileProducer}{character,character,data.table,missing,missing,missing}(reason, action, displayTable)
 }
 \arguments{
 \item{reason}{character, Reason to trigger an action.}

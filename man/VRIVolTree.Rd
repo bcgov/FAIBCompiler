@@ -5,8 +5,14 @@
 \alias{VRIVolTree}
 \title{Calcualte tree volume-VRI specific}
 \usage{
-VRIVolTree(treeData, equation, logMinLength, stumpHeight, breastHeight,
-  UTOPDIB)
+VRIVolTree(
+  treeData,
+  equation,
+  logMinLength,
+  stumpHeight,
+  breastHeight,
+  UTOPDIB
+)
 }
 \arguments{
 \item{treeData}{data.table, An output from \code{\link{VRIInit_measuredTree}} function, i.e., vi_c data.}

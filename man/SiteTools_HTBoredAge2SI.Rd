@@ -6,12 +6,9 @@
 \alias{SiteTools_HTBoredAge2SI,numeric,numeric,character,character,numeric,numeric-method}
 \title{Calculate site index using site tools}
 \usage{
-SiteTools_HTBoredAge2SI(boredAge, height, species, ICRegion, ageType,
-  estType)
+SiteTools_HTBoredAge2SI(boredAge, height, species, ICRegion, ageType, estType)
 
-
-  \S4method{SiteTools_HTBoredAge2SI}{numeric,numeric,character,character,numeric,numeric}(boredAge,
-  height, species, ICRegion, ageType, estType)
+\S4method{SiteTools_HTBoredAge2SI}{numeric,numeric,character,character,numeric,numeric}(boredAge, height, species, ICRegion, ageType, estType)
 }
 \arguments{
 \item{boredAge}{numeric, Age at bored height.}

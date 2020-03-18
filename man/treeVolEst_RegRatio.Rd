@@ -5,8 +5,7 @@
 \alias{treeVolEst_RegRatio}
 \title{Estimate volume for H-enhanced and non-enhanced trees-VRI specific}
 \usage{
-treeVolEst_RegRatio(nonVolTrees, fixedCoeffTable, randomCoeffTable,
-  ratioTable)
+treeVolEst_RegRatio(nonVolTrees, fixedCoeffTable, randomCoeffTable, ratioTable)
 }
 \arguments{
 \item{nonVolTrees}{data.table, H-enhanced trees and non-enhanced trees.}

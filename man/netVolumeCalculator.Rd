@@ -11,21 +11,13 @@
 \usage{
 netVolumeCalculator(grossVolMatrix, grossMerchVolMatrix, netFactorMatrix)
 
+\S4method{netVolumeCalculator}{data.table,data.table,data.table}(grossVolMatrix, grossMerchVolMatrix, netFactorMatrix)
 
-  \S4method{netVolumeCalculator}{data.table,data.table,data.table}(grossVolMatrix,
-  grossMerchVolMatrix, netFactorMatrix)
+\S4method{netVolumeCalculator}{missing,data.table,data.table}(grossMerchVolMatrix, netFactorMatrix)
 
+\S4method{netVolumeCalculator}{data.table,missing,data.table}(grossVolMatrix, netFactorMatrix)
 
-  \S4method{netVolumeCalculator}{missing,data.table,data.table}(grossMerchVolMatrix,
-  netFactorMatrix)
-
-
-  \S4method{netVolumeCalculator}{data.table,missing,data.table}(grossVolMatrix,
-  netFactorMatrix)
-
-
-  \S4method{netVolumeCalculator}{data.table,data.table,missing}(grossVolMatrix,
-  grossMerchVolMatrix)
+\S4method{netVolumeCalculator}{data.table,data.table,missing}(grossVolMatrix, grossMerchVolMatrix)
 }
 \arguments{
 \item{grossVolMatrix}{data.table, Calculated gross volume for each log. The first column of this table is

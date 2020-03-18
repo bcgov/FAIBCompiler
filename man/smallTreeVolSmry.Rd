@@ -8,8 +8,7 @@
 \usage{
 smallTreeVolSmry(smallTreeData, smallTreePlotHeader)
 
-\S4method{smallTreeVolSmry}{data.table,data.table}(smallTreeData,
-  smallTreePlotHeader)
+\S4method{smallTreeVolSmry}{data.table,data.table}(smallTreeData, smallTreePlotHeader)
 }
 \arguments{
 \item{smallTreeData}{data.table, Small tree data. This data is from card f, i.e., \code{vi_f}.}

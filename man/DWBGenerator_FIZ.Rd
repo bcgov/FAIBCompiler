@@ -8,8 +8,7 @@
 \usage{
 DWBGenerator_FIZ(DBHClass, tabNumber, riskGroup)
 
-\S4method{DWBGenerator_FIZ}{numeric,character,character}(DBHClass,
-  tabNumber, riskGroup)
+\S4method{DWBGenerator_FIZ}{numeric,character,character}(DBHClass, tabNumber, riskGroup)
 }
 \arguments{
 \item{DBHClass}{numeric, Tree DBH class. Currently, The function is capatable to the DBH

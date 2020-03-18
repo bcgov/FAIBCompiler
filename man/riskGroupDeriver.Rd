@@ -9,13 +9,9 @@
 \usage{
 riskGroupDeriver(species, pathIndex, series, height, method)
 
+\S4method{riskGroupDeriver}{character,character,character,numeric,character}(species, pathIndex, series, height, method)
 
-  \S4method{riskGroupDeriver}{character,character,character,numeric,character}(species,
-  pathIndex, series, height, method)
-
-
-  \S4method{riskGroupDeriver}{character,character,missing,missing,character}(species,
-  pathIndex, series, height, method)
+\S4method{riskGroupDeriver}{character,character,missing,missing,character}(species, pathIndex, series, height, method)
 }
 \arguments{
 \item{species}{character, Tree basic species code, which is SP0 in VRI original data.}

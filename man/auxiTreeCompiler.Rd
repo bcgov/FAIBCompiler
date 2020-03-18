@@ -5,8 +5,14 @@
 \alias{auxiTreeCompiler}
 \title{Derive volume components for H-enhanced and non-enhanced trees using external coeff and ratio-VRI specific}
 \usage{
-auxiTreeCompiler(fullMeasuredTrees, auxiTrees, clusterPlotHeader,
-  fixedCoeff, randomCoeff, ratios)
+auxiTreeCompiler(
+  fullMeasuredTrees,
+  auxiTrees,
+  clusterPlotHeader,
+  fixedCoeff,
+  randomCoeff,
+  ratios
+)
 }
 \arguments{
 \item{fullMeasuredTrees}{Compiled tree-level data in vi_c, which contains full measured trees, enhanced trees

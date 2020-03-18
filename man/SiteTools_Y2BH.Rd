@@ -8,8 +8,7 @@
 \usage{
 SiteTools_Y2BH(species, ICRegion, siteIndex)
 
-\S4method{SiteTools_Y2BH}{character,character,numeric}(species, ICRegion,
-  siteIndex)
+\S4method{SiteTools_Y2BH}{character,character,numeric}(species, ICRegion, siteIndex)
 }
 \arguments{
 \item{species}{character, Species code, must be consistent with the species code in site tools, which can be converted

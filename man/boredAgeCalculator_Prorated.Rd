@@ -7,16 +7,25 @@
 \alias{boredAgeCalculator_Prorated,numeric,numeric,numeric,missing-method}
 \title{Derive bored age using pro-rated age}
 \usage{
-boredAgeCalculator_Prorated(ringLength_prorated, ringCount_prorated,
-  boreDiameter, barkThickness)
+boredAgeCalculator_Prorated(
+  ringLength_prorated,
+  ringCount_prorated,
+  boreDiameter,
+  barkThickness
+)
 
+\S4method{boredAgeCalculator_Prorated}{numeric,numeric,numeric,numeric}(
+  ringLength_prorated,
+  ringCount_prorated,
+  boreDiameter,
+  barkThickness
+)
 
-  \S4method{boredAgeCalculator_Prorated}{numeric,numeric,numeric,numeric}(ringLength_prorated,
-  ringCount_prorated, boreDiameter, barkThickness)
-
-
-  \S4method{boredAgeCalculator_Prorated}{numeric,numeric,numeric,missing}(ringLength_prorated,
-  ringCount_prorated, boreDiameter)
+\S4method{boredAgeCalculator_Prorated}{numeric,numeric,numeric,missing}(
+  ringLength_prorated,
+  ringCount_prorated,
+  boreDiameter
+)
 }
 \arguments{
 \item{ringLength_prorated}{numeric, Pro-rated ring length in cm}

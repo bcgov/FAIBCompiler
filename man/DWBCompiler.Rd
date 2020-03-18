@@ -9,11 +9,9 @@
 \usage{
 DWBCompiler(treeMS, siteAge, treeLossFactors, equation)
 
-\S4method{DWBCompiler}{data.table,data.table,data.table,character}(treeMS,
-  siteAge, treeLossFactors, equation)
+\S4method{DWBCompiler}{data.table,data.table,data.table,character}(treeMS, siteAge, treeLossFactors, equation)
 
-\S4method{DWBCompiler}{data.table,data.table,data.table,missing}(treeMS,
-  siteAge, treeLossFactors)
+\S4method{DWBCompiler}{data.table,data.table,data.table,missing}(treeMS, siteAge, treeLossFactors)
 }
 \arguments{
 \item{treeMS}{data.table, Tree-level data that has been compiled whole stem volume and gross merchantable volume for full and enhanced trees.}

@@ -8,9 +8,7 @@
 \usage{
 DWBGenerator_BEC(DBH, height, species, meanAge, BEC, riskGroup, adjustID)
 
-
-  \S4method{DWBGenerator_BEC}{numeric,numeric,character,numeric,character,character,character}(DBH,
-  height, species, meanAge, BEC, riskGroup, adjustID)
+\S4method{DWBGenerator_BEC}{numeric,numeric,character,numeric,character,character,character}(DBH, height, species, meanAge, BEC, riskGroup, adjustID)
 }
 \arguments{
 \item{DBH}{numeric, Tree DBH.}

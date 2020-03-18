@@ -5,13 +5,15 @@
 \alias{regRatioDataSelect}
 \title{Select the data for regression and ratio}
 \usage{
-regRatioDataSelect(sampledata, alltreedata)
+regRatioDataSelect(sampledata, alltreedata, usage)
 }
 \arguments{
 \item{sampledata}{data.table, The data contains the sample level information.}
 
 \item{alltreedata}{data.table, The is the data pool which contains the full/enhanced trees
 and H-enhanced trees.}
+
+\item{usage}{character, Specifies compiler name. It supports \code{ismc} and \code{vgis}.}
 }
 \value{
 Selected data for regression and ratio.

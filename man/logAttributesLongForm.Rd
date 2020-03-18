@@ -9,11 +9,9 @@
 \usage{
 logAttributesLongForm(treeData, maximumLogNO)
 
-\S4method{logAttributesLongForm}{data.table,numeric}(treeData,
-  maximumLogNO)
+\S4method{logAttributesLongForm}{data.table,numeric}(treeData, maximumLogNO)
 
-\S4method{logAttributesLongForm}{data.table,missing}(treeData,
-  maximumLogNO)
+\S4method{logAttributesLongForm}{data.table,missing}(treeData, maximumLogNO)
 }
 \arguments{
 \item{treeData}{data.table, an output from \code{logValueCalculator} function, i.e., tree_ms6. This table currently

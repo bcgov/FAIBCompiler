@@ -6,12 +6,9 @@
 \alias{VRISummaries,data.table,data.table,numeric,character,character-method}
 \title{Summarize the tree-level data at cluster or cluster/species level-VRI specific}
 \usage{
-VRISummaries(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil,
-  equation)
+VRISummaries(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation)
 
-
-  \S4method{VRISummaries}{data.table,data.table,numeric,character,character}(allVolumeTrees,
-  clusterPlotHeader, utilLevel, weirdUtil, equation)
+\S4method{VRISummaries}{data.table,data.table,numeric,character,character}(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation)
 }
 \arguments{
 \item{allVolumeTrees}{data.table, All tree data from vi_c and vi_i that have been compiled with
