@@ -220,6 +220,7 @@ mergeOAData <- function(oracleSourcePath, asciiSourcePath, coeffPath,
   rm(vi_d_or)
 
   # for vi_h
+
   vi_h_or <- readRDS(file.path(oracleSourcePath, "siteTree_card_vgis.rds"))
   vi_h_or <- merge(vi_h_or, long2shortspcd, by = "LONG_SPECIES", all.x = TRUE)
   vi_h_or[, LONG_SPECIES := NULL]
@@ -237,10 +238,20 @@ mergeOAData <- function(oracleSourcePath, asciiSourcePath, coeffPath,
   vi_h1[,':='(TREETYPE = NULL)]
 
   vi_h <- vi_h[,.(CLSTR_ID, PLOT, TREE_NO, TREETYPE)]
-  vi_h_th <- vi_h[TREETYPE %in% c("T", "L", "S", "O", "X", "N"),
-                  .(CLSTR_ID, PLOT, TREE_NO, TH_TREE = TREETYPE)]
+  vi_h_th <- unique(vi_h[TREETYPE %in% c("T", "L", "S", "O", "X", "N"),
+                  .(CLSTR_ID, PLOT, TREE_NO, TH_TREE_tmp = TREETYPE)])
+  vi_h_th <- vi_h_th[order(CLSTR_ID, PLOT, TREE_NO, TH_TREE_tmp),]
+  vi_h_th[, nobs := length(TH_TREE_tmp),
+          by = c("CLSTR_ID", "PLOT", "TREE_NO")]
+  vi_h_th[nobs == 1, TH_TREE := TH_TREE_tmp]
+  vi_h_th[nobs > 1, TH_TREE_tmp1 := paste0(TH_TREE_tmp, collapse = "_"),
+          by = c("CLSTR_ID", "PLOT", "TREE_NO")]
+  vi_h_th[TH_TREE_tmp1 %in% c("L_T", "S_T", "O_T", "N_T"), TH_TREE := "T"]
+  vi_h_th[TH_TREE_tmp1 %in% c("T_X"), TH_TREE := "X"]
+  vi_h_th[TH_TREE_tmp1 %in% c("L_N"), TH_TREE := "N"]
+  vi_h_th <- unique(vi_h_th[,.(CLSTR_ID, PLOT, TREE_NO, TH_TREE)],
+                    by = c("CLSTR_ID", "PLOT", "TREE_NO"))
   vi_h_th[PLOT == "I" & TH_TREE == "T", TP_TREE := "T"]
-  vi_h_th <- vi_h_th[!duplicated(vi_h_th),]
   vi_h1 <- merge(vi_h1, vi_h_th,
                  by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                  all.x = TRUE)
@@ -250,9 +261,7 @@ mergeOAData <- function(oracleSourcePath, asciiSourcePath, coeffPath,
   vi_h1 <- merge(vi_h1, vi_h_ra,
                  by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                  all.x = TRUE)
-  vi_h <- vi_h1
-  vi_h <- unique(vi_h, by = c("CLSTR_ID", "PLOT", "TREE_NO"))
-  saveRDS(vi_h, file.path(outputPath, "vi_h.rds"))
+  saveRDS(vi_h1, file.path(outputPath, "vi_h.rds"))
   rm(vi_h_or, vi_h1, vi_h_ra, vi_h_th)
 
   #for vi_e
