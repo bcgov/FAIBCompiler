@@ -285,9 +285,8 @@ VRICompiler <- function(oracleUserName,
     cat("Start selecting regratio data and derive mixed effect model coefficients and ratios.\n")
     ## if the regratiodata can not be found in coeff folder
     ## generate regratiodata and derive coeff and ratio using mixed effect models
-    regRatioData <- regRatioDataSelect(samples, tree_ms7)
+    regRatioData <- regRatioDataSelect(samples, tree_ms7, usage = "vgis")
     saveRDS(regRatioData, file.path(coeffPath, paste0("regRatioData", compilerYear, ".rds")))
-
     coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
     saveRDS(coefs$fixedcoeff,
             file.path(coeffPath, paste0("fixedCoefs", compilerYear, ".rds")))
