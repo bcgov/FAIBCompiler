@@ -30,11 +30,14 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   SampleSiteVisits <- readRDS(file.path(inputPath,
                                         dir(inputPath, pattern = "SampleSiteVisits"))) %>%
     data.table
+  SampleSiteVisits[, newMD := SAMPLE_SITE_VISIT_START_DATE + 60*60]
+
+
   vi_a <- SampleSiteVisits[,.(CLSTR_ID = NA,
                               SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
                               SAMP_NO = PROJECT_NUMBER, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
                               VISIT_NUMBER,
-                              MEAS_DT = substr(SAMPLE_SITE_VISIT_START_DATE, 1, 10),
+                              MEAS_DT = substr(newMD, 1, 10),
                               IP_AZ_PN = NA,
                               IP_DT_PN = NA, IP_AZ_GP = NA, IP_DT_GP = NA, IP_GPSID = NA)]
   vi_a <- merge(vi_a, samplesites,
