@@ -3,7 +3,7 @@
 \docType{methods}
 \name{compilerPathSetup}
 \alias{compilerPathSetup}
-\title{Setup an output path of the compiler}
+\title{Setup output paths of the compiler}
 \usage{
 compilerPathSetup(compilationPath = ".")
 }
@@ -12,7 +12,7 @@ compilerPathSetup(compilationPath = ".")
 If missing, the current work directory will be used.}
 }
 \value{
-Four paths will be returned as following:
+Seven paths will be returned as following:
 \itemize{
 
 \item {raw_from_oracle} {Path to save all data that read from both oracle and txt database without merging.}
@@ -22,11 +22,17 @@ Four paths will be returned as following:
 \item {compilation_db} {Path to save compiled outputs.}
 
 \item {compilation_archive} {Path to archive all compilation process.}
+
+\item {compilation_report} {Path to report compilation process.}
+
+\item {compilation_map} {Path to archive all maps for compilation process.}
+
+\item {compilation_coeff} {Path to archive all coefficients for compilation process.}
 }
 }
 \description{
-This function does two things: 1. create a folder that will store compiled data;
-2. return a path that directs the compiled folder.
+This function does two things: 1. create folders that will store compiled data;
+2. return paths that directs the compiled folder.
 }
 \note{
 Could overwrite the existing output folder, depending on user's choise, i.e., yes or no.
