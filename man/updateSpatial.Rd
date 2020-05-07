@@ -4,41 +4,14 @@
 \alias{updateSpatial}
 \title{Used for updating spatial attributes based on locations}
 \usage{
-updateSpatial(
-  samplesites,
-  fizmapPath,
-  fizmapName,
-  fizmapFormat,
-  tflmapPath,
-  tflmapName,
-  tflmapFormat,
-  ownershipmapPath,
-  ownershipmapName,
-  ownershipmapFormat
-)
+updateSpatial(samplesites, mapPath, mapTimes)
 }
 \arguments{
 \item{samplesites}{data.table A table that contains spatial loctions. Currently it is
 designed for accepting UTM coordinates. Therefore, zone, northing
 and easting must be provided.}
 
-\item{fizmapPath}{character The path to fiz map.}
-
-\item{fizmapName}{character The name of fiz map.}
-
-\item{fizmapFormat}{character The format of fiz map.}
-
-\item{tflmapPath}{character The path to tfl map.}
-
-\item{tflmapName}{character The name of tfl map.}
-
-\item{tflmapFormat}{character The format of tfl map.}
-
-\item{ownershipmapPath}{character The path to ownership map.}
-
-\item{ownershipmapName}{character The name of ownership map.}
-
-\item{ownershipmapFormat}{character The format of ownership map.}
+\item{mapPath}{character The path to fiz map.}
 }
 \value{
 a table that contains spatial attributes of bc albers, longitude/latitude,
