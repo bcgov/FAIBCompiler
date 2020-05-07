@@ -1,12 +1,12 @@
-#' Setup an output path of the compiler
+#' Setup output paths of the compiler
 #'
-#' @description This function does two things: 1. create a folder that will store compiled data;
-#'              2. return a path that directs the compiled folder.
+#' @description This function does two things: 1. create folders that will store compiled data;
+#'              2. return paths that directs the compiled folder.
 #'
 #' @param compilationPath character, Specifies a path to store whole compilation process.
 #'                              If missing, the current work directory will be used.
 #'
-#' @return Four paths will be returned as following:
+#' @return Seven paths will be returned as following:
 #' \itemize{
 #'
 #' \item {raw_from_oracle} {Path to save all data that read from both oracle and txt database without merging.}
@@ -16,6 +16,12 @@
 #' \item {compilation_db} {Path to save compiled outputs.}
 #'
 #' \item {compilation_archive} {Path to archive all compilation process.}
+#'
+#' \item {compilation_report} {Path to report compilation process.}
+#'
+#' \item {compilation_map} {Path to archive all maps for compilation process.}
+#'
+#' \item {compilation_coeff} {Path to archive all coefficients for compilation process.}
 #' }
 #'
 #' @note Could overwrite the existing output folder, depending on user's choise, i.e., yes or no.
@@ -34,7 +40,14 @@ compilerPathSetup <- function(compilationPath = "."){
   compilation_sa <- file.path(compilationPath, "compilation_sa")
   compilation_db <- file.path(compilationPath, "compilation_db")
   compilation_archive <- file.path(compilationPath,
-                           paste("Archive_", gsub("-", "", as.character(as.Date(Sys.time()))), sep = ""))
+                                   paste("Archive_",
+                                         gsub("-", "", as.character(as.Date(Sys.time()))),
+                                         sep = ""))
+  compilation_map <- file.path(compilationPath, "compilation_map")
+  compilation_coeff <- file.path(compilationPath, "compilation_coeff")
+  compilation_report <- file.path(compilationPath, "compilation_report")
+  ## for raw, sa, db, archive and report,
+  ## remove the existing ones and create empty folders
   if(dir.exists(raw_from_oracle)){
     unlink(raw_from_oracle, recursive = TRUE)
   }
@@ -47,12 +60,28 @@ compilerPathSetup <- function(compilationPath = "."){
   if(dir.exists(compilation_archive)){
     unlink(compilation_archive, recursive = TRUE)
   }
+  if(dir.exists(compilation_report)){
+    unlink(compilation_report, recursive = TRUE)
+  }
   dir.create(raw_from_oracle)
   dir.create(compilation_sa)
   dir.create(compilation_db)
   dir.create(compilation_archive)
+  dir.create(compilation_report)
+  ## for coeff and map, create empty one if they do not exist,
+  ## otherwise keep them
+  if(!dir.exists(compilation_coeff)){
+    dir.create(compilation_coeff)
+  }
+  if(!dir.exists(compilation_map)){
+    dir.create(compilation_map)
+  }
+
   return(list(raw_from_oracle = raw_from_oracle,
               compilation_sa = compilation_sa,
               compilation_db = compilation_db,
-              compilation_archive = compilation_archive))
+              compilation_archive = compilation_archive,
+              compilation_report = compilation_report,
+              compilation_coeff = compilation_coeff,
+              compilation_map = compilation_map))
 }
