@@ -17,7 +17,7 @@
 #'                         By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
 #'                         which is consistent with our rdw system.
 #' @param coeffPath character, Specifies the path that stores coefficients and spatial lookup tables.
-#' @param mapPath character, Specifies the path to maps of FIZ, TFL and OWNERSHIP.
+#' @param mapSourcePath character, Specifies the path to maps of FIZ, TFL and OWNERSHIP.
 #' @param equation character, Specifies the taper equation that is used for compiler. Currently supports
 #'                            BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).
 #' @param walkThru logical, Speciefies whether the data had been collected using work through method. Default is \code{TRUE},
@@ -67,8 +67,7 @@
 ISMCCompiler_vgis <- function(oracleUserName,
                               oraclePassword,
                               compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
-                              coeffPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler/Coeffs",
-                              mapPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler/Maps",
+                              mapSourcePath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
                               equation = "KBEC",
                               walkThru = TRUE,
                               logMinLength = 0.1,
@@ -77,26 +76,18 @@ ISMCCompiler_vgis <- function(oracleUserName,
                               UTOPDIB = 10,
                               utilLevel = 4,
                               weirdUtil = "No"){
-  cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
-  cat("    Check maps in mapPath:.\n")
-  cat("        Map TSA skiped, will use the one from bcmaps.\n")
-  cat("        Map BEC skiped, will use the one from bcmaps.\n")
-  if(file.exists(file.path(mapPath, "TFL.gdb"))){
-  cat("        Map TFL checked.\n")
-  } else {
-  stop("        Map TFL can not be found in your map path.\n")
-  }
-  if(file.exists(file.path(mapPath, "FIZ.gdb"))){
-  cat("        Map FIZ checked.\n")
-  } else {
-  stop("        Map FIZ can not be found in your map path.\n")
-  }
-  if(file.exists(file.path(mapPath, "OWNERSHIP.gdb"))){
-  cat("        Map OWNERSHIP checked.\n")
-  } else {
-  stop("        Map OWNERSHIP can not be found in your map path.\n")
-  }
+  # rm(list = ls())
+  # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
+  cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
+  compilationPaths <- compilerPathSetup(compilationPath)
 
+  cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
+  # rm(list = ls())
+  # mapSourcePath <- "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure"
+  # mapPath <- "D:/ISMC project/ISMC compiler/ismc compiler development/maps"
+
+  maptimes <- checkMaps(mapSourcePath,
+                        mapPath = compilationPaths$compilation_map)
   todayDate <- as.Date(Sys.time())
   todayYear <- substr(todayDate, 1, 4)
   if(todayDate >= as.Date(paste0(todayYear, "-01-01")) &
@@ -106,10 +97,12 @@ ISMCCompiler_vgis <- function(oracleUserName,
     compilationYear <- todayYear
   }
   cat("    Check VOL~BA coefficients and ratios in coeffPath:.\n")
-
-  if(file.exists(file.path(coeffPath, paste0("fixedCoefs", compilationYear, ".rds"))) &
-     file.exists(file.path(coeffPath, paste0("randomCoefs", compilationYear, ".rds"))) &
-     file.exists(file.path(coeffPath, paste0("ratios", compilationYear, ".rds")))){
+  if(file.exists(file.path(compilationPaths$compilation_coeff,
+                           paste0("fixedCoefs", compilationYear, ".rds"))) &
+     file.exists(file.path(compilationPaths$compilation_coeff,
+                           paste0("randomCoefs", compilationYear, ".rds"))) &
+     file.exists(file.path(compilationPaths$compilation_coeff,
+                           paste0("ratios", compilationYear, ".rds")))){
     cat(paste0("        All coefficients and ratios for year ", compilationYear, " are checked.\n"))
     needNewCoffs <- FALSE
   } else {
@@ -118,19 +111,11 @@ ISMCCompiler_vgis <- function(oracleUserName,
     needNewCoffs <- TRUE
   }
 
-  cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
-  compilationPaths <- compilerPathSetup(compilationPath)
-  ## setup the folder to save coefficients and ratios
-  ## and update coefficients and ratio annually
-  if(!(dir.exists(coeffPath))){
-    dir.create(coeffPath)
-  }
   sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
                    "O", "F", "E", "C", "B")
 
   ### 2. load oracle data
   cat(paste(Sys.time(), ": Load data from ISMC database.\n", sep = ""))
-
   FAIBOracle::loadISMC_bySampleType(userName = oracleUserName,
                                     passWord = oraclePassword,
                                     env = "INT",
@@ -149,36 +134,32 @@ ISMCCompiler_vgis <- function(oracleUserName,
                       outputPath = compilationPaths$compilation_sa)
 
   vi_a <- readRDS(file.path(compilationPaths$compilation_sa, "vi_a.rds"))
+  vi_a <- readRDS("D:/ISMC project/ISMC compiler/ismc compiler development/compilation_sa/vi_a.rds")
   cat(paste(Sys.time(), ": Update spatial attributes.\n", sep = ""))
   spatialLookups <- updateSpatial(samplesites = vi_a,
-                                  fizmapPath = mapPath,
-                                  fizmapName = "FIZ",
-                                  fizmapFormat = "gdb",
-                                  tflmapPath = mapPath,
-                                  tflmapName = "TFL",
-                                  tflmapFormat = "gdb",
-                                  ownershipmapPath = mapPath,
-                                  ownershipmapName = "OWNERSHIP",
-                                  ownershipmapFormat = "gdb")
+                                  mapPath = compilationPaths$compilation_map,
+                                  mapTimes = maptimes)
   saveRDS(spatialLookups,
           file.path(compilationPaths$compilation_sa, "vi_a.rds"))
   todaydate <- gsub("-", "", Sys.Date())
 
   spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = substr(CLSTR_ID, 1, 9),
-                                           IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
-                                           Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
-                                           TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
-                                           PROJ_ID, SAMP_NO = substr(CLSTR_ID, 6, 9))],
+                                                  IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
+                                                  Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
+                                                  TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
+                                                  PROJ_ID, SAMP_NO = substr(CLSTR_ID, 6, 9))],
                                 by = "SAMP_POINT")
   write.table(spatialLookups_simp,
-              file.path(coeffPath, paste0("spatiallookup", todaydate, ".txt")),
+              file.path(compilationPaths$compilation_db,
+                        paste0("spatiallookup", todaydate, ".txt")),
               sep = ",",
               row.names = FALSE)
   write.table(spatialLookups_simp,
-              file.path(coeffPath, "spatiallookup.txt"),
+              file.path(compilationPaths$compilation_db,
+                        "spatiallookup.txt"),
               sep = ",",
               row.names = FALSE)
-  cat("    Saved spatial attribute table to coeffPath as spatiallookup \n")
+  cat("    Saved spatial attribute table as spatiallookup \n")
 
 
   ### 2.1 load cluster/plot header
@@ -322,35 +303,46 @@ ISMCCompiler_vgis <- function(oracleUserName,
     ## if the regratiodata can not be found in coeff folder
     ## generate regratiodata and derive coeff and ratio using mixed effect models
     regRatioData <- regRatioDataSelect(samples, tree_ms7, usage = "ismc")
-    saveRDS(regRatioData, file.path(coeffPath, paste0("regRatioData", compilationYear, ".rds")))
+    saveRDS(regRatioData,
+            file.path(compilationPaths$compilation_coeff,
+                      paste0("regRatioData", compilationYear, ".rds")))
     cat(paste0("        Selected data and saved to regRatioData", compilationYear, "\n"))
     coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
     saveRDS(coefs$fixedcoeff,
-            file.path(coeffPath, paste0("fixedCoefs", compilationYear, ".rds")))
+            file.path(compilationPaths$compilation_coeff,
+                      paste0("fixedCoefs", compilationYear, ".rds")))
     saveRDS(coefs$randomcoeff,
-            file.path(coeffPath, paste0("randomCoefs", compilationYear, ".rds")))
+            file.path(compilationPaths$compilation_coeff,
+                      paste0("randomCoefs", compilationYear, ".rds")))
     write.table(coefs$fixedcoeff,
-                file.path(coeffPath, paste0("fixedCoefs", compilationYear, ".txt")),
+                file.path(compilationPaths$compilation_coeff,
+                          paste0("fixedCoefs", compilationYear, ".txt")),
                 row.names = FALSE, sep = ",")
     write.table(coefs$randomcoeff,
-                file.path(coeffPath, paste0("randomCoefs", compilationYear, ".txt")),
+                file.path(compilationPaths$compilation_coeff,
+                          paste0("randomCoefs", compilationYear, ".txt")),
                 row.names = FALSE, sep = ",")
     cat(paste0("        Derived and saved coefficients to fixedCoefs", compilationYear, "\n"))
     cat(paste0("                                     and randomCoefs", compilationYear, "\n"))
     ratios <- toWSVRatio(inputData = regRatioData, needCombs = allbecsplvd)
     saveRDS(ratios,
-            file.path(coeffPath, paste0("ratios", compilationYear, ".rds")))
+            file.path(compilationPaths$compilation_coeff,
+                      paste0("ratios", compilationYear, ".rds")))
     write.table(ratios,
-                file.path(coeffPath, paste0("ratios", compilationYear, ".txt")),
+                file.path(compilationPaths$compilation_coeff,
+                          paste0("ratios", compilationYear, ".txt")),
                 row.names = FALSE, sep = ",")
     cat(paste0("        Calculated and saved ratios to ratios", compilationYear, "\n"))
     rm(coefs, ratios, regRatioData)
   } else {
     cat(paste0("    Use the existing coefficients and ratios of year ", compilationYear, "\n"))
   }
-  fixedcoeffs <- readRDS(file.path(coeffPath, paste0("fixedCoefs", compilationYear, ".rds")))
-  randomcoeffs <- readRDS(file.path(coeffPath, paste0("randomCoefs", compilationYear, ".rds")))
-  ratios <- readRDS(file.path(coeffPath, paste0("ratios", compilationYear, ".rds")))
+  fixedcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                   paste0("fixedCoefs", compilationYear, ".rds")))
+  randomcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                    paste0("randomCoefs", compilationYear, ".rds")))
+  ratios <- readRDS(file.path(compilationPaths$compilation_coeff,
+                              paste0("ratios", compilationYear, ".rds")))
   auxtreecompilation <- auxiTreeCompiler(fullMeasuredTrees = data.table::copy(tree_ms7),
                                          auxiTrees = data.table::copy(tree_ax1),
                                          clusterPlotHeader = samples,
@@ -359,8 +351,10 @@ ISMCCompiler_vgis <- function(oracleUserName,
                                          ratios = ratios)
   useRatioCurve <- FALSE
   if(useRatioCurve){
-    merRatioCoef <- readRDS(file.path(coeffPath, "mer_ratio_curve.rds"))
-    ntwbRatioCoef <- readRDS(file.path(coeffPath, "ntwb_ratio_curve.rds"))
+    merRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                      "mer_ratio_curve.rds"))
+    ntwbRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                       "ntwb_ratio_curve.rds"))
     HnonenhancedTrees <- merge(auxtreecompilation$HnonenhancedTrees,
                                merRatioCoef[,.(BGC_ZONE, SP0, LV_D, a, b, c)],
                                by = c("BGC_ZONE", "SP0", "LV_D"),
@@ -473,4 +467,14 @@ ISMCCompiler_vgis <- function(oracleUserName,
   file.copy(from = compilationPaths$raw_from_oracle,
             to = compilationPaths$compilation_archive,
             recursive = TRUE)
+  file.copy(from = compilationPaths$compilation_coeff,
+            to = compilationPaths$compilation_archive,
+            recursive = TRUE)
+  file.copy(from = compilationPaths$compilation_map,
+            to = compilationPaths$compilation_archive,
+            recursive = TRUE)
+  file.copy(from = compilationPaths$compilation_report,
+            to = compilationPaths$compilation_archive,
+            recursive = TRUE)
+
 }
