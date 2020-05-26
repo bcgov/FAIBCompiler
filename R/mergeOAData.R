@@ -66,7 +66,10 @@ mergeOAData <- function(oracleSourcePath, asciiSourcePath, coeffPath,
   vi_a[, SAMP_POINT := substr(CLSTR_ID, 1, 9)]
   externalSpatial <- TRUE
   if(externalSpatial){
-    spatialAttr <- readRDS(file.path(coeffPath, "spatiallookup.rds"))
+    spatialAttr <- read.table(file.path(coeffPath, "spatiallookup.txt"),
+                              sep = ",",
+                              header = TRUE,
+                              stringsAsFactors = FALSE) %>% data.table
     spatialAttr[,':='(PROJ_ID = NULL,
                       SAMP_NO = NULL)]
     vi_a <- merge(vi_a, spatialAttr, by = "SAMP_POINT", all.x = TRUE)
