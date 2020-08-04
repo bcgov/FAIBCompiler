@@ -58,8 +58,6 @@ see \code{\link{logMatrixAdjustment}} for details. If missing 0.1 is used.}
 
 \item{weirdUtil}{character, Specifies weird utilization in summarizing tree volumes at cluster and species level.
 Default is \code{no}, if missing. Otherwise, a number should be provided.}
-
-\item{coeffPath}{character, Specifies the path that stores coefficients and spatial lookup tables.}
 }
 \value{
 This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
