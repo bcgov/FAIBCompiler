@@ -16,7 +16,6 @@
 #'                         Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
 #'                         By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
 #'                         which is consistent with our rdw system.
-#' @param coeffPath character, Specifies the path that stores coefficients and spatial lookup tables.
 #' @param mapSourcePath character, Specifies the path to maps of FIZ, TFL and OWNERSHIP.
 #' @param equation character, Specifies the taper equation that is used for compiler. Currently supports
 #'                            BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).
@@ -96,7 +95,7 @@ ISMCCompiler_vgis <- function(oracleUserName,
   } else {
     compilationYear <- todayYear
   }
-  cat("    Check VOL~BA coefficients and ratios in coeffPath:.\n")
+  cat("    Check VOL~BA coefficients and ratios:.\n")
   if(file.exists(file.path(compilationPaths$compilation_coeff,
                            paste0("fixedCoefs", compilationYear, ".rds"))) &
      file.exists(file.path(compilationPaths$compilation_coeff,
@@ -140,7 +139,8 @@ ISMCCompiler_vgis <- function(oracleUserName,
                                   mapPath = compilationPaths$compilation_map,
                                   mapTimes = maptimes)
   saveRDS(spatialLookups,
-          file.path(compilationPaths$compilation_sa, "vi_a.rds"))
+          file.path(compilationPaths$compilation_sa,
+                    "vi_a.rds"))
   todaydate <- gsub("-", "", Sys.Date())
 
   spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = substr(CLSTR_ID, 1, 9),
@@ -150,12 +150,13 @@ ISMCCompiler_vgis <- function(oracleUserName,
                                                   PROJ_ID, SAMP_NO = substr(CLSTR_ID, 6, 9))],
                                 by = "SAMP_POINT")
   write.table(spatialLookups_simp,
-              file.path(compilationPaths$compilation_db,
-                        paste0("spatiallookup", todaydate, ".txt")),
+              file.path(compilationPaths$compilation_coeff,
+                        paste0("spatiallookup",
+                               todaydate, ".txt")),
               sep = ",",
               row.names = FALSE)
   write.table(spatialLookups_simp,
-              file.path(compilationPaths$compilation_db,
+              file.path(compilationPaths$compilation_coeff,
                         "spatiallookup.txt"),
               sep = ",",
               row.names = FALSE)
@@ -212,6 +213,9 @@ ISMCCompiler_vgis <- function(oracleUserName,
   cat(paste(Sys.time(), ": Compile full/enhanced and h-enhanced volume trees.\n", sep = ""))
   tree_ms1[LOG_G_1 == "*",
            MEAS_INTENSE := "H-ENHANCED"]
+  ## B sample trees are H-enhnced trees
+  tree_ms1[substr(CLSTR_ID, 11, 11) == "B",
+           MEAS_INTENSE := "H-ENHANCED"]
   tree_ms1[is.na(MEAS_INTENSE) & PLOT == "I",
            MEAS_INTENSE := "FULL"]
   tree_ms1[is.na(MEAS_INTENSE),
@@ -241,8 +245,12 @@ ISMCCompiler_vgis <- function(oracleUserName,
   ###################### start the site age compilation
   ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
-  tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1, samples[,.(CLSTR_ID, PLOT, FIZ = as.character(FIZ))],
-                                        by = c("CLSTR_ID", "PLOT"), all.x = TRUE)
+  tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
+                                        samples[,.(CLSTR_ID, PLOT,
+                                                   FIZ = as.character(FIZ),
+                                                   BGC_ZONE)],
+                                        by = c("CLSTR_ID", "PLOT"),
+                                        all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
   saveRDS(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
   # write.csv(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.csv"), row.names = FALSE)
@@ -278,6 +286,7 @@ ISMCCompiler_vgis <- function(oracleUserName,
   tree_ms7 <- DWBCompiler(treeMS = tree_ms6[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
                           siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
                           treeLossFactors = vi_d, equation = "KBEC")
+
   tree_ms7 <- rbindlist(list(tree_ms7,
                              tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
                         fill = TRUE)
@@ -349,7 +358,7 @@ ISMCCompiler_vgis <- function(oracleUserName,
                                          fixedCoeff = fixedcoeffs,
                                          randomCoeff = randomcoeffs,
                                          ratios = ratios)
-  useRatioCurve <- FALSE
+  useRatioCurve <- TRUE
   if(useRatioCurve){
     merRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
                                       "mer_ratio_curve.rds"))
