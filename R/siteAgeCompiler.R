@@ -35,6 +35,9 @@ setMethod(
     siteAgeData <- cbind(data.table(uniObs = 1:nrow(siteAgeData)),
                          siteAgeData)
     siteAgeData[, BARK_TEMP := as.numeric(BARK_THK)]
+    ## get ic region from bec zone
+    siteAgeData[, REGION_IC := BEC2IC(BGC_ZONE)]
+
     siteAgeData[is.na(BARK_THK), BARK_TEMP := BNG_DIAM/20]
     siteAgeData[BARK_THK %>>% 0 & BNG_DIAM %>>% 0, BARK_PCT := 100*((BARK_THK*0.2)/BNG_DIAM)]
     ## CALL annualGrowthRataCalculator function
@@ -55,7 +58,7 @@ setMethod(
 
     siteAgeData[, SP_SINDEX := siteToolsSpeciesConvertor(species = SPECIES)]
 
-    siteAgeData[, SI_SP := SIndexR::SIndexR_SpecRemap(SP_SINDEX, FIZ)]
+    siteAgeData[, SI_SP := SIndexR::SIndexR_SpecRemap(SP_SINDEX, REGION_IC)]
 
     siteAgeData[, HEIGHT := TREE_LEN]
     siteAgeData[, ':='(HT_OLD = HEIGHT)]
@@ -68,13 +71,16 @@ setMethod(
     siteAgeData[!(BORE_AGE %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Bore(officeBoredAge = as.numeric(BORE_AGE)),
                      AGE_BASE = "Bore")]
-    siteAgeData[is.na(AGE_BASE) & !(BORAG_FL %in% c(NA, 0)),
+    siteAgeData[is.na(AGE_BASE) &
+                  !(BORAG_FL %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Bore(fieldBoredAge = as.numeric(BORAG_FL)),
                      AGE_BASE = "Bore")]
-    siteAgeData[is.na(AGE_BASE) & !(TOTAL_AG %in% c(NA, 0)) & is.na(AGE_BASE),
+    siteAgeData[is.na(AGE_BASE) &
+                  !(TOTAL_AG %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Total(as.numeric(TOTAL_AG)),
                      AGE_BASE = "Total")]
-    siteAgeData[is.na(AGE_BASE) & !(PHYS_AGE %in% c(NA, 0)),
+    siteAgeData[is.na(AGE_BASE) &
+                  !(PHYS_AGE %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Phys(as.numeric(PHYS_AGE)),
                      AGE_BASE = "Phys")]
     siteAgeData[PRO_LEN %>>% 0 & PRO_RING %>>% 0,
@@ -89,34 +95,40 @@ setMethod(
                                                         boredHeight = HT_CALC,
                                                         treeHeight = HEIGHT,
                                                         species = SP_SINDEX,
-                                                        FIZ = FIZ),
+                                                        FIZ = REGION_IC),
                      HT_CALC = 1.3,
                      AGE_BASE = "Bh_cr")]
 
     siteAgeData[, ':='(CORR = 0,
                        AGE_TOT = as.numeric(NA),
                        AGE_BH = as.numeric(NA),
-                       SI_TREE = as.numeric(NA))]
+                       SI_TREE = as.numeric(NA),
+                       AGE_TP = as.numeric(NA))]
     treatdata <- siteAgeData[AGE_BOR %>>% 0 & HEIGHT %>>% 0 & SI_SP %>=% 0, ]
     untreatdata <- siteAgeData[!(uniObs %in% treatdata$uniObs),]
     treatdata[, AGE_TP := 1]
-    treatdata[, SI_TREE := SiteTools_HTBoredAge2SI(boredAge = AGE_BOR, height = HEIGHT,
-                                                   species = SP_SINDEX, ICRegion = FIZ,
-                                                   ageType = AGE_TP, estType = 1)]
-    treatdata[, CORR := SiteTools_Y2BH(species = SP_SINDEX, ICRegion = FIZ,
+    treatdata[, SI_TREE := SiteTools_HTBoredAge2SI(boredAge = AGE_BOR,
+                                                   height = HEIGHT,
+                                                   species = SP_SINDEX,
+                                                   ICRegion = REGION_IC,
+                                                   ageType = AGE_TP,
+                                                   estType = 1)]
+    treatdata[, CORR := SiteTools_Y2BH(species = SP_SINDEX,
+                                       ICRegion = REGION_IC,
                                        siteIndex = SI_TREE)]
     treatdata[HT_CALC %==% 0, ':='(AGE_TOT = AGE_BOR)]
     treatdata[HT_CALC %==% 0, ':='(AGE_BH = AGE_TOT - CORR)]
     treatdata[HT_CALC %==% 0 & AGE_BH %<<% 0, ':='(AGE_BH = 0)]
     treatdata[HT_CALC %!=% 0, ':='(AGE_BH = AGE_BOR)]
     treatdata[HT_CALC %!=% 0, ':='(AGE_TOT = CORR + AGE_BH)]
-    siteAgeData <- rbindlist(list(treatdata[, ':='(AGE_TP = NULL)], untreatdata))
+    siteAgeData <- rbindlist(list(treatdata,
+                                  untreatdata))
     rm(treatdata, untreatdata)
     siteAgeData[, HEIGHT := HT_OLD]
     siteAgeData[, ':='(HT_OLD = NULL)]
     siteAgeData[SUIT_HT == "N" | SUIT_TR == "N", SI_TREE := as.numeric(NA)]
     siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID, PLOT, TREE_NO, SPECIES,
-                                               SUIT_TR, SUIT_HT, FIZ,
+                                               SUIT_TR, SUIT_HT, FIZ, BGC_ZONE, REGION_IC,
                                                TH_TREE, TP_TREE, RA_TREE,
                                                AGE_BASE, SP0,
                                                GROW_5YR, GROW_10YR, GROW_20YR, AGE_CORR, TOTAL_AG, PHYS_AGE,
