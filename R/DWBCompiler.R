@@ -49,15 +49,19 @@ setMethod(
 
     ## REMOVE THE OBSERVATIONS THAT LOSS INDICATORS WITH NO MATCHING TREES
     ##
-    loss_fct[MEAS_INTENSE == "H-ENHANCED", ':='(PATH_IND = as.character(NA))]
-    loss_fct[substr(CLSTR_ID, 11, 11) == "B", ':='(MEAS_INTENSE = "B-SAMPLE", # trees are measured dbh and height, without net factoring
+    loss_fct[MEAS_INTENSE == "H-ENHANCED",
+             ':='(PATH_IND = as.character(NA))]
+    loss_fct[substr(CLSTR_ID, 11, 11) == "B",
+             ':='(MEAS_INTENSE = "B-SAMPLE", # trees are measured dbh and height, without net factoring
                                     PATH_IND = as.character(NA))]
     loss_fct_output <- loss_fct[MEAS_INTENSE %in% c("H-ENHANCED", "B-SAMPLE"),.(uniobs, PCT_DCY = as.numeric(NA),
                                                                PCT_WST = as.numeric(NA),
                                                                PCT_BRK = as.numeric(NA),
                                                                AGE_DWB = as.numeric(NA),
                                                                AGE_FLG = as.character(NA),
-                                                               PATH_IND)]
+                                                               PATH_IND,
+                                                               RISK_GRP = as.numeric(NA),
+                                                               ADJ_ID = as.character(NA))]
     loss_fct <- loss_fct[MEAS_INTENSE %in% c("FULL", "ENHANCED"),]
     loss_fct[, PATH_IND := "00000000"]
     for(i in 1:8){
@@ -200,11 +204,17 @@ setMethod(
                       PCT_BRK = DWBfactors$breakage)]
       rm(DWBfactors)
     }
-    tree_rsk[substr(CLSTR_ID, 1, 4) == "3471" & (AGE_DWB %<<% 121 | is.na(AGE_DWB)),
+    tree_rsk[substr(CLSTR_ID, 1, 4) == "3472" &
+               substr(CLSTR_ID, 11, 11) == "M" &
+               (AGE_DWB %<<% 121 | is.na(AGE_DWB)),
              ':='(PCT_BRK = 2, PCT_ADJ = "Y")]
-    tree_rsk[substr(CLSTR_ID, 1, 4) == "3471" & (AGE_DWB %>=% 121),
+    tree_rsk[substr(CLSTR_ID, 1, 4) == "3472" &
+               substr(CLSTR_ID, 11, 11) == "M" &
+               (AGE_DWB %>=% 121),
              ':='(PCT_BRK = 4, PCT_ADJ = "Y")]
-    tree_rsk <- rbindlist(list(tree_rsk[,.(uniobs, PCT_DCY, PCT_WST, PCT_BRK, AGE_DWB, AGE_FLG, PATH_IND)],
+    tree_rsk <- rbindlist(list(tree_rsk[,.(uniobs, PCT_DCY, PCT_WST, PCT_BRK,
+                                           AGE_DWB, AGE_FLG, PATH_IND, RISK_GRP,
+                                           ADJ_ID)],
                                loss_fct_output))
     tree_rsk <- tree_rsk[order(uniobs),]
     tree_rsk[, uniobs:=NULL]
