@@ -177,7 +177,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   treemeasurements <- merge(treemeasurements, specieslookup,
                             by = "TREE_SPECIES_CODE",
                             all.x = TRUE)
-
+  treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
+                   TREE_SPECIES_CODE := "X"]
   vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & !is.na(LENGTH),
                            .(CLSTR_ID, PLOT = PLOT_CATEGORY_CODE,
                              TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
