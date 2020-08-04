@@ -1,6 +1,6 @@
-#' Derive bored age using office and field bored age 
-#' 
-#' @description This function is to derive bore age based on either office bored age (\code{officeBoredAge}) 
+#' Derive bored age using office and field bored age
+#'
+#' @description This function is to derive bore age based on either office bored age (\code{officeBoredAge})
 #'              or field bored age (\code{fieldBoredAge}). When both bore age information are available, the function takes
 #'              \code{officeBoredAge} as priority. The function is one of the four functions that derive bored age using
 #'              different method. The rests are \code{\link{boredAgeCalculator_Total}}, \code{\link{boredAgeCalculator_Phys}} and
@@ -8,16 +8,16 @@
 #'
 #' @param officeBoredAge numeric, Office bored age, which is measured in lab by professionals.
 #' @param fieldBoredAge numeric, Field bored age, estimated in field by field crew.
-#' 
-#' 
+#'
+#'
 #' @return bored age
-#' 
+#'
 #' @importFrom data.table ':=' data.table
 #' @seealso \code{\link{boredAgeCalculator_Total}}
 #'          \code{\link{boredAgeCalculator_Phys}}
 #'          \code{\link{boredAgeCalculator_Prorated}}
 #'
-#' 
+#'
 #' @export
 #' @docType methods
 #' @rdname boredAgeCalculator_Bore
@@ -32,7 +32,7 @@ setGeneric("boredAgeCalculator_Bore",
 #' @rdname boredAgeCalculator_Bore
 setMethod(
   "boredAgeCalculator_Bore",
-  signature = c(officeBoredAge = "numeric", 
+  signature = c(officeBoredAge = "numeric",
                 fieldBoredAge = "numeric"),
   definition = function(officeBoredAge, fieldBoredAge){
     worktable <- data.table(uniObs = 1:(max(length(officeBoredAge), length(fieldBoredAge))),
@@ -55,7 +55,7 @@ setMethod(
 #' @rdname boredAgeCalculator_Bore
 setMethod(
   "boredAgeCalculator_Bore",
-  signature = c(officeBoredAge = "numeric", 
+  signature = c(officeBoredAge = "numeric",
                 fieldBoredAge = "missing"),
   definition = function(officeBoredAge){
     return(boredAgeCalculator_Bore(officeBoredAge, fieldBoredAge = as.numeric(NA)))
@@ -65,7 +65,7 @@ setMethod(
 #' @rdname boredAgeCalculator_Bore
 setMethod(
   "boredAgeCalculator_Bore",
-  signature = c(officeBoredAge = "missing", 
+  signature = c(officeBoredAge = "missing",
                 fieldBoredAge = "numeric"),
   definition = function(fieldBoredAge){
     return(boredAgeCalculator_Bore(officeBoredAge = as.numeric(NA), fieldBoredAge))
@@ -75,23 +75,23 @@ setMethod(
 
 
 #' Derive bored age using total age
-#' 
-#' 
+#'
+#'
 #' @description This function is to derive bore age based on total age (\code{totalAge}).The function is one of the four functions that derive bored age using
 #'              different method. The rests are \code{\link{boredAgeCalculator_Bore}}, \code{\link{boredAgeCalculator_Phys}} and
 #'              \code{\link{boredAgeCalculator_Prorated}}.
 #'
 #' @param totalAge numeric, Total tree age, ie., age at height of 0.
-#' 
-#' 
+#'
+#'
 #' @return bored age
-#' 
+#'
 #' @importFrom data.table ':=' data.table
 #'
 #' @seealso \code{\link{boredAgeCalculator_Total}}
 #'          \code{\link{boredAgeCalculator_Phys}}
 #'          \code{\link{boredAgeCalculator_Prorated}}
-#' 
+#'
 #' @export
 #' @docType methods
 #' @rdname boredAgeCalculator_Total
@@ -122,22 +122,22 @@ setMethod(
 
 
 #' Derive bored age using physiological age
-#' 
-#' 
+#'
+#'
 #' @description This function is to derive bore age based on physiological age (\code{physAge}). The function is one of the four functions that derive bored age using
 #'              different method. The rests are \code{\link{boredAgeCalculator_Bore}}, \code{\link{boredAgeCalculator_Total}} and
 #'              \code{\link{boredAgeCalculator_Prorated}}.
 #'
 #' @param physAge numeric, Pysiological age.
-#' 
-#' 
+#'
+#'
 #' @return bored age
-#' 
+#'
 #'
 #' @seealso \code{\link{boredAgeCalculator_Total}}
 #'          \code{\link{boredAgeCalculator_Phys}}
 #'          \code{\link{boredAgeCalculator_Prorated}}
-#' 
+#'
 #' @export
 #' @docType methods
 #' @rdname boredAgeCalculator_Phys
@@ -168,11 +168,11 @@ setMethod(
 
 
 #' Derive bored age using pro-rated age
-#' 
-#' 
-#' 
-#' @description This function is to derive bore age based on diameter at bore (\code{boreDiameter}), 
-#'              bark thickness (\code{barkThickness}), pro-rated ring length (\code{ringLength_prorated}) and 
+#'
+#'
+#'
+#' @description This function is to derive bore age based on diameter at bore (\code{boreDiameter}),
+#'              bark thickness (\code{barkThickness}), pro-rated ring length (\code{ringLength_prorated}) and
 #'              pro-rated ring count (\code{ringCount_prorated}).  The function is one of the four functions that derive bored age using
 #'              different method. The rests are \code{\link{boredAgeCalculator_Bore}}, \code{\link{boredAgeCalculator_Total}} and
 #'              \code{\link{boredAgeCalculator_Phys}}.
@@ -181,15 +181,15 @@ setMethod(
 #' @param ringCount_prorated numeric, Pro-rated ring count
 #' @param boreDiameter numeric, Diameter at bore in cm
 #' @param barkThickness numeric, Bark thickness in mm. If missing, 0.05 is used in the function.
-#' 
-#' 
+#'
+#'
 #' @return bored age
-#' 
+#'
 #' @importFrom data.table data.table ':='
 #' @seealso \code{\link{boredAgeCalculator_Total}}
 #'          \code{\link{boredAgeCalculator_Phys}}
 #'          \code{\link{boredAgeCalculator_Prorated}}
-#' 
+#'
 #' @export
 #' @docType methods
 #' @rdname boredAgeCalculator_Prorated
@@ -204,7 +204,7 @@ setGeneric("boredAgeCalculator_Prorated",
 #' @rdname boredAgeCalculator_Prorated
 setMethod(
   "boredAgeCalculator_Prorated",
-  signature = c(ringLength_prorated = "numeric", 
+  signature = c(ringLength_prorated = "numeric",
                 ringCount_prorated = "numeric",
                 boreDiameter = "numeric",
                 barkThickness = "numeric"),
@@ -213,8 +213,8 @@ setMethod(
     worktable <- data.table(uniObs = 1:max(length(ringLength_prorated), length(ringCount_prorated)),
                             boreDiameter, barkThickness, ringLength_prorated, ringCount_prorated)
     worktable[barkThickness <= 0 | is.na(barkThickness), barkThickness := 0.05]
-    if(nrow(worktable[boreDiameter <= 0]) > 0 | 
-       nrow(worktable[ringLength_prorated <= 0]) > 0 | 
+    if(nrow(worktable[boreDiameter <= 0]) > 0 |
+       nrow(worktable[ringLength_prorated <= 0]) > 0 |
        nrow(worktable[ringCount_prorated <= 0]) > 0){
       stop("All the inputs must be positive or NA value.")
     }
@@ -227,7 +227,7 @@ setMethod(
     worktable[, gy := pi*((li+ringLength_prorated)^2 - li^2)/ringCount_prorated]
     worktable[, age_rot := (pi*li^2)/gy]
     worktable[, age_pro := ringCount_prorated + age_rot]
-    return(round(worktable[order(uniObs)]$age_pro, 1)) ## follow sas code, but not sure it is a good idea
+    return(round(worktable[order(uniObs)]$age_pro, 5)) ## follow sas code, but not sure it is a good idea
   })
 
 
@@ -235,7 +235,7 @@ setMethod(
 #' @rdname boredAgeCalculator_Prorated
 setMethod(
   "boredAgeCalculator_Prorated",
-  signature = c(ringLength_prorated = "numeric", 
+  signature = c(ringLength_prorated = "numeric",
                 ringCount_prorated = "numeric",
                 boreDiameter = "numeric",
                 barkThickness = "missing"),
