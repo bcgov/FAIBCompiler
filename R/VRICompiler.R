@@ -114,7 +114,6 @@ VRICompiler <- function(oracleUserName,
   alltxtfiletable[, txtbeg := txtlength-3]
   alltxtfiletable <- alltxtfiletable[substr(alltxtfiles, txtbeg, txtlength) %in% c(".txt", ".TXT")]
   alltxtfiletable <- alltxtfiletable[alltxtfiles != "No_ASCII_flat_files_for_2019JAN29.txt",]
-
   if(nrow(alltxtfiletable) > 0){
     cat(paste(Sys.time(), ": Load data from ASCII.\n", sep = ""))
     loadASCII(txtLocation = asciiTxtPath,
@@ -188,6 +187,10 @@ VRICompiler <- function(oracleUserName,
   ### 3. vi_c compilation
   cat(paste(Sys.time(), ": Compile full/enhanced and h-enhanced volume trees.\n", sep = ""))
   tree_ms1[LOG_G_1 == "*",
+           MEAS_INTENSE := "H-ENHANCED"]
+
+  ## B sample trees are H-enhnced trees
+  tree_ms1[substr(CLSTR_ID, 11, 11) == "B",
            MEAS_INTENSE := "H-ENHANCED"]
   tree_ms1[is.na(MEAS_INTENSE) & PLOT == "I",
            MEAS_INTENSE := "FULL"]
