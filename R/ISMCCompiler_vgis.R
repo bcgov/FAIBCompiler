@@ -235,9 +235,18 @@ ISMCCompiler_vgis <- function(oracleUserName,
                     all.x = TRUE)
 
   voltrees[is.na(SP0), ':='(SPECIES = "X", SP0 = "F")]
+  best_height_models <- read.csv(file.path(compilationPaths$compilation_coeff,
+                                           "best_height_models.csv"),
+                                 stringsAsFactors = FALSE) %>%
+    data.table
   tree_ms6 <- VRIVolTree(treeData = data.table::copy(voltrees),
-                         equation = equation, logMinLength = logMinLength,
-                         stumpHeight = stumpHeight, breastHeight = breastHeight, UTOPDIB = UTOPDIB)
+                         equation = equation,
+                         logMinLength = logMinLength,
+                         stumpHeight = stumpHeight,
+                         breastHeight = breastHeight,
+                         UTOPDIB = UTOPDIB,
+                         bestHeightModels = best_height_models,
+                         HTBTOPModel = "height")
   tree_ms6 <- rbindlist(list(tree_ms6, nonenhancedtreedata), fill = TRUE)
   rm(tree_ms1, voltrees, nonenhancedtreedata)
 
