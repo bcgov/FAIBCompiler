@@ -11,7 +11,9 @@ VRIVolTree(
   logMinLength,
   stumpHeight,
   breastHeight,
-  UTOPDIB
+  UTOPDIB,
+  bestHeightModels,
+  HTBTOPModel
 )
 }
 \arguments{
@@ -28,6 +30,12 @@ Must be either KBEC or KFIZ3. If missing, default is KBEC}
 \item{breastHeight}{numeric, Specifies breast height. 1.3 m will be used when this arguement is missing.}
 
 \item{UTOPDIB}{numeric, Specifies minimum merchantable inside bark diameter. 10 cm is used as a default.}
+
+\item{bestHeightModels}{data.table, External table that contains the best height/DBH model and
+coefficients by becsubzone and species.}
+
+\item{HTBTOPModel}{character, Specifies whether the height estimate for broken top trees either
+from \code{taper} or from \code{height}.}
 }
 \value{
 A data table
