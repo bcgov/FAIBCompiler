@@ -82,16 +82,25 @@ checkMaps <- function(mapSourcePath, mapPath){
     if(mostRecentTime_TFL <= tfl_dates_last){
       tfl_time_final <- tfl_dates_last
     } else {
-      tfl_map_final <- raster::shapefile(file.path(mostRecentTFL, "TFL_overview.shp"))
-      saveRDS(tfl_map_final,
-              file.path(mapPath, paste0("TFL_", mostRecentTime_TFL, ".rds")))
-      tfl_time_final <- mostRecentTime_TFL
+      wantupdate <- readline("There may be an updated TFL map, use it? (Yes/No)")
+      if (toupper(wantupdate) == "YES"){
+        tfl_map_final <- raster::shapefile(file.path(mostRecentTFL, "TFL_overview.shp"))
+        saveRDS(tfl_map_final,
+                file.path(mapPath, paste0("TFL_", mostRecentTime_TFL, ".rds")))
+        tfl_time_final <- mostRecentTime_TFL
+      } else if (toupper(wantupdate) == "NO"){
+        tfl_time_final <- tfl_dates_last
+        mostRecentTime_TFL <- tfl_dates_last
+      } else {
+        stop("Incorrect input.")
+      }
+      rm(wantupdate)
     }
 
     existingTFLmap <- dir(mapPath, pattern = "TFL_")
     existingTFLmap_rm <- existingTFLmap[existingTFLmap != paste0("TFL_", mostRecentTime_TFL, ".rds")]
     if(length(existingTFLmap_rm) > 0){
-    aa <- suppressWarnings(file.remove(file.path(mapPath, existingTFLmap_rm)))
+      aa <- suppressWarnings(file.remove(file.path(mapPath, existingTFLmap_rm)))
       rm(aa)
     }
     rm(existingTFLmap, existingTFLmap_rm)
@@ -141,12 +150,21 @@ checkMaps <- function(mapSourcePath, mapPath){
     if(mostRecentTime_FIZ <= fiz_dates_last){
       fiz_time_final <- fiz_dates_last
     } else {
-      fiz_map_final <- rgdal::readOGR(dsn = mostRecentFIZ,
-                                      layer = "forest_inventory_zone",
-                                      verbose = FALSE)
-      saveRDS(fiz_map_final,
-              file.path(mapPath, paste0("FIZ_", mostRecentTime_FIZ, ".rds")))
-      fiz_time_final <- mostRecentTime_FIZ
+      wantupdate <- readline("There may be an updated FIZ map, use it? (Yes/No)")
+      if (toupper(wantupdate) == "YES"){
+        fiz_map_final <- rgdal::readOGR(dsn = mostRecentFIZ,
+                                        layer = "forest_inventory_zone",
+                                        verbose = FALSE)
+        saveRDS(fiz_map_final,
+                file.path(mapPath, paste0("FIZ_", mostRecentTime_FIZ, ".rds")))
+        fiz_time_final <- mostRecentTime_FIZ
+      } else if (toupper(wantupdate) == "NO"){
+        fiz_time_final <- fiz_dates_last
+        mostRecentTime_FIZ <- fiz_dates_last
+      } else {
+        stop("Incorrect input.")
+      }
+      rm(wantupdate)
     }
 
     existingFIZmap <- dir(mapPath, pattern = "FIZ_")
@@ -161,8 +179,6 @@ checkMaps <- function(mapSourcePath, mapPath){
                fiz_time_final,
                " is used for compilation.\n"))
   }
-
-
 
 
 
@@ -204,21 +220,28 @@ checkMaps <- function(mapSourcePath, mapPath){
     } else {
       owner_dates_last <- 0
     }
-
     if(mostRecentTime_OWNER <= owner_dates_last){
       owner_time_final <- owner_dates_last
     } else {
-      owner_map_final <- rgdal::readOGR(dsn = mostRecentOWNER,
-                                        layer = "F_OWN",
-                                        verbose = FALSE)
-      saveRDS(owner_map_final,
-              file.path(mapPath, paste0("OWNER_", mostRecentTime_OWNER, ".rds")))
-      owner_time_final <- mostRecentTime_OWNER
+      wantupdate <- readline("There may be an updated OWNERSHIP map, use it? (Yes/No)")
+      if (toupper(wantupdate) == "YES"){
+        owner_map_final <- rgdal::readOGR(dsn = mostRecentOWNER,
+                                          layer = "F_OWN",
+                                          verbose = FALSE)
+        saveRDS(owner_map_final,
+                file.path(mapPath, paste0("OWNER_", mostRecentTime_OWNER, ".rds")))
+        owner_time_final <- mostRecentTime_OWNER
+      } else if (toupper(wantupdate) == "NO"){
+        owner_time_final <- owner_dates_last
+        mostRecentTime_OWNER <- owner_dates_last
+      } else {
+        stop("Incorrect input.")
+      }
+      rm(wantupdate)
     }
     cat(paste0("          OWNERSHIP map @ ",
                owner_time_final,
                " is used for compilation.\n"))
-
     existingOWNERmap <- dir(mapPath, pattern = "OWNER_")
     existingOWNERmap_rm <- existingOWNERmap[existingOWNERmap != paste0("OWNER_", mostRecentTime_OWNER, ".rds")]
     if(length(existingOWNERmap_rm) > 0){
