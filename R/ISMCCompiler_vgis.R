@@ -7,6 +7,10 @@
 #'
 #' @param oracleUserName character, User name to access to ISMC database.
 #' @param oraclePassword character, Password to access to ISMC database.
+#' @param oracleEnv character, Specify which environment of ISMC database the data download from.
+#'                             Currently, it supports 1) \code{INT} for intergration environment;
+#'                             2) \code{TST} for test environment; 3) \code{PROD} for final production
+#'                             environment.
 #' @param compilationPath character, Specifies the path that stores all the data/processes. By specifying this,
 #'                         four folders will be created to record all the data/processes. Specifically,
 #'                         raw_from_oracle stores the data just after oracle and ascii without editing;
@@ -65,6 +69,7 @@
 
 ISMCCompiler_vgis <- function(oracleUserName,
                               oraclePassword,
+                              oracleEnv = "INT",
                               compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
                               mapSourcePath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
                               equation = "KBEC",
@@ -113,27 +118,24 @@ ISMCCompiler_vgis <- function(oracleUserName,
   sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
                    "O", "F", "E", "C", "B")
 
+  if(!(toupper(oracleEnv) %in% c("INT", "TST", "PROD"))){
+    stop("oracleEnv must be correctly specified from INT, TST and PROD.")
+  }
+
   ### 2. load oracle data
   cat(paste(Sys.time(), ": Load data from ISMC database.\n", sep = ""))
   FAIBOracle::loadISMC_bySampleType(userName = oracleUserName,
                                     passWord = oraclePassword,
-                                    env = "INT",
+                                    env = toupper(oracleEnv),
                                     sampleType = sampletypes,
                                     savePath = compilationPaths$raw_from_oracle,
                                     saveFormat = "rds",
                                     overWrite = TRUE)
-  #   rm(list = ls())
-  # compilationPaths <- list()
-  # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
-  # compilationPaths$raw_from_oracle <- file.path(compilationPath, "raw_from_oracle")
-  #   compilationPaths$compilation_sa <- file.path(compilationPath, "compilation_sa")
-  # compilationPaths$compilation_db <- file.path(compilationPath, "compilation_db")
   cat(paste(Sys.time(), ": Translate ISMC data to compiler.\n", sep = ""))
   ISMC_VGISTranslator(inputPath = compilationPaths$raw_from_oracle,
                       outputPath = compilationPaths$compilation_sa)
 
   vi_a <- readRDS(file.path(compilationPaths$compilation_sa, "vi_a.rds"))
-  vi_a <- readRDS("D:/ISMC project/ISMC compiler/ismc compiler development/compilation_sa/vi_a.rds")
   cat(paste(Sys.time(), ": Update spatial attributes.\n", sep = ""))
   spatialLookups <- updateSpatial(samplesites = vi_a,
                                   mapPath = compilationPaths$compilation_map,
