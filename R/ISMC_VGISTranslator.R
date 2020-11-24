@@ -44,10 +44,9 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                 by = "SITE_IDENTIFIER",
                 all.x = TRUE)
   rm(samplesites, SampleSiteVisits)
-  vi_a[, CLSTR_ID := gsub("_", "-", SAMPLE_SITE_NAME)]
   vi_a[VISIT_NUMBER == 1, TYPE_CD := paste0(TYPE_CD, "O1")]
   vi_a[VISIT_NUMBER > 1, TYPE_CD := paste0(TYPE_CD, "R", VISIT_NUMBER- 1)]
-  vi_a[, CLSTR_ID := paste(CLSTR_ID, TYPE_CD, sep = "-")]
+  vi_a[,CLSTR_ID := paste(SITE_IDENTIFIER, TYPE_CD, sep = "-")]
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
 
   plotdetails <- readRDS(file.path(inputPath,
