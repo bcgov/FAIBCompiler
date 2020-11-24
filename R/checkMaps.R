@@ -226,7 +226,7 @@ checkMaps <- function(mapSourcePath, mapPath){
       wantupdate <- readline("There may be an updated OWNERSHIP map, use it? (Yes/No)")
       if (toupper(wantupdate) == "YES"){
         owner_map_final <- rgdal::readOGR(dsn = mostRecentOWNER,
-                                          layer = "F_OWN",
+                                          layer = "F_OWN_PMBC",
                                           verbose = FALSE)
         saveRDS(owner_map_final,
                 file.path(mapPath, paste0("OWNER_", mostRecentTime_OWNER, ".rds")))
