@@ -145,11 +145,11 @@ ISMCCompiler_vgis <- function(oracleUserName,
                     "vi_a.rds"))
   todaydate <- gsub("-", "", Sys.Date())
 
-  spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = substr(CLSTR_ID, 1, 9),
+  spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                                   IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
                                                   Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
                                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
-                                                  PROJ_ID, SAMP_NO = substr(CLSTR_ID, 6, 9))],
+                                                  PROJ_ID, SAMP_NO)],
                                 by = "SAMP_POINT")
   write.table(spatialLookups_simp,
               file.path(compilationPaths$compilation_coeff,
