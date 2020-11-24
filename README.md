@@ -16,6 +16,12 @@ compilers
 
 ### Features
 
+Cluster id changed from proj\_id-samp\_no-samp\_type-visit to
+site\_identifier-samp\_type-visit, because EFR no longer uses proj\_id
+and sample number as an unique spatial point. It uses site identifier
+now. The change was made on Nov. 24, 2020. The previous versions of
+VRICompiler and ISMCCompiler bave been freezed in VGISCompiler branch.
+
 ### Installation
 
 ### Usage
