@@ -16,6 +16,16 @@ compilers
 
 ### Features
 
+The branch VGISCompiler saves the previous version of VRICompiler and
+first version of ISMCCompiler on Nov. 24, 2020. The version freezes
+those two compilers due to a major change of cluster id. Specifically,
+the formation cluster id in this branch is formated as
+proj\_id-samp\_no-samp\_type-visit, while in the future development, the
+cluster id will be formated as site\_identifier-samp\_type-visit. The
+unique spatial sample point also changed due to change of ISMC EFR, from
+proj\_id-samp\_no in current branch to site\_identifier in the future
+compiler.
+
 ### Installation
 
 ### Usage

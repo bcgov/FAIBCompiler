@@ -26,6 +26,10 @@ FAIBCompiler comtains the functions to run VRI and PSP compilers. The compilers
 
 ### Features
 
+The branch VGISCompiler saves the previous version of VRICompiler and first version of ISMCCompiler on Nov. 24, 2020. The version freezes those two compilers due to a major change of cluster id. Specifically, the formation cluster id in this branch is formated as proj_id-samp_no-samp_type-visit, while in the future development, the cluster id will be formated as site_identifier-samp_type-visit. The unique spatial sample point also changed due to change of ISMC EFR, from proj_id-samp_no in current branch to site_identifier in the future compiler. 
+
+
+
 ### Installation
 
 ### Usage
