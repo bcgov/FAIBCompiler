@@ -63,7 +63,7 @@ VRIInit_measuredTree<- function(clusterplotHeader,
 
     # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
     # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
-    vi_c[substr(CLSTR_ID, 11, 11) %in% c("F", "M", "Y", "L") & DBH < 9,
+    vi_c[substr(CLSTR_ID, 9, 9) %in% c("F", "M", "Y", "L") & DBH < 9,
          PHF_TREE := PHF_TREE*4]
     vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT, SPECIES, TREE_NO,
                                                   LV_D, S_F, NO_LOGS,

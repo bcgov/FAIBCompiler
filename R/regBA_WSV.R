@@ -21,7 +21,7 @@
 #' @author Yong Luo
 #'
 regBA_WSV <- function(inputData, needCombs){
-  all_trees_reg <- inputData[,.(SAMP_POINT = substr(CLSTR_ID, 1, 9),
+  all_trees_reg <- inputData[,.(SAMP_POINT = as.numeric(substr(CLSTR_ID, 1, 7)),
                                 CLSTR_ID, BGC_ZONE, SP0, LV_D, BA_TREE, VOL_WSV,
                                 logba = log(BA_TREE), logwsv = log(VOL_WSV))]
   specieslookuptable <- lookup_species()

@@ -60,26 +60,26 @@
 #'  }
 #' @export
 #' @docType methods
-#' @rdname ISMCCompiler_vgis
+#' @rdname ISMCCompiler
 #' @importFrom FAIBOracle loadISMC_bySampleType
 #' @importFrom FAIBBase merge_dupUpdate
 #'
 #' @author Yong Luo
 #'
 
-ISMCCompiler_vgis <- function(oracleUserName,
-                              oraclePassword,
-                              oracleEnv = "INT",
-                              compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
-                              mapSourcePath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
-                              equation = "KBEC",
-                              walkThru = TRUE,
-                              logMinLength = 0.1,
-                              stumpHeight = 0.3,
-                              breastHeight = 1.3,
-                              UTOPDIB = 10,
-                              utilLevel = 4,
-                              weirdUtil = "No"){
+ISMCCompiler <- function(oracleUserName,
+                         oraclePassword,
+                         oracleEnv = "INT",
+                         compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
+                         mapSourcePath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
+                         equation = "KBEC",
+                         walkThru = TRUE,
+                         logMinLength = 0.1,
+                         stumpHeight = 0.3,
+                         breastHeight = 1.3,
+                         UTOPDIB = 10,
+                         utilLevel = 4,
+                         weirdUtil = "No"){
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
   cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
@@ -216,7 +216,7 @@ ISMCCompiler_vgis <- function(oracleUserName,
   tree_ms1[LOG_G_1 == "*",
            MEAS_INTENSE := "H-ENHANCED"]
   ## B sample trees are H-enhnced trees
-  tree_ms1[substr(CLSTR_ID, 11, 11) == "B",
+  tree_ms1[substr(CLSTR_ID, 9, 9) == "B",
            MEAS_INTENSE := "H-ENHANCED"]
   tree_ms1[is.na(MEAS_INTENSE) & PLOT == "I",
            MEAS_INTENSE := "FULL"]

@@ -53,14 +53,12 @@
 auxiTreeCompiler <- function(fullMeasuredTrees, auxiTrees, clusterPlotHeader,
                                                    fixedCoeff, randomCoeff, ratios){
   samples <- unique(clusterPlotHeader[,.(CLSTR_ID, BGC_ZONE)], by = "CLSTR_ID")
-
   tree_vb <- mergeAllVolTrees(treeMS = data.table::copy(fullMeasuredTrees),
                               treeAX = data.table::copy(auxiTrees))
   rm(fullMeasuredTrees, auxiTrees)
   tree_vb <- merge(tree_vb, samples, by = "CLSTR_ID", all.x = TRUE)
   # derive whole stem volume for non-enhanced trees
   nonvoltrees <- tree_vb[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),] ## tree with H-enhanced and non-enhanced
-
   nonvoltrees_compiled <- treeVolEst_RegRatio(nonvoltrees,
                                                   fixedCoeff, randomCoeff, ratios)
   fullenhancedtrees <- tree_vb[MEAS_INTENSE %in% c("FULL", "ENHANCED")]

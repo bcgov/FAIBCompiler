@@ -51,7 +51,7 @@ setMethod(
     ##
     loss_fct[MEAS_INTENSE == "H-ENHANCED",
              ':='(PATH_IND = as.character(NA))]
-    loss_fct[substr(CLSTR_ID, 11, 11) == "B",
+    loss_fct[substr(CLSTR_ID, 9, 9) == "B",
              ':='(MEAS_INTENSE = "B-SAMPLE", # trees are measured dbh and height, without net factoring
                                     PATH_IND = as.character(NA))]
     loss_fct_output <- loss_fct[MEAS_INTENSE %in% c("H-ENHANCED", "B-SAMPLE"),.(uniobs, PCT_DCY = as.numeric(NA),
@@ -204,12 +204,12 @@ setMethod(
                       PCT_BRK = DWBfactors$breakage)]
       rm(DWBfactors)
     }
-    tree_rsk[substr(CLSTR_ID, 1, 4) == "3472" &
-               substr(CLSTR_ID, 11, 11) == "M" &
+    tree_rsk[PROJ_ID == "3472" &
+               substr(CLSTR_ID, 9, 9) == "M" &
                (AGE_DWB %<<% 121 | is.na(AGE_DWB)),
              ':='(PCT_BRK = 2, PCT_ADJ = "Y")]
-    tree_rsk[substr(CLSTR_ID, 1, 4) == "3472" &
-               substr(CLSTR_ID, 11, 11) == "M" &
+    tree_rsk[PROJ_ID == "3472" &
+               substr(CLSTR_ID, 9, 9) == "M" &
                (AGE_DWB %>=% 121),
              ':='(PCT_BRK = 4, PCT_ADJ = "Y")]
     tree_rsk <- rbindlist(list(tree_rsk[,.(uniobs, PCT_DCY, PCT_WST, PCT_BRK,

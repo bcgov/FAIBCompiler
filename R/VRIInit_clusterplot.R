@@ -66,9 +66,11 @@ VRIInit_clusterplot <- function(dataSourcePath){
                           BLOWUP = 1 / (3.1415926* F_RAD^2) * 10000)]
   vi_b[, NO_PLOTS := length(PLOT), by = CLSTR_ID]
   vi_b[, PLOT_DED := 1L]
-  vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, MEAS_DT)], by = "CLSTR_ID", all.x = TRUE)
-  vi_b[substr(CLSTR_ID, 11, 11) == "N" | (as.numeric(substr(MEAS_DT, 1, 4)) >= 2008) |
-         (as.numeric(substr(MEAS_DT, 1, 4)) == 2007 & substr(CLSTR_ID, 1, 4) %in% c("0141", "014M", "0091")),
+  vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, MEAS_DT, PROJ_ID)],
+                by = "CLSTR_ID",
+                all.x = TRUE)
+  vi_b[substr(CLSTR_ID, 9, 9) == "N" | (as.numeric(substr(MEAS_DT, 1, 4)) >= 2008) |
+         (as.numeric(substr(MEAS_DT, 1, 4)) == 2007 & PROJ_ID %in% c("0141", "014M", "0091")),
        PLOT_DED := NO_PLOTS]
   vi_b <- vi_b[,.(CLSTR_ID, PLOT, SAMP_TYP, PLOT_WT, BLOWUP, NO_PLOTS, PLOT_DED)]
   clusterplot <- FAIBBase::merge_dupUpdate(vi_b, vi_a, by = "CLSTR_ID", all.x = TRUE)

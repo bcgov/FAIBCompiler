@@ -36,7 +36,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   all_trees_ratio <- inputData[MEAS_INTENSE %in% c("FULL", "ENHANCED") &
                                  DBH >= minDBH & VOL_NTWB > 0,]
 
-  all_trees_ratio[, SAMP_POINT := substr(CLSTR_ID, 1, 9)]
+  all_trees_ratio[, SAMP_POINT := as.numeric(substr(CLSTR_ID, 1, 7))]
 
   specieslookup <- lookup_species()
   specieslookup <- unique(specieslookup[,.(SP0, SP_TYPE)], by = "SP0")

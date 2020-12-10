@@ -31,9 +31,10 @@
 #' @author Yong Luo
 #'
 treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, ratioTable){
-  nonVolTrees[, SAMP_POINT := substr(CLSTR_ID, 1, 9)]
+  nonVolTrees[, SAMP_POINT := as.numeric(substr(CLSTR_ID, 1, 7))]
   fixedCoeffTable <- fixedCoeffTable[,.(BGC_ZONE, SP0, LV_D, INTERCEPT, SLOPE)]
-  randomCoeffTable <- randomCoeffTable[,.(BGC_ZONE, SP0, LV_D, SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM)]
+  randomCoeffTable <- unique(randomCoeffTable[,.(BGC_ZONE, SP0, LV_D, SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM)],
+                             by = c("BGC_ZONE", "SP0", "LV_D", "SAMP_POINT"))
 
   volVariables <- c(paste("VOL_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                    "NTWB", "D", "DW", "DWB"),
@@ -44,10 +45,10 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
                                      "NTWB", "D", "DW", "DWB", "VAL"),
                           sep = "")
   ratioTable <- ratioTable[, c("BGC_ZONE", "SP0", "LV_D", ratioVariables), with = FALSE]
-  nonVolTrees <- FAIBBase::merge_dupUpdate(nonVolTrees, fixedCoeffTable,
+  nonVolTrees <- merge(nonVolTrees, fixedCoeffTable,
                                  by = c("BGC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
-  nonVolTrees <- FAIBBase::merge_dupUpdate(nonVolTrees, randomCoeffTable,
+  nonVolTrees <- merge(nonVolTrees, randomCoeffTable,
                                  by = c("BGC_ZONE", "SP0", "LV_D", "SAMP_POINT"),
                                  all.x = TRUE)
   nonVolTrees[is.na(INTERCEPT_RDM), INTERCEPT_RDM := 0]

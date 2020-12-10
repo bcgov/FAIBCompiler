@@ -28,11 +28,11 @@
 regRatioDataSelect <- function(sampledata, alltreedata, usage){
   if(usage == "ismc"){
     ## in ismc, the measurement time is defined as visit number
-    sampledata[, SAMP_POINT := substr(CLSTR_ID, 1, 9)]
+    sampledata[, SAMP_POINT := as.numeric(substr(CLSTR_ID, 1, 7))]
     sampledata[, visit_no := 1]
-    sampledata[substr(CLSTR_ID, 12, 12) == "R",
-                   visit_no_add := as.numeric(substr(CLSTR_ID, 13, 13))]
-    sampledata[substr(CLSTR_ID, 12, 12) == "R", visit_no := visit_no + visit_no_add]
+    sampledata[substr(CLSTR_ID, 10, 10) == "R",
+                   visit_no_add := as.numeric(substr(CLSTR_ID, 11, 11))]
+    sampledata[substr(CLSTR_ID, 10, 10) == "R", visit_no := visit_no + visit_no_add]
     sampledata[, MEAS_DT := visit_no]
     sampledata[,':='(visit_no = NULL,
                      visit_no_add = NULL)]
@@ -42,15 +42,15 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     sampledata <- sampledata[!(PROJ_ID %in% c("037A", "DMHA", "DDCX", "DDCA", "DDCY",
                                               "DDCB", "DDCZ", "029A", "DQUE")),]
     ## remove audit samples
-    sampledata <- sampledata[!(substr(CLSTR_ID, 11, 11) == "A" |
-                                 substr(CLSTR_ID, 12, 12) == "A" |
-                                 substr(CLSTR_ID, 13, 13) == "A"),]
+    sampledata <- sampledata[!(substr(CLSTR_ID, 9, 9) == "A" |
+                                 substr(CLSTR_ID, 10, 10) == "A" |
+                                 substr(CLSTR_ID, 11, 11) == "A"),]
 
     ## deal with sample points that have NVAF samples
     ##
-    nvafsamppoints <- unique(sampledata[substr(CLSTR_ID, 11, 11) == "N"]$SAMP_POINT)
+    nvafsamppoints <- unique(sampledata[substr(CLSTR_ID, 9, 9) == "N"]$SAMP_POINT)
     nvafselected <- unique(sampledata[SAMP_POINT %in% nvafsamppoints &
-                                        substr(CLSTR_ID, 11, 11) == "N",],
+                                        substr(CLSTR_ID, 9, 9) == "N",],
                            by = c("CLSTR_ID", "PLOT"))
     nvafselected[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
     nvafselected <- nvafselected[MEAS_DT == LASTTIME & PLOT != "I",]
@@ -60,7 +60,7 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     rm(nvafselected)
 
     nvafselected_forIPC <- unique(sampledata[SAMP_POINT %in% nvafsamppoints &
-                                               substr(CLSTR_ID, 11, 11) != "N" &
+                                               substr(CLSTR_ID, 9, 9) != "N" &
                                                PLOT == "I",],
                                   by = c("CLSTR_ID"))
 

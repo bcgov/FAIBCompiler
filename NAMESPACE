@@ -3,7 +3,7 @@
 export(DWBCompiler)
 export(DWBGenerator_BEC)
 export(DWBGenerator_FIZ)
-export(ISMCCompiler_vgis)
+export(ISMCCompiler)
 export(SiteTools_HTBoredAge2SI)
 export(SiteTools_Y2BH)
 export(VRICompiler)
