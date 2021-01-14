@@ -178,7 +178,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                             all.x = TRUE)
   treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
                    TREE_SPECIES_CODE := "X"]
-  vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & !is.na(LENGTH),
+  vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & !is.na(LENGTH) &
+                             OUT_OF_PLOT_IND == "N",
                            .(CLSTR_ID, PLOT = PLOT_CATEGORY_CODE,
                              TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
                              DBH = DIAMETER, BROKEN_TOP_IND, DIAM_BTP = BROKEN_TOP_DIAMETER,
@@ -354,9 +355,10 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   treedamage <- readRDS(file.path(inputPath,
                                   dir(inputPath, "TreeDamageOccurrences"))) %>%
     data.table
-  vi_d <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3,
-                           .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT_CATEGORY_CODE,
-                             TREE_NUMBER)]
+  # vi_d <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 &
+  #                            OUT_OF_PLOT_IND == "N",
+  #                          .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT_CATEGORY_CODE,
+  #                            TREE_NUMBER)]
   treeloss <- treeloss[order(SITE_IDENTIFIER, VISIT_NUMBER,
                              PLOT_CATEGORY_CODE, TREE_NUMBER, LOCATION_FROM),
                        .(SITE_IDENTIFIER, VISIT_NUMBER, PLOT_CATEGORY_CODE, TREE_NUMBER,
@@ -420,7 +422,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
              paste("OLD_AGN", LETTERS[1:maxneworder], sep = ""),
              paste("SEV_", LETTERS[1:maxneworder], sep = "")))
   vi_d <- merge(treeloss, treedamage,
-                by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT_CATEGORY_CODE", "TREE_NUMBER"),
+                by = c("SITE_IDENTIFIER", "VISIT_NUMBER",
+                       "PLOT_CATEGORY_CODE", "TREE_NUMBER"),
                 all = TRUE)
   vi_d[PLOT_CATEGORY_CODE == "IPC TD", PLOT_CATEGORY_CODE := "I"]
   vi_d[PLOT_CATEGORY_CODE != "I",
@@ -430,9 +433,12 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   vi_d <- merge(vi_d[, ind := TRUE],
                 treemeasurements[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT_CATEGORY_CODE,
                                     TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
-                                    DISTANCE = STEM_MAP_DISTANCE, AZIMUTH = STEM_MAP_BEARING)],
+                                    DISTANCE = STEM_MAP_DISTANCE, AZIMUTH = STEM_MAP_BEARING,
+                                    OUT_OF_PLOT_IND)],
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT_CATEGORY_CODE", "TREE_NUMBER"),
                 all = TRUE)
+  vi_d <- vi_d[OUT_OF_PLOT_IND == "N",]
+  vi_d[, OUT_OF_PLOT_IND := NULL]
   vi_d[!is.na(DISTANCE) & !is.na(AZIMUTH), STEM := TRUE]
   vi_d <- vi_d[ind == TRUE | STEM == TRUE,]
   vi_d[, ':='(ind = NULL,
