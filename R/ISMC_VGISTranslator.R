@@ -299,7 +299,13 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                                 TREE_NO = TREE_NUMBER,
                                 TOP_HEIGHT_TREE_IND, LEADING_SPECIES_TREE_IND,
                                 SECOND_SPECIES_TREE_IND,
-                                EXTRA_TREE_IND, OTHER_TREE_IND)]
+                                EXTRA_TREE_IND, OTHER_TREE_IND,
+                                OUT_OF_PLOT_IND)]
+  vi_h_th[EXTRA_TREE_IND == "N" &
+            OUT_OF_PLOT_IND == "Y" &
+            OTHER_TREE_IND == "N",
+          EXTRA_TREE_IND := "Y"]
+  vi_h_th[, OUT_OF_PLOT_IND := NULL]
   vi_h_th <- melt(data = vi_h_th,
                   id.vars = c("CLSTR_ID", "PLOT", "TREE_NO"),
                   measure.vars = c("TOP_HEIGHT_TREE_IND", "LEADING_SPECIES_TREE_IND",
