@@ -179,7 +179,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
                    TREE_SPECIES_CODE := "X"]
   vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & !is.na(LENGTH) &
-                             OUT_OF_PLOT_IND == "N",
+                             OUT_OF_PLOT_IND == "N" &
+                             MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N"), ## non tally tree, can not used for volume, see scott's comments
                            .(CLSTR_ID, PLOT = PLOT_CATEGORY_CODE,
                              TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
                              DBH = DIAMETER, BROKEN_TOP_IND, DIAM_BTP = BROKEN_TOP_DIAMETER,
@@ -440,11 +441,13 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                 treemeasurements[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT_CATEGORY_CODE,
                                     TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
                                     DISTANCE = STEM_MAP_DISTANCE, AZIMUTH = STEM_MAP_BEARING,
-                                    OUT_OF_PLOT_IND)],
+                                    OUT_OF_PLOT_IND, MEASUREMENT_ANOMALY_CODE)],
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT_CATEGORY_CODE", "TREE_NUMBER"),
                 all = TRUE)
   vi_d <- vi_d[OUT_OF_PLOT_IND == "N",]
-  vi_d[, OUT_OF_PLOT_IND := NULL]
+  vi_d <- vi_d[MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N"),]
+  vi_d[, ':='(OUT_OF_PLOT_IND = NULL,
+              MEASUREMENT_ANOMALY_CODE = NULL)]
   vi_d[!is.na(DISTANCE) & !is.na(AZIMUTH), STEM := TRUE]
   vi_d <- vi_d[ind == TRUE | STEM == TRUE,]
   vi_d[, ':='(ind = NULL,
