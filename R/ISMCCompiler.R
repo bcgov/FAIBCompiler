@@ -63,6 +63,7 @@
 #' @rdname ISMCCompiler
 #' @importFrom FAIBOracle loadISMC_bySampleType
 #' @importFrom FAIBBase merge_dupUpdate
+#' @importFrom openxlsx write.xlsx
 #'
 #' @author Yong Luo
 #'
@@ -80,18 +81,14 @@ ISMCCompiler <- function(oracleUserName,
                          UTOPDIB = 10,
                          utilLevel = 4,
                          weirdUtil = "No"){
+
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
   cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
   compilationPaths <- compilerPathSetup(compilationPath)
-
   cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
-  # rm(list = ls())
-  # mapSourcePath <- "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure"
-  # mapPath <- "D:/ISMC project/ISMC compiler/ismc compiler development/maps"
 
-  maptimes <- checkMaps(mapSourcePath,
-                        mapPath = compilationPaths$compilation_map)
+  checkMaps(mapPath = compilationPaths$compilation_map)
   todayDate <- as.Date(Sys.time())
   todayYear <- substr(todayDate, 1, 4)
   if(todayDate >= as.Date(paste0(todayYear, "-01-01")) &
@@ -138,8 +135,7 @@ ISMCCompiler <- function(oracleUserName,
   vi_a <- readRDS(file.path(compilationPaths$compilation_sa, "vi_a.rds"))
   cat(paste(Sys.time(), ": Update spatial attributes.\n", sep = ""))
   spatialLookups <- updateSpatial(samplesites = vi_a,
-                                  mapPath = compilationPaths$compilation_map,
-                                  mapTimes = maptimes)
+                                  mapPath = compilationPaths$compilation_map)
   saveRDS(spatialLookups,
           file.path(compilationPaths$compilation_sa,
                     "vi_a.rds"))
@@ -410,6 +406,7 @@ ISMCCompiler <- function(oracleUserName,
   }
   fixedcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
                                    paste0("fixedCoefs", compilationYear, ".rds")))
+
   randomcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
                                     paste0("randomCoefs", compilationYear, ".rds")))
   ratios <- readRDS(file.path(compilationPaths$compilation_coeff,
@@ -560,5 +557,4 @@ ISMCCompiler <- function(oracleUserName,
   file.copy(from = compilationPaths$compilation_report,
             to = compilationPaths$compilation_archive,
             recursive = TRUE)
-
 }
