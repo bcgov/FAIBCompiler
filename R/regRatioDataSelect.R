@@ -82,10 +82,10 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     nvafselected_forIPC_Var[, LASTTIME := NULL]
     selectedsamples <- rbind(selectedsamples, nvafselected_forIPC_Var)
     ## check sample point 0031-0005
-    testdata <- selectedsamples[SAMP_POINT == "0031-0005",.(CLSTR_ID, PLOT)]
+    testdata <- selectedsamples[SAMP_POINT == "6000201",.(CLSTR_ID, PLOT)]
     if(!identical(testdata[order(CLSTR_ID, PLOT),],
-                  data.table(CLSTR_ID = c("0031-0005-NR1", "0031-0005-NR1", "0031-0005-NR1",
-                                          "0031-0005-NR1", "0031-0005-QO1"),
+                  data.table(CLSTR_ID = c("6000201-NR1", "6000201-NR1", "6000201-NR1",
+                                          "6000201-NR1", "6000201-QO1"),
                              PLOT = c("E", "N", "S", "W", "I")))){
       stop("Sample point with NVAF data is not correctly selected.")
     }
@@ -214,7 +214,6 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     sampledata_fix <- sampledata[SAMP_TYP == "F",]
     sampledata_fix[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
     sampledata_fix <- sampledata_fix[MEAS_DT == LASTTIME,]
-    sampledata_fix <- sampledata_fix[CLSTR_ID != "4742-0104-FO1",] ## need to remove when figure out what is
     ## going on
     sampledata_fix[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
     if(nrow(sampledata_fix[clster_length > 1]) > 0){
