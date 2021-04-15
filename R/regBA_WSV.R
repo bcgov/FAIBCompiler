@@ -12,6 +12,7 @@
 #'
 #' @importFrom data.table ':=' rbindlist
 #' @importFrom nlme lme
+#' @importFrom MuMIn r.squaredGLMM
 #'
 #'
 #' @export
@@ -32,20 +33,8 @@ regBA_WSV <- function(inputData, needCombs){
   strata_missing <- needCombs[SP0 == "X"]
 
   # first attempt by bec+sp0+lv_d
-  outputs_coeff <- data.table(BGC_ZONE = character(),
-                              SP0 = character(),
-                              LV_D = character(),
-                              NOOBS = numeric(),
-                              INTERCEPT = numeric(),
-                              SLOPE = numeric(),
-                              DATA_SRCE = character())
-  outputs_random <- data.table(BGC_ZONE = character(),
-                               SP0 = character(),
-                               LV_D = character(),
-                               SAMP_POINT = character(),
-                               INTERCEPT_RDM = numeric(),
-                               SLOPE_RDM = numeric(),
-                               DATA_SRCE = character())
+  outputs_coeff <- NULL
+  outputs_random <- NULL
   strata_failed <- allStrata[0,]
 
   for(i in 1:nrow(allStrata)){
@@ -60,18 +49,21 @@ regBA_WSV <- function(inputData, needCombs){
     if(class(a) == "try-error" | length(unique(indidataset$SAMP_POINT)) < 5){
       strata_failed <- rbind(strata_failed, allStrata[i,])
     } else {
+      r2s <- round(data.table(r.squaredGLMM(mixmodel)), 4)
+      names(r2s) <- c("R2_Marginal", "R2_Condition")
       randomcoeff <- data.frame(mixmodel$coefficients$random)
       names(randomcoeff) <- c("INTERCEPT_RDM", "SLOPE_RDM")
       randomcoeff$SAMP_POINT <- row.names(randomcoeff)
       randomcoeff <- data.table(randomcoeff)
       outputs_coeff <- rbind(outputs_coeff,
-                             data.table(BGC_ZONE = allStrata$BGC_ZONE[i],
+                             cbind(data.table(BGC_ZONE = allStrata$BGC_ZONE[i],
                                         SP0 = allStrata$SP0[i],
                                         LV_D = allStrata$LV_D[i],
                                         NOOBS = nrow(indidataset),
                                         INTERCEPT = as.numeric(mixmodel$coefficients$fixed)[1],
                                         SLOPE = as.numeric(mixmodel$coefficients$fixed)[2],
-                                        DATA_SRCE = "BEC+SP0+LV_D"))
+                                        DATA_SRCE = "BEC+SP0+LV_D"),
+                                   r2s))
       outputs_random <- rbind(outputs_random,
                               randomcoeff[,.(BGC_ZONE = allStrata$BGC_ZONE[i],
                                              SP0 = allStrata$SP0[i],
@@ -97,20 +89,8 @@ regBA_WSV <- function(inputData, needCombs){
     workstrata <- unique(strata_failed[,.(BGC_REG, SP0, LV_D)],
                          by = c("BGC_REG", "SP0", "LV_D"))
     workstrata_failed <- workstrata[0,]
-    outputs_coeff <- data.table(BGC_REG = character(),
-                                SP0 = character(),
-                                LV_D = character(),
-                                NOOBS = numeric(),
-                                INTERCEPT = numeric(),
-                                SLOPE = numeric(),
-                                DATA_SRCE = character())
-    outputs_random <- data.table(BGC_REG = character(),
-                                 SP0 = character(),
-                                 LV_D = character(),
-                                 SAMP_POINT = numeric(),
-                                 INTERCEPT_RDM = numeric(),
-                                 SLOPE_RDM = numeric(),
-                                 DATA_SRCE = character())
+    outputs_coeff <- NULL
+    outputs_random <- NULL
     for(i in 1:nrow(workstrata)){
       indidataset <- all_trees_reg[BGC_REG == workstrata$BGC_REG[i] &
                                      SP0 == workstrata$SP0[i] &
@@ -123,18 +103,21 @@ regBA_WSV <- function(inputData, needCombs){
       if(class(a) == "try-error" | length(unique(indidataset$SAMP_POINT)) < 5){
         workstrata_failed <- rbind(workstrata_failed, workstrata[i,])
       } else {
+        r2s <- round(data.table(r.squaredGLMM(mixmodel)), 4)
+        names(r2s) <- c("R2_Marginal", "R2_Condition")
         randomcoeff <- data.frame(mixmodel$coefficients$random)
         names(randomcoeff) <- c("INTERCEPT_RDM", "SLOPE_RDM")
         randomcoeff$SAMP_POINT <- row.names(randomcoeff)
         randomcoeff <- data.table(randomcoeff)
         outputs_coeff <- rbind(outputs_coeff,
-                               data.table(BGC_REG = workstrata$BGC_REG[i],
+                               cbind(data.table(BGC_REG = workstrata$BGC_REG[i],
                                           SP0 = workstrata$SP0[i],
                                           LV_D = workstrata$LV_D[i],
                                           NOOBS = nrow(indidataset),
                                           INTERCEPT = as.numeric(mixmodel$coefficients$fixed)[1],
                                           SLOPE = as.numeric(mixmodel$coefficients$fixed)[2],
-                                          DATA_SRCE = "BEC_GRP+SP0+LV_D"))
+                                          DATA_SRCE = "BEC_GRP+SP0+LV_D"),
+                                     r2s))
         outputs_random <- rbind(outputs_random,
                                 randomcoeff[,.(BGC_REG = workstrata$BGC_REG[i],
                                                SP0 = workstrata$SP0[i],
@@ -163,18 +146,8 @@ regBA_WSV <- function(inputData, needCombs){
       ## third attempt by sp0 and lv_d, regardless of bec
       workstrata <- unique(strata_failed[,.(SP0, LV_D)], by = c("SP0", "LV_D"))
       workstrata_failed <- workstrata[0,]
-      outputs_coeff <- data.table(SP0 = character(),
-                                  LV_D = character(),
-                                  NOOBS = numeric(),
-                                  INTERCEPT = numeric(),
-                                  SLOPE = numeric(),
-                                  DATA_SRCE = character())
-      outputs_random <- data.table(SP0 = character(),
-                                   LV_D = character(),
-                                   SAMP_POINT = numeric(),
-                                   INTERCEPT_RDM = numeric(),
-                                   SLOPE_RDM = numeric(),
-                                   DATA_SRCE = character())
+      outputs_coeff <- NULL
+      outputs_random <- NULL
       for(i in 1:nrow(workstrata)){
         indidataset <- all_trees_reg[SP0 == workstrata$SP0[i] &
                                        LV_D == workstrata$LV_D[i] &
@@ -186,17 +159,20 @@ regBA_WSV <- function(inputData, needCombs){
         if(class(a) == "try-error" |length(unique(indidataset$SAMP_POINT)) < 5){
           workstrata_failed <- rbind(workstrata_failed, workstrata[i,])
         } else {
+          r2s <- round(data.table(r.squaredGLMM(mixmodel)), 4)
+          names(r2s) <- c("R2_Marginal", "R2_Condition")
           randomcoeff <- data.frame(mixmodel$coefficients$random)
           names(randomcoeff) <- c("INTERCEPT_RDM", "SLOPE_RDM")
           randomcoeff$SAMP_POINT <- row.names(randomcoeff)
           randomcoeff <- data.table(randomcoeff)
           outputs_coeff <- rbind(outputs_coeff,
-                                 data.table(SP0 = workstrata$SP0[i],
+                                 cbind(data.table(SP0 = workstrata$SP0[i],
                                             LV_D = workstrata$LV_D[i],
                                             NOOBS = nrow(indidataset),
                                             INTERCEPT = as.numeric(mixmodel$coefficients$fixed)[1],
                                             SLOPE = as.numeric(mixmodel$coefficients$fixed)[2],
-                                            DATA_SRCE = "SP0+LV_D"))
+                                            DATA_SRCE = "SP0+LV_D"),
+                                       r2s))
           outputs_random <- rbind(outputs_random,
                                   randomcoeff[,.(SP0 = workstrata$SP0[i],
                                                  LV_D = workstrata$LV_D[i],
@@ -224,18 +200,8 @@ regBA_WSV <- function(inputData, needCombs){
                              by = c("SP_TYPE", "LV_D"))
         workstrata_failed <- workstrata[0,]
 
-        outputs_coeff <- data.table(SP_TYPE = character(),
-                                    LV_D = character(),
-                                    NOOBS = numeric(),
-                                    INTERCEPT = numeric(),
-                                    SLOPE = numeric(),
-                                    DATA_SRCE = character())
-        outputs_random <- data.table(SP_TYPE = character(),
-                                     LV_D = character(),
-                                     SAMP_POINT = numeric(),
-                                     INTERCEPT_RDM = numeric(),
-                                     SLOPE_RDM = numeric(),
-                                     DATA_SRCE = character())
+        outputs_coeff <- NULL
+        outputs_random <- NULL
         for(i in 1:nrow(workstrata)){
           indidataset <- all_trees_reg[SP_TYPE == workstrata$SP_TYPE[i] &
                                          LV_D == workstrata$LV_D[i] &
@@ -247,17 +213,20 @@ regBA_WSV <- function(inputData, needCombs){
           if(class(a) == "try-error" |length(unique(indidataset$SAMP_POINT)) < 5){
             workstrata_failed <- rbind(workstrata_failed, workstrata[i,])
           } else {
+            r2s <- round(data.table(r.squaredGLMM(mixmodel)), 4)
+            names(r2s) <- c("R2_Marginal", "R2_Condition")
             randomcoeff <- data.frame(mixmodel$coefficients$random)
             names(randomcoeff) <- c("INTERCEPT_RDM", "SLOPE_RDM")
             randomcoeff$SAMP_POINT <- row.names(randomcoeff)
             randomcoeff <- data.table(randomcoeff)
             outputs_coeff <- rbind(outputs_coeff,
-                                   data.table(SP_TYPE = workstrata$SP_TYPE[i],
+                                   cbind(data.table(SP_TYPE = workstrata$SP_TYPE[i],
                                               LV_D = workstrata$LV_D[i],
                                               NOOBS = nrow(indidataset),
                                               INTERCEPT = as.numeric(mixmodel$coefficients$fixed)[1],
                                               SLOPE = as.numeric(mixmodel$coefficients$fixed)[2],
-                                              DATA_SRCE = "SP_TYPE+LV_D"))
+                                              DATA_SRCE = "SP_TYPE+LV_D"),
+                                         r2s))
             outputs_random <- rbind(outputs_random,
                                     randomcoeff[,.(SP_TYPE = workstrata$SP_TYPE[i],
                                                    LV_D = workstrata$LV_D[i],
@@ -287,18 +256,8 @@ regBA_WSV <- function(inputData, needCombs){
     workstrata <- unique(strata_missing, by = c("BGC_ZONE", "LV_D"))
     workstrata_failed <- workstrata[0,]
 
-    outputs_coeff <- data.table(BGC_ZONE = character(),
-                                LV_D = character(),
-                                NOOBS = numeric(),
-                                INTERCEPT = numeric(),
-                                SLOPE = numeric(),
-                                DATA_SRCE = character())
-    outputs_random <- data.table(BGC_ZONE = character(),
-                                 LV_D = character(),
-                                 SAMP_POINT = numeric(),
-                                 INTERCEPT_RDM = numeric(),
-                                 SLOPE_RDM = numeric(),
-                                 DATA_SRCE = character())
+    outputs_coeff <- NULL
+    outputs_random <- NULL
     for(i in 1:nrow(workstrata)){
       indidataset <- all_trees_reg[BGC_ZONE == workstrata$BGC_ZONE[i] &
                                      LV_D == workstrata$LV_D[i] &
@@ -310,17 +269,20 @@ regBA_WSV <- function(inputData, needCombs){
       if(class(a) == "try-error" |length(unique(indidataset$SAMP_POINT)) < 5){
         workstrata_failed <- rbind(workstrata_failed, workstrata[i,])
       } else {
+        r2s <- round(data.table(r.squaredGLMM(mixmodel)), 4)
+        names(r2s) <- c("R2_Marginal", "R2_Condition")
         randomcoeff <- data.frame(mixmodel$coefficients$random)
         names(randomcoeff) <- c("INTERCEPT_RDM", "SLOPE_RDM")
         randomcoeff$SAMP_POINT <- row.names(randomcoeff)
         randomcoeff <- data.table(randomcoeff)
         outputs_coeff <- rbind(outputs_coeff,
-                               data.table(BGC_ZONE = workstrata$BGC_ZONE[i],
+                               cbind(data.table(BGC_ZONE = workstrata$BGC_ZONE[i],
                                           LV_D = workstrata$LV_D[i],
                                           NOOBS = nrow(indidataset),
                                           INTERCEPT = as.numeric(mixmodel$coefficients$fixed)[1],
                                           SLOPE = as.numeric(mixmodel$coefficients$fixed)[2],
-                                          DATA_SRCE = "BEC+LV_D"))
+                                          DATA_SRCE = "BEC+LV_D"),
+                                     r2s))
         outputs_random <- rbind(outputs_random,
                                 randomcoeff[,.(BGC_ZONE = workstrata$BGC_ZONE[i],
                                                LV_D = workstrata$LV_D[i],
