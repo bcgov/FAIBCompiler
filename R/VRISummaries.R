@@ -85,6 +85,13 @@ setMethod(
 
     allclustersByUtil <- data.table(expand.grid(CLSTR_ID = unique(clusterPlotHeader$CLSTR_ID),
                                                 UTIL = dbhcatlist))
+
+    allclustersByUtil <- merge(allclustersByUtil,
+                               unique(clusterPlotHeader[,.(CLSTR_ID, PRJ_GRP, NO_PLOTS, PLOT_DED, PROJ_ID)],
+                                      by = "CLSTR_ID"),
+                               by = "CLSTR_ID",
+                               all.x = TRUE)
+
     summarycolsLS <- c(paste("VHA_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                       "NTWB", "D", "DW", "DWB"),
                              sep = ""), "DHA_MER", "DBH2", "BA_HA", "STEMS_HA")
@@ -92,6 +99,7 @@ setMethod(
     summarycolsDS <- paste(summarycolsLS, "DS", sep = "")
     summarycolsDF <- paste(summarycolsLS, "DF", sep = "")
 
+    volsmy_cs[, c("PRJ_GRP", "NO_PLOTS", "PLOT_DED", "PROJ_ID") := NULL]
     volsmy_cs <- merge(allclustersByUtil, volsmy_cs, by = c("CLSTR_ID", "UTIL"),
                         all = TRUE)
     volsmy_cs[is.na(VHA_WSV), c(summarycolsLS) := 0]
@@ -99,6 +107,7 @@ setMethod(
     volsmy_cs[is.na(VHA_WSVDS), c(summarycolsDS) := 0]
     volsmy_cs[is.na(VHA_WSVDF), c(summarycolsDF) := 0]
 
+    volsmy_c[, c("PRJ_GRP", "NO_PLOTS", "PLOT_DED", "PROJ_ID") := NULL]
     volsmy_c <- merge(allclustersByUtil, volsmy_c, by = c("CLSTR_ID", "UTIL"),
                         all = TRUE)
     volsmy_c[is.na(VHA_WSV),
@@ -109,6 +118,7 @@ setMethod(
     cl_spc <- merge(allclustersByUtil, cl_spc,
                     by = c("CLSTR_ID", "UTIL"),
                     all = TRUE)
+
     return(list(vol_bycs = volsmy_cs, vol_byc = volsmy_c,
                 heightsmry_byc = heightsmry_c,
                 compositionsmry_byc = cl_spc))
