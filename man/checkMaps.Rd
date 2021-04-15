@@ -5,21 +5,16 @@
 \alias{checkMaps}
 \title{Load maps from map source}
 \usage{
-checkMaps(mapSourcePath, mapPath)
+checkMaps(mapPath)
 }
 \arguments{
-\item{mapSourcePath}{character, Path to map source. The compilation will take the
-actively maintained and updated map folder from
-Edward Fong.}
-
 \item{mapPath}{character, The path to save all the maps.
 Note that all the saved maps have time
 stemps, which suggest when the files have been
 modified in \code{mapSourcePath}.}
 }
 \value{
-A list of time, which will be a unique time mark
-when compiler does spatial algorithms.
+no value is returned from this function.
 }
 \description{
 This function is to load maps from
@@ -27,11 +22,7 @@ This function is to load maps from
 For TSA and BEC, the maps are direct from bcmaps package.
 }
 \note{
-TSA and BEC maps are not loaded from source path.
-bcmaps package is used to load those maps. Therefore,
-the time mark for those maps are current time.
-When multiple spatial files (e.g., gdb) are found for
-a map, the most recent modified one will be used.
+all the maps relies on the bcdata package.
 }
 \author{
 Yong Luo

@@ -4,7 +4,7 @@
 \alias{updateSpatial}
 \title{Used for updating spatial attributes based on locations}
 \usage{
-updateSpatial(samplesites, mapPath, mapTimes)
+updateSpatial(samplesites, mapPath)
 }
 \arguments{
 \item{samplesites}{data.table A table that contains spatial loctions. Currently it is
