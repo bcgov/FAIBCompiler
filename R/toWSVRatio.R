@@ -32,7 +32,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   ratioVariables <- paste("RATIO_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                      "NTWB", "D", "DW", "DWB", "VAL"),
                           sep = "")
-
+  inputData[, ADJ_ID :=  NULL]
   all_trees_ratio <- inputData[MEAS_INTENSE %in% c("FULL", "ENHANCED") &
                                  DBH >= minDBH & VOL_NTWB > 0,]
 
@@ -40,7 +40,8 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
   specieslookup <- lookup_species()
   specieslookup <- unique(specieslookup[,.(SP0, SP_TYPE)], by = "SP0")
-  all_trees_ratio <- merge(all_trees_ratio, specieslookup, by = "SP0", all.x = TRUE)
+  all_trees_ratio <- merge(all_trees_ratio, specieslookup,
+                           by = "SP0", all.x = TRUE)
 
   all_trees_ratio <- all_trees_ratio[, c("SAMP_POINT", "CLSTR_ID", "BGC_ZONE", "SP0",
                                          "SP_TYPE", "LV_D", volVariables), with = FALSE]
