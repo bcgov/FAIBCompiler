@@ -330,17 +330,66 @@ ISMCCompiler <- function(oracleUserName,
                       paste0("regRatioData", compilationYear, ".rds")))
     cat(paste0("        Selected data and saved to regRatioData", compilationYear, "\n"))
     coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
-    saveRDS(coefs$fixedcoeff,
+    if(compilationYear > 2021){ ## comparison starts from 2022 to select the better model to predict BA-WSV relationship
+      fixedcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
+                        paste0("fixedCoefs", compilationYear-1, ".rds")))
+      fixedcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+
+      randomcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
+                        paste0("randomCoefs", compilationYear-1, ".rds")))
+      randomcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+
+      allfix <- merge(coefs$fixedcoeff[,.(uni_strata,
+                                          R2_Marginal_crt = R2_Marginal)],
+                      fixedcoeff_prev[,.(uni_strata,
+                                         R2_Marginal_prev = R2_Marginal,
+                                         YEAR_FIT_prev = YEAR_FIT)],
+                      by = c("uni_strata"),
+                      all = TRUE)
+      allfix[R2_Marginal_crt+0.05 >= R2_Marginal_prev,
+             YEAR_FIT := compilationYear] ## 0.01 was chosen as an indicator
+      ## of a significant improvement
+      allfix[!is.na(R2_Marginal_crt) & is.na(R2_Marginal_prev),
+             YEAR_FIT := compilationYear] ## the new strata
+      allfix[is.na(YEAR_FIT),
+             YEAR_FIT := YEAR_FIT_prev]
+
+      fixedcoeff_crt <- coefs$fixedcoeff
+      fixedcoeff_crt[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+      randomcoeff_crt <- coefs$randomcoeff
+      randomcoeff_crt[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+
+      fixedcoeff_final <- fixedcoeff_crt[uni_strata %in% allfix[YEAR_FIT == compilationYear,]$uni_strata,]
+      fixedcoeff_final <- rbindlist(list(fixedcoeff_final,
+                                         fixedcoeff_prev[uni_strata %in% allfix[YEAR_FIT != compilationYear,]$uni_strata,]),
+                                    fill = TRUE)
+      fixedcoeff_final[,':='(uni_strata = NULL)]
+      fixedcoeff_final[is.na(YEAR_FIT),':='(YEAR_FIT = compilationYear)]
+
+      randomcoeff_final <- randomcoeff_crt[uni_strata %in% allfix[YEAR_FIT == compilationYear,]$uni_strata,]
+      randomcoeff_final <- rbindlist(list(randomcoeff_final,
+                                         randomcoeff_prev[uni_strata %in% allfix[YEAR_FIT != compilationYear,]$uni_strata,]),
+                                    fill = TRUE)
+      randomcoeff_final[,':='(uni_strata = NULL)]
+      randomcoeff_final[is.na(YEAR_FIT),':='(YEAR_FIT = compilationYear)]
+    } else {
+      fixedcoeff_final <- coefs$fixedcoeff
+      fixedcoeff_final[,':='(YEAR_FIT = compilationYear)]
+
+      randomcoeff_final <- coefs$randomcoeff
+      randomcoeff_final[,':='(YEAR_FIT = compilationYear)]
+    }
+    saveRDS(fixedcoeff_final,
             file.path(compilationPaths$compilation_coeff,
                       paste0("fixedCoefs", compilationYear, ".rds")))
-    saveRDS(coefs$randomcoeff,
+    saveRDS(randomcoeff_final,
             file.path(compilationPaths$compilation_coeff,
                       paste0("randomCoefs", compilationYear, ".rds")))
-    write.table(coefs$fixedcoeff,
+    write.table(fixedcoeff_final,
                 file.path(compilationPaths$compilation_coeff,
                           paste0("fixedCoefs", compilationYear, ".txt")),
                 row.names = FALSE, sep = ",")
-    write.table(coefs$randomcoeff,
+    write.table(randomcoeff_final,
                 file.path(compilationPaths$compilation_coeff,
                           paste0("randomCoefs", compilationYear, ".txt")),
                 row.names = FALSE, sep = ",")
