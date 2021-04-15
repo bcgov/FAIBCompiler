@@ -151,17 +151,19 @@ ISMCCompiler <- function(oracleUserName,
                                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
                                                   PROJ_ID, SAMP_NO)],
                                 by = "SAMP_POINT")
-  write.table(spatialLookups_simp,
-              file.path(compilationPaths$compilation_coeff,
-                        paste0("spatiallookup",
-                               todaydate, ".txt")),
-              sep = ",",
-              row.names = FALSE)
+
+  spatialLookups_prev <- read.table(file.path(compilationPaths$compilation_coeff,
+                                              "spatiallookup.txt"),
+                                    sep = ",", header = TRUE) %>% data.table
+
   write.table(spatialLookups_simp,
               file.path(compilationPaths$compilation_coeff,
                         "spatiallookup.txt"),
               sep = ",",
               row.names = FALSE)
+  write.xlsx(spatialLookups_simp,
+              file.path(compilationPaths$compilation_coeff,
+                        "spatiallookup.xlsx"))
   cat("    Saved spatial attribute table as spatiallookup \n")
 
 
@@ -475,6 +477,19 @@ ISMCCompiler <- function(oracleUserName,
   # write.csv(stumpCompile$stmp_cs,
   #         file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.csv"), row.names = FALSE)
   #############################
+
+  for (indifolder in c(compilationPaths$compilation_db,
+                       compilationPaths$compilation_sa,
+                       compilationPaths$raw_from_oracle)){
+    allfiles_indifolder <- dir(pattern = ".rds", indifolder)
+    allfiles_indifolder <- gsub(".rds", "", allfiles_indifolder)
+
+    for (indifile in allfiles_indifolder) {
+        thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
+        write.xlsx(thedata,
+                   file.path(indifolder, paste0(indifile, ".xlsx")))
+    }
+  }
 
   cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
 
