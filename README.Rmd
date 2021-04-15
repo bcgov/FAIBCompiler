@@ -18,6 +18,12 @@ If you have bcgovr installed and you use RStudio, click the 'Insert BCDevex Badg
 
 # FAIBCompiler
 
+<!-- badges: start -->
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![img](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)
+<!-- badges: end -->
+
+
 FAIBCompiler comtains the functions to run VRI and PSP compilers. The compilers
 
 - load data from FAIB oracle ground sample databases using package **FAIBOracle**,

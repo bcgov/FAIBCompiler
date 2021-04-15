@@ -2,8 +2,13 @@
 See https://github.com/BCDevExchange/Our-Project-Docs/blob/master/discussion/projectstates.md
 If you have bcgovr installed and you use RStudio, click the 'Insert BCDevex Badge' Addin. -->
 
-FAIBCompiler
-============
+# FAIBCompiler
+
+<!-- badges: start -->
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![img](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)
+<!-- badges: end -->
 
 FAIBCompiler comtains the functions to run VRI and PSP compilers. The
 compilers
@@ -16,10 +21,10 @@ compilers
 
 ### Features
 
-Cluster id changed from proj\_id-samp\_no-samp\_type-visit to
-site\_identifier-samp\_type-visit, because EFR no longer uses proj\_id
-and sample number as an unique spatial point. It uses site identifier
-now. The change was made on Nov. 24, 2020. The previous versions of
+Cluster id changed from proj_id-samp_no-samp_type-visit to
+site_identifier-samp_type-visit, because EFR no longer uses proj_id and
+sample number as an unique spatial point. It uses site identifier now.
+The change was made on Nov. 24, 2020. The previous versions of
 VRICompiler and ISMCCompiler bave been freezed in VGISCompiler branch.
 
 ### Installation
