@@ -53,5 +53,9 @@ setMethod(
     output[, c(decimal3cols) := lapply(.SD, function(s) round(s, 3)), .SDcols = decimal3cols]
     roundcols <- c(paste("STEMS_HA", c("", "LF", "DS", "DF"), sep = ""), "NO_TREES")
     output[, c(roundcols) := lapply(.SD, round), .SDcols = roundcols]
+    output[is.na(QMD), QMD := 0]
+    output[is.na(QMDLF), QMDLF := 0]
+    output[is.na(QMDDS), QMDDS := 0]
+    output[is.na(QMDDF), QMDDF := 0]
     return(output)
   })
