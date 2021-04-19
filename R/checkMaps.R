@@ -30,7 +30,7 @@ checkMaps <- function(mapPath){
   Ownership_id <- "5fc4e8ce-dd1d-44fd-af17-e0789cf65e4e"
 
   for (indiMapName in c("TSA", "BEC", "TFL", "FIZ", "Ownership")) {
-    existingmap <- dir(mapPath, pattern = indiMapName, full.names = FALSE)
+    existingmap <- dir(mapPath, pattern = paste0(indiMapName, "_map"), full.names = FALSE)
     bcdata_id <- get(paste0(indiMapName, "_id"))
     map_metadata <- bcdata::bcdc_get_record(bcdata_id)
     last_date <- gsub("-", "", map_metadata$record_last_modified)
@@ -51,7 +51,7 @@ checkMaps <- function(mapPath){
         if(toupper(wantupdate) %in% c("Y", "YES")){
           themap <- bcdata::bcdc_get_data(bcdata_id)
           saveRDS(list("map" = themap, "metadata" = map_metadata),
-                  file.path(mapPath, paste0(indiMapName, "_", last_date, ".rds")))
+                  file.path(mapPath, paste0(indiMapName, "_map", last_date, ".rds")))
           cat(paste0("            The ", indiMapName, " map has been downloaded and saved as ", indiMapName, "_", last_date, ".rds\n"))
           for (indifile in existingmap) { ## remove the previous maps
             unlink(file.path(mapPath, indifile), recursive = TRUE)
