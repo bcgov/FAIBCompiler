@@ -16,10 +16,11 @@
 #' @author Yong Luo
 ISMC_VGISTranslator <- function(inputPath, outputPath){
   # rm(list = ls())
-  # inputPath <- "D:/ISMC project/ISMC compiler/ismc compiler development/raw_from_oracle"
+  # inputPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/raw_from_oracle"
   # outputPath <- "D:/ISMC project/ISMC compiler/ismc compiler development/compilation_sa"
-  samplesites <- readRDS(file.path(inputPath,
-                                   dir(inputPath, pattern = "SampleSites"))) %>% data.table
+
+  samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
+    data.table
   samplesites[, ELEVATION := NULL]
   samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                 IP_UTM = UTM_ZONE, IP_EAST = UTM_EASTING, IP_NRTH = UTM_NORTHING,
@@ -27,8 +28,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   if(nrow(samplesites) != length(unique(samplesites$SITE_IDENTIFIER))){
     warning("samplesites file: SITE_IDENTIFIER is not unique.")
   }
-  SampleSiteVisits <- readRDS(file.path(inputPath,
-                                        dir(inputPath, pattern = "SampleSiteVisits"))) %>%
+  SampleSiteVisits <- readRDS(dir(inputPath, pattern = "SampleSiteVisits.rds",
+                                  full.names = TRUE)) %>%
     data.table
   SampleSiteVisits[, newMD := SAMPLE_SITE_VISIT_START_DATE + 60*60]
 
@@ -44,13 +45,12 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                 by = "SITE_IDENTIFIER",
                 all.x = TRUE)
   rm(samplesites, SampleSiteVisits)
-  vi_a[VISIT_NUMBER == 1, TYPE_CD := paste0(TYPE_CD, "O1")]
-  vi_a[VISIT_NUMBER > 1, TYPE_CD := paste0(TYPE_CD, "R", VISIT_NUMBER- 1)]
+  vi_a[, TYPE_CD := paste0(TYPE_CD, VISIT_NUMBER)]
   vi_a[,CLSTR_ID := paste(SITE_IDENTIFIER, TYPE_CD, sep = "-")]
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
 
-  plotdetails <- readRDS(file.path(inputPath,
-                                   dir(inputPath, pattern = "PlotDetails")))
+  plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
+                             full.names = TRUE))
 
   plotdetails <- merge(plotdetails, vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER,
                                             CLSTR_ID)],
@@ -157,8 +157,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   saveRDS(vi_e, file.path(outputPath, "vi_e.rds"))
 
 
-  treemeasurements <- readRDS(file.path(inputPath,
-                                        dir(inputPath, "TreeMeasurements"))) %>%
+  treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
+                                  full.names = TRUE)) %>%
     data.table
   treemeasurements[, COMMENT_TEXT := NULL]
   treemeasurements <- merge(treemeasurements,
@@ -198,8 +198,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                              WL_WOOD = WOOD_CONDITION_CODE,
                              WL_LICHE = LICHEN_LOADING_RATING_CODE)]
 
-  treelog <- readRDS(file.path(inputPath,
-                               dir(inputPath, "TreeLogAssessments"))) %>%
+  treelog <- readRDS(dir(inputPath, "TreeLogAssessments.rds",
+                         full.names = TRUE)) %>%
     data.table
   treelog <- merge(treelog,
                    unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID)],
@@ -356,11 +356,11 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                              S_F = TREE_STANCE_CODE)]
   saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
 
-  treeloss <- readRDS(file.path(inputPath,
-                                dir(inputPath, "TreeLossIndicators"))) %>%
+  treeloss <- readRDS(dir(inputPath, "TreeLossIndicators.rds",
+                          full.names = TRUE)) %>%
     data.table
-  treedamage <- readRDS(file.path(inputPath,
-                                  dir(inputPath, "TreeDamageOccurrences"))) %>%
+  treedamage <- readRDS(dir(inputPath, "TreeDamageOccurrences.rds",
+                            full.names = TRUE)) %>%
     data.table
   # vi_d <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 &
   #                            OUT_OF_PLOT_IND == "N",
@@ -458,8 +458,9 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   saveRDS(vi_d, file.path(outputPath, "vi_d.rds"))
 
 
-  SmallLiveTreeTallies <- readRDS(file.path(inputPath,
-                                            dir(inputPath, pattern =  "SmallLiveTreeTallies")))
+  SmallLiveTreeTallies <- readRDS(dir(inputPath,
+                                      pattern =  "SmallLiveTreeTallies.rds",
+                                      full.names = TRUE))
   SmallLiveTreeTallies <- merge(SmallLiveTreeTallies,
                                 unique(vi_a[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
@@ -486,8 +487,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
   saveRDS(vi_f, file.path(outputPath, "vi_f.rds"))
 
 
-  stumptallies <- readRDS(file.path(inputPath,
-                                    dir(inputPath, pattern = "StumpTallies")))
+  stumptallies <- readRDS(dir(inputPath, pattern = "StumpTallies.rds",
+                              full.names = TRUE))
   stumptallies <- merge(stumptallies,
                         unique(vi_a[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
