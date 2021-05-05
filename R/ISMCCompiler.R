@@ -84,14 +84,16 @@ ISMCCompiler <- function(oracleUserName,
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
   cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
-  compilationPaths <- compilerPathSetup(compilationPath)
+  compilationDate <- gsub("-", "", Sys.Date())
+  compilationPaths <- compilerPathSetup(compilationPath,
+                                        compilationDate)
   cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
 
   checkMaps(mapPath = compilationPaths$compilation_map)
   todayDate <- as.Date(Sys.time())
   todayYear <- substr(todayDate, 1, 4)
   if(todayDate >= as.Date(paste0(todayYear, "-01-01")) &
-     todayDate < as.Date(paste0(todayYear, "-01-31"))){
+     todayDate < as.Date(paste0(todayYear, "-03-31"))){
     compilationYear <- as.character(as.numeric(todayYear) - 1)
   } else {
     compilationYear <- todayYear
