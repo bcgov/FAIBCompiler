@@ -46,7 +46,8 @@ VRIInit_clusterplot <- function(dataSourcePath){
 
   ## keep key columns for further compilation
   vi_a <- vi_a[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD, MEAS_DT, TSA, FIZ, BGC_ZONE = BEC,
-                  BGC_SBZN = BEC_SBZ, BGC_VAR = BEC_VAR, PRJ_GRP)]
+                  BGC_SBZN = BEC_SBZ, BGC_VAR = BEC_VAR, PRJ_GRP,
+                  SAMPLE_SITE_NAME)]
   vi_b <- readRDS(file.path(dataSourcePath, "vi_b.rds")) %>% data.table
   names(vi_b) <- toupper(names(vi_b))
   totalNrow <- nrow(vi_b)
