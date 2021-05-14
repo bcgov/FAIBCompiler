@@ -264,7 +264,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
             LOG2_LEN = 0,
             LOG2_SND = 0,
             NO_LOGS = 2)]
-  vi_c[, ':='(BROKEN_TOP_IND = NULL, needchangerows = NULL)]
+  vi_c[, ':='(needchangerows = NULL)]
   saveRDS(vi_c, file.path(outputPath, "vi_c.rds"))
 
 
