@@ -101,12 +101,24 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     treeData[BTOP == "H" & DIB_BTOP > 0, BTOP_ESTIMATE_TYPE := 2] # h TREES THAT HAVE DIAMETER AT BROKEN HEIGHT INFORMATION
     treeData[BTOP == "H" & HT_BTOP > 0, BTOP_ESTIMATE_TYPE := 3] # H TREES THAT HAVE PROJECTED HEIGHT INFORMATION
   } else if (HTBTOPModel == "height"){
-    treeData[BTOP == "D", HT := round(heightEstimate_byHeightModel(beczone = BGC_ZONE,
-                                                                   subzone = BGC_SBZN,
-                                                                   species = SPECIES,
-                                                                   DBH = DBH,
-                                                                   heightModels = bestHeightModels))]
+    # to accommodate the broken top trees that do not
+    # have 1) projected height 2) diameter at broken top
+    treeData[BROKEN_TOP_IND == "Y" &
+               is.na(BTOP),
+             BTOP := "B"]
+     # ## force trees that have length of 1.4 or less as broken top trees
+     treeData[HEIGHT <= "1.4" & is.na(BTOP),
+               BTOP := "B"]
+    treeData[BTOP %in% c("D", "B"),
+             HT := round(heightEstimate_byHeightModel(beczone = BGC_ZONE,
+                                                      subzone = BGC_SBZN,
+                                                      species = SPECIES,
+                                                      DBH = DBH,
+                                                      heightModels = bestHeightModels))]
 
+    treeData[BTOP == "B",
+             ':='(BTOP = "H",
+                  HT_BTOP = HEIGHT)]
     treeData[BTOP == "D" & is.na(HT), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "D" & !is.na(HT), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "H" & DIB_BTOP > 0, BTOP_ESTIMATE_TYPE := 2] # h TREES THAT HAVE DIAMETER AT BROKEN HEIGHT INFORMATION
