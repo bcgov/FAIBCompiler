@@ -11,8 +11,6 @@ ISMCCompiler(
   oracleEnv = "INT",
  
     compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
- 
-    mapSourcePath = "//spatialfiles2.bcgov/work/for/vic/hts/dam/workarea/data/infrastructure",
   equation = "KBEC",
   walkThru = TRUE,
   logMinLength = 0.1,
@@ -42,8 +40,6 @@ and cluater level;
 Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
 By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
 which is consistent with our rdw system.}
-
-\item{mapSourcePath}{character, Specifies the path to maps of FIZ, TFL and OWNERSHIP.}
 
 \item{equation}{character, Specifies the taper equation that is used for compiler. Currently supports
 BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).}

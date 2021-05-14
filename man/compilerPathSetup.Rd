@@ -5,11 +5,14 @@
 \alias{compilerPathSetup}
 \title{Setup output paths of the compiler}
 \usage{
-compilerPathSetup(compilationPath = ".")
+compilerPathSetup(compilationPath = ".", compilationDate)
 }
 \arguments{
 \item{compilationPath}{character, Specifies a path to store whole compilation process.
 If missing, the current work directory will be used.}
+
+\item{compilationDate}{character, Specifies a compilation date. It should be in format of YYYYMMDD
+It will be used for archive the compilation outputs.}
 }
 \value{
 Seven paths will be returned as following:
@@ -28,6 +31,8 @@ Seven paths will be returned as following:
 \item {compilation_map} {Path to archive all maps for compilation process.}
 
 \item {compilation_coeff} {Path to archive all coefficients for compilation process.}
+}
+\item {compilation_last} {Path to archive last compilation process.}
 }
 }
 \description{

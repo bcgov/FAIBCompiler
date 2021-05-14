@@ -4,13 +4,16 @@
 \alias{ISMC_VGISTranslator}
 \title{Translate ismc data formats into vgis formats}
 \usage{
-ISMC_VGISTranslator(inputPath, outputPath)
+ISMC_VGISTranslator(inputPath, outputPath, coeffPath)
 }
 \arguments{
 \item{inputPath}{character, Specifies the path that stores data from oracle data base.}
 
 \item{outputPath}{character, Specifies the path to save your outputs. If missing, the current working
-directory will be choosed.}
+directory will be choose.}
+
+\item{coeffPath}{character, Specifies the path where the crosswalk
+table is stored.}
 }
 \value{
 no item returned
