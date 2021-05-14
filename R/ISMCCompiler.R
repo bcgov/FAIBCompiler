@@ -131,7 +131,8 @@ ISMCCompiler <- function(oracleUserName,
                                     overWrite = TRUE)
   cat(paste(Sys.time(), ": Translate ISMC data to compiler.\n", sep = ""))
   ISMC_VGISTranslator(inputPath = compilationPaths$raw_from_oracle,
-                      outputPath = compilationPaths$compilation_sa)
+                      outputPath = compilationPaths$compilation_sa,
+                      coeffPath = compilationPaths$compilation_coeff)
 
   vi_a <- readRDS(file.path(compilationPaths$compilation_sa, "vi_a.rds"))
   cat(paste(Sys.time(), ": Update spatial attributes.\n", sep = ""))
