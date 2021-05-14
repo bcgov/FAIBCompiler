@@ -140,35 +140,26 @@ ISMCCompiler <- function(oracleUserName,
   saveRDS(spatialLookups,
           file.path(compilationPaths$compilation_sa,
                     "vi_a.rds"))
-  todaydate <- gsub("-", "", Sys.Date())
-
   spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                                   IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
                                                   Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
                                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
                                                   PROJ_ID, SAMP_NO)],
                                 by = "SAMP_POINT")
-
-  spatialLookups_prev <- read.table(file.path(compilationPaths$compilation_coeff,
-                                              "spatiallookup.txt"),
-                                    sep = ",", header = TRUE) %>% data.table
-
-  write.table(spatialLookups_simp,
-              file.path(compilationPaths$compilation_coeff,
-                        "spatiallookup.txt"),
-              sep = ",",
-              row.names = FALSE)
-  write.xlsx(spatialLookups_simp,
-              file.path(compilationPaths$compilation_coeff,
-                        "spatiallookup.xlsx"))
+  saveRDS(spatialLookups_simp,
+              file.path(compilationPaths$compilation_db,
+                        "spatiallookup.rds"))
   cat("    Saved spatial attribute table as spatiallookup \n")
 
 
   ### 2.1 load cluster/plot header
   clusterplotheader_VRI <- VRIInit_clusterplot(dataSourcePath = compilationPaths$compilation_sa)
   samples <- data.table::copy(clusterplotheader_VRI)
-
-  saveRDS(samples, file.path(compilationPaths$compilation_db, "samples.rds"))
+  samples[,':='(SITE_IDENTIFIER = substr(CLSTR_ID, 1, 7),
+                SAMPLE_SITE_PURPOSE_TYPE_CODE = substr(CLSTR_ID, 9, 9),
+                VISIT_NUMBER = substr(CLSTR_ID, 10, 10))]
+  saveRDS(samples,
+          file.path(compilationPaths$compilation_db, "samples.rds"))
   # write.csv(samples, file.path(compilationPaths$compilation_db, "samples.csv"), row.names = FALSE)
 
   rm(clusterplotheader_VRI)
@@ -187,6 +178,10 @@ ISMCCompiler <- function(oracleUserName,
   # utilLevel <-  4
   # weirdUtil = "No"
 
+  # samples <- readRDS("D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_db/samples.rds")
+  # compilationPaths <- list()
+  # compilationPaths$compilation_sa <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_sa"
+
 
   tree_ms1 <- VRIInit_measuredTree(data.table::copy(samples),
                                    compilationPaths$compilation_sa,
@@ -195,7 +190,9 @@ ISMCCompiler <- function(oracleUserName,
   ## vi_d contains call grading data for fully measured trees and enhanced trees
   vi_d <- VRIInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO)],
                              dataSourcePath = compilationPaths$compilation_sa)
-
+vi_d_temp <- readRDS(file.path(compilationPaths$compilation_sa, "vi_d.rds"))
+saveRDS(vi_d_temp,
+        file.path(compilationPaths$compilation_db, "compiled_vi_d.rds"))
   ### 2.4 load vi_i data
   ## vi_i has trees in auxi plots without height information (mostly), however, some of these trees are also in vi_c
   tree_ax1 <- VRIInit_auxTree(data.table::copy(samples),
@@ -262,6 +259,7 @@ ISMCCompiler <- function(oracleUserName,
                                         by = c("CLSTR_ID", "PLOT"),
                                         all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
+  tree_ah2[, CR_CL := NULL]
   saveRDS(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
   # write.csv(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.csv"), row.names = FALSE)
 
@@ -300,6 +298,16 @@ ISMCCompiler <- function(oracleUserName,
   tree_ms7 <- rbindlist(list(tree_ms7,
                              tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
                         fill = TRUE)
+  vi_c_sa <- readRDS(file.path(compilationPaths$compilation_sa,
+                               "vi_c.rds"))
+  tree_ms7[, ADJ_ID := NULL]
+  tree_ms7 <- merge(tree_ms7,
+                    vi_c_sa[,.(CLSTR_ID, PLOT, TREE_NO,
+                               CR_CL, WALKTHRU_STATUS,
+                               SECTOR, RESIDUAL,
+                               HT_BRCH)],
+                    by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                    all.x = TRUE)
   saveRDS(tree_ms7, file.path(compilationPaths$compilation_db,
                               "compiled_vi_c.rds"))
   # write.csv(tree_ms7, file.path(compilationPaths$compilation_db,
@@ -537,6 +545,30 @@ ISMCCompiler <- function(oracleUserName,
                    file.path(indifolder, paste0(indifile, ".xlsx")))
     }
   }
+
+  ## generate reports
+  cat(paste(Sys.time(), ": Generate reports and save them to report folder.\n", sep = ""))
+
+  # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env"
+  # compilationPaths <- list()
+  # compilationPaths$compilation_db <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_db"
+  # compilationPaths$compilation_report <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_report"
+  # compilationPaths$compilation_last <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/Archive_20210415"
+  # compilationDate <- "20210421"
+
+  lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
+                              compilationPaths$compilation_last)
+  rmarkdown::render(input = file.path(compilationPaths$compilation_report,
+                                      "general_report.Rmd"),
+                    params = list(crtPath = compilationPaths$compilation_db,
+                                  lastPath = compilationPaths$compilation_last,
+                                  mapPath = compilationPaths$compilation_map,
+                                  coeffPath = compilationPaths$compilation_coeff,
+                                  compilationDate = compilationDate,
+                                  lastCompilationDate = lastCompilationDate,
+                                  compilationYear = compilationYear,
+                                  sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
+                    quiet = TRUE)
 
   cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
 
