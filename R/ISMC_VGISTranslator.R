@@ -5,7 +5,9 @@
 #'
 #' @param inputPath character, Specifies the path that stores data from oracle data base.
 #' @param outputPath character, Specifies the path to save your outputs. If missing, the current working
-#'                   directory will be choosed.
+#'                   directory will be choose.
+#' @param coeffPath character, Specifies the path where the crosswalk
+#'                   table is stored.
 #'
 #' @return no item returned
 #'
@@ -14,10 +16,12 @@
 #'
 #' @rdname ISMC_VGISTranslator
 #' @author Yong Luo
-ISMC_VGISTranslator <- function(inputPath, outputPath){
+ISMC_VGISTranslator <- function(inputPath, outputPath,
+                                coeffPath){
   # rm(list = ls())
-  # inputPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/raw_from_oracle"
-  # outputPath <- "D:/ISMC project/ISMC compiler/ismc compiler development/compilation_sa"
+  inputPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/raw_from_oracle"
+  outputPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_sa"
+  coeffPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_coeff"
 
   samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
     data.table
@@ -161,6 +165,29 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                                   full.names = TRUE)) %>%
     data.table
   treemeasurements[, COMMENT_TEXT := NULL]
+  ### for the NFI samples the tree number changes
+  ## the next few line to modify tree number and make them
+  ## the same as the previous ones. the crosswalk table is prepared
+  ## by Dan
+  crosswalk <- read.csv(file.path(coeffPath,
+                                  "bc_gp_ltp_tree_num_track.csv")) %>%
+    data.table
+
+
+  treemeasurements <- merge(treemeasurements,
+                            crosswalk[,.(SITE_IDENTIFIER = NFI_PLOT,
+                                         VISIT_NUMBER,
+                                         TREE_NUMBER = TREE_NUM,
+                                         TREE_NUM_PREV)],
+                            by = c("SITE_IDENTIFIER",
+                                   "VISIT_NUMBER",
+                                   "TREE_NUMBER"),
+                            all.x = TRUE)
+  treemeasurements[!is.na(TREE_NUM_PREV),
+                   TREE_NUMBER := TREE_NUM_PREV]
+  treemeasurements[, TREE_NUM_PREV := NULL]
+
+
   treemeasurements <- merge(treemeasurements,
                             unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID)],
                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
@@ -339,8 +366,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath){
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"))
   vi_h_th[PLOT == "I" & TH_TREE == "T", TP_TREE := "T"]
   vi_h <- merge(vi_h, vi_h_th,
-                 by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-                 all.x = TRUE)
+                by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                all.x = TRUE)
   vi_h[RANDOM_TREE_IND == "Y", RA_TREE := "R"]
   vi_h[, RANDOM_TREE_IND := NULL]
   vi_h[is.na(TH_TREE) & RESIDUAL_IND == "N" & is.na(RA_TREE),
