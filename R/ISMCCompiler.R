@@ -445,8 +445,9 @@ saveRDS(vi_d_temp,
                                ntwbRatioCoef[,.(BGC_ZONE, SP0, LV_D, a, b, c)],
                                by = c("BGC_ZONE", "SP0", "LV_D"),
                                all.x = TRUE)
+
     HnonenhancedTrees[, NTWB_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-    HnonenhancedTrees[, VOL_NTWB := NTWB_RATIO * VOL_WSV]
+    HnonenhancedTrees[!is.na(a), VOL_NTWB := NTWB_RATIO * VOL_WSV]
     HnonenhancedTrees[, c("a", "b", "c", "NTWB_RATIO") := NULL]
     prep_smy <- rbindlist(list(auxtreecompilation$fullenhancedtrees,
                                HnonenhancedTrees),
