@@ -54,8 +54,17 @@ VRIInit_measuredTree<- function(clusterplotHeader,
       vi_c[toupper(WALKTHRU_STATUS) == "O", TREE_WT := 0] # tree is out and is not used
       vi_c[toupper(WALKTHRU_STATUS) == "W", TREE_WT := 2] # tree is
     }
-    vi_c <- FAIBBase::merge_dupUpdate(vi_c, clusterplotHeader[,.(clusterPlot, SAMP_TYP, PLOT_WT, BLOWUP)],
+    vi_c <- FAIBBase::merge_dupUpdate(vi_c,
+                                      clusterplotHeader[,.(clusterPlot, SAMP_TYP,
+                                                           PLOT_WT, BLOWUP,
+                                                           BGC_ZONE,	BGC_SBZN)],
                             by = "clusterPlot", all.x = TRUE)
+    # correction of species
+    vi_c[, SPECIES_ORG := SPECIES]
+    vi_c[, SPECIES := speciesCorrection(SPECIES,
+                                        BGC_ZONE,
+                                        BGC_SBZN)]
+
     vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
                                      treeWeight = TREE_WT, plotWeight = PLOT_WT,
                                      treeBasalArea = BA_TREE)]
@@ -65,7 +74,8 @@ VRIInit_measuredTree<- function(clusterplotHeader,
     # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
     vi_c[substr(CLSTR_ID, 9, 9) %in% c("F", "M", "Y", "L") & DBH < 9,
          PHF_TREE := PHF_TREE*4]
-    vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT, SPECIES, TREE_NO,
+    vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT, TREE_NO,
+                                                  SPECIES, SPECIES_ORG,
                                                   LV_D, S_F, NO_LOGS,
                                                   TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,
                                                   HEIGHT = TREE_LEN, BARK_PER,

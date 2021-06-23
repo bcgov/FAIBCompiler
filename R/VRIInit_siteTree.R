@@ -9,8 +9,6 @@
 #'                                  \code{//Mayhem/GIS_TIB/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/vri_sa}.
 #'
 #'
-#'
-#'
 #' @return A data table that contains site tree data information. A log file documents the detailed process
 #'
 #' @note VRI specific
@@ -31,6 +29,15 @@ VRIInit_siteTree<- function(clusterplotHeader,
   vi_h[, clusterplot := paste(CLSTR_ID, PLOT, sep = "_")]
 
   vi_h <- vi_h[clusterplot %in% clusterplotHeader$clusterplot,]
+
+  vi_h <- FAIBBase::merge_dupUpdate(vi_h, clusterplotHeader[, .(clusterplot,
+                                                                BGC_ZONE,
+                                                                BGC_SBZN)],
+                                    by = "clusterplot", all.x = TRUE)
+  vi_h[, SPECIES_ORG := SPECIES]
+  vi_h[, SPECIES := speciesCorrection(SPECIES,
+                                      BGC_ZONE,
+                                      BGC_SBZN)]
 
   vi_h <- unique(vi_h, by = displayColumn)
 

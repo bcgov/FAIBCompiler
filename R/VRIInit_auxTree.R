@@ -34,11 +34,19 @@ VRIInit_auxTree<- function(clusterplotHeader,
     vi_i[is.na(LV_D), LV_D := "L"]
     vi_i[, TREE_WT := 1]
     vi_i[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
-    vi_i <- FAIBBase::merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP, BLOWUP, PLOT_WT)],
+    vi_i <- FAIBBase::merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP,
+                                                                  BLOWUP, PLOT_WT,
+                                                                  BGC_ZONE,
+                                                                  BGC_SBZN)],
                             by = "clusterplot", all.x = TRUE)
+    vi_i[, SPECIES_ORG := SPECIES]
+    vi_i[, SPECIES := speciesCorrection(SPECIES,
+                                        BGC_ZONE,
+                                        BGC_SBZN)]
+
     vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP, treeWeight = TREE_WT,
                                      plotWeight = PLOT_WT, treeBasalArea = BA_TREE)]
-    return(vi_i[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES,
+    return(vi_i[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES_ORG, SPECIES,
                    DBH, BA_TREE,
                    PHF_TREE, LV_D)])
   } else {
