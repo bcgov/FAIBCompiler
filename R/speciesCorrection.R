@@ -62,10 +62,16 @@ speciesCorrection <- function(species, BEC, BEC_subzone){
                  species %in% c("S", "SE"),
                ':='(species = "SW",
                     process = TRUE)]
-  # else if species in ('S','SS') and bec_i_c = 'I' then
+  ## S in ESSF should be SE
+  processtable[BEC == "ESSF" &
+                 species %in% c("S") &
+                 process == FALSE,
+               ':='(species = "SE",
+                    process = TRUE)]
+  # else if species in ('SS') and bec_i_c = 'I' then
   # species = 'SW';
   processtable[BEC_I_C == "I" &
-                 species %in% c("S", "SS") &
+                 species %in% c("SS") &
                  process == FALSE,
                ':='(species = "SW",
                     process = TRUE)]
