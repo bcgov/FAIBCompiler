@@ -12,6 +12,7 @@
 #' @return no files
 #' @importFrom data.table data.table ':='
 #' @importFrom dplyr '%>%'
+#' @importFrom openxlsx write.xlsx
 #'
 #'
 #' @rdname loadASCII
@@ -398,9 +399,9 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
 
                       LSS1 = substr(LINE, 23, 25),#        $3.
                       LSLN11 = substr(LINE, 26, 26),#      $1.
-                      LSLNF1 = substr(LINE, 27, 29),#       3.1
+                      LSLNF1 = as.numeric(substr(LINE, 27, 29))/10,#       3.1
                       LSLN21 = substr(LINE, 30, 30),#      $1.
-                      LSLNT1 = substr(LINE, 31, 33),#       3.1
+                      LSLNT1 = as.numeric(substr(LINE, 31, 33))/10,#       3.1
                       LSFQ1 = as.numeric(substr(LINE, 34, 34)),#       1.
 
                       LSS2 = substr(LINE, 35, 37),#       $3.
@@ -421,7 +422,6 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                       DISTANCE = as.numeric(substr(LINE, 62, 65))/100,#  4.2
                       S1 = substr(LINE, 66, 66),#        $1.
                       S2 = substr(LINE, 67, 67))]
-
   carde <- allText[REC_ID == "101",
                    .(REC_ID, PAGE_NO, SEQ, CLSTR_ID,
                      PLOT = substr(LINE, 10, 10),#       $1.
@@ -452,7 +452,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
 
 
   cardg <- allText[REC_ID == "103",
-                   .(REC_ID, PAGE_NO, SEQ, CLSTR_ID,
+                   .(REC_ID, PAGE_NO, CLSTR_ID,
                      SPECIES = substr(LINE, 10, 12),#    $3.
                      FREQ = as.numeric(substr(LINE, 13, 14)),#        2.
                      DIB = as.numeric(substr(LINE, 15, 18))/10,#        4.1
@@ -804,16 +804,18 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
              paste("T", tempnames, sep = ""))
     setnames(cardx12,
              paste(c("FLD_DT", "OFF_DT"), "T", sep = ""),
-             paste("TR", c("FLDT", "OFFDT"), sep = ""))
-  } else if ("E" %in% unique(card012$new_type)) {
-
+             paste("TR", c("FLDT", "OFFDT"), sep = "_"))
+  }
+  if ("E" %in% unique(card012$new_type)) {
     setnames(cardx12,
              paste(tempnames, "E", sep = ""),
              paste("E", tempnames, sep = ""))
     setnames(cardx12,
              paste(c("FLD_DT", "OFF_DT"), "E", sep = ""),
-             paste("EC", c("FLDT", "OFFDT"), sep = ""))
+             paste("EC", c("FLDT", "OFFDT"), sep = "_"))
   }
+  cardx12[,':='(FLD_DTC = NULL,
+                OFF_DTC = NULL)]
   rm(tempnames, card012)
   ## compare to original sas codes, the below improves:
   ## keep all the photo type and photo index, while the sas
@@ -881,6 +883,9 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
   carda <- merge(carda, cardx13, by  = "CLSTR_ID",
                  all = TRUE)
   carda[, ASCII_DT := as.Date(Sys.time())]
+  setnames(carda,
+           c("S9", "S10"),
+           c("STAND_DIS_CAT", "STAND_DIS_SUBCAT"))
 
   rm(card011, cardx12, cardx13)
 
@@ -966,11 +971,9 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
   note_cl <- note_cl[!(NOTES %in% c("", " ")),
                      .(CLSTR_ID, REC_ID, SEQ, NOTES)]
 
-
   card041[, CREW1 := gsub(" ", "", CREW1)]
   rng_hdr <- card041[CREW1 != "",.(CLSTR_ID, CREW1, CREW2)]
   trans <- card041[,.(CLSTR_ID, AZIMUTH, TRANSECT, OBS_LLEN, TOT_LLEN)]
-
   c4forage <- card041[TRANSECT == 1,.(CLSTR_ID, UTIL_X1, UTIL_X2, UTIL_X3, UTIL_X4,
                                       GRAM_Q, FORBS_Q, MS_GRAM, MS_FORB)]
   if(nrow(c4forage) > 0){
@@ -983,7 +986,6 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                              direction = "long") %>% data.table
 
 
-    c4forage_long[, UTIL_CD := 0]
     c4forage_long[UTIL_X == 1, UTIL_CD := 7.5]
     c4forage_long[UTIL_X == 2, UTIL_CD := 26]
     c4forage_long[UTIL_X == 3, UTIL_CD := 46]
@@ -1037,7 +1039,9 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
   cardx6x <- cardx6x[order(CLSTR_ID, TRANSECT, ITEM_NO)]
   c6cwd <- merge(cardx6x, c6trans,
                  by = c("CLSTR_ID", "TRANSECT"))
-
+  c6cwd[,':='(CLS_OTHX = NULL,
+              PCT_CLSX = NULL,
+              SEQ = NULL)]
   card064 <- cardnot[REC_ID == "064",]
   card064[, TRANSECT := substr(NOTES1A, 1, 1)]
   card064[, NOTES1A := substr(NOTES1A, 2, 128)]
@@ -1228,7 +1232,8 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                MOSS_DW = fac_ht(WOOD_DW),
                MOSS_DR = fac_ht(ROCK_DR))]
   cd_eti <- cd_eti[,.(CLSTR_ID, PLOT, SPECIES, ITEM_NO, S1, S2, S3, HT_B1, HT_B2,
-                      CVR_A, CVR_B1, CVR_B2, MOSS_DH, MOSS_DW, MOSS_DR)]
+                      CVR_A, CVR_B1, CVR_B2, MOSS_DH, MOSS_DW, MOSS_DR,
+                      AB_RAD, AB_SHP, D_RAD, D_SHP)]
 
 
   card143 <- cardnot[REC_ID == "143"]
@@ -1508,6 +1513,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
   cardc[, needchange := NULL]
   cardc[, LV_D := trimws(LV_D, "both")]
   cardc[LV_D == "", LV_D := "L"]
+  cardc[,SUMLEN := NULL]
 
 
 
@@ -1628,6 +1634,22 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
     saveRDS(note_cp, file.path(savePath, "note_cp_ascii.rds"))
     saveRDS(carda, file.path(savePath, "carda_ascii.rds"))
     saveRDS(note_ch, file.path(savePath, "note_ch_ascii.rds"))
+    allfiles <- dir(savePath, full.names = FALSE, pattern = ".rds")
+    allfiles <- gsub(".rds", "", allfiles)
+    for (indifile in allfiles) {
+      indidata <- readRDS(file.path(savePath, paste0(indifile, ".rds")))
+      allnames <- names(indidata)
+      for (indiname in allnames) {
+        setnames(indidata, indiname, "tempname")
+        if(class(indidata$tempname) == "character" &
+           indiname != "NOTES"){
+          indidata[, tempname := trimws(tempname, which = "both")]
+        }
+        setnames(indidata, "tempname", indiname)
+      }
+      saveRDS(indidata, file.path(savePath, paste0(indifile, ".rds")))
+      write.xlsx(indidata, file.path(savePath, paste0(indifile, ".xlsx")))
+    }
   } else if (!saveThem){
 
   } else {
@@ -1654,7 +1676,6 @@ scanAllASCII <- function(txtPath){
   alltxtfiletable <- alltxtfiletable[substr(alltxtfiles, txtbeg, txtlength) %in% c(".txt", ".TXT")]
   alltxtfiles_list <- lapply(alltxtfiletable$alltxtfiles,
                              function(s) readonetxt(s))
-
   for(i in 1:length(alltxtfiles_list)){
     if(i == 1){
       alltxtfiles <- alltxtfiles_list[[i]]
