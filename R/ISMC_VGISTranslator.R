@@ -18,11 +18,6 @@
 #' @author Yong Luo
 ISMC_VGISTranslator <- function(inputPath, outputPath,
                                 coeffPath){
-  # # rm(list = ls())
-  # inputPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/raw_from_oracle"
-  # outputPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_sa"
-  # coeffPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_coeff"
-
   samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
     data.table
   samplesites[, ELEVATION := NULL]
