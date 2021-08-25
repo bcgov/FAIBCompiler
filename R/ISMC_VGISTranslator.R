@@ -298,12 +298,17 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   treemeasurements[RESIDUAL_IND == "Y", AGE_METH:= "VETERAN"]
   treemeasurements[EXTRA_TREE_IND == "Y", AGE_METH:= "OUTPTSUB"]
   treemeasurements[OTHER_TREE_IND == "Y", AGE_METH:= "INPTSUB"]
-
+  ## as explained by Scott and Rene, we need to adjust field age and lab age
+  ## based on missed year from pith
+  ## see email on August 25, 2021
+  treemeasurements[is.na(AGE_CORE_MISSED_YEARS),
+                   AGE_CORE_MISSED_YEARS := 0]
   vi_h <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT),
                            .(CLSTR_ID, PLOT = PLOT_CATEGORY_CODE,
                              TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE, SP0,
                              CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
-                             BORAG_FL = BORING_AGE, BORE_AGE = MICROSCOPE_AGE,
+                             BORAG_FL = BORING_AGE + AGE_CORE_MISSED_YEARS,
+                             BORE_AGE = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS,
                              AGE_CORR = AGE_CORRECTION,  TOTAL_AG = TOTAL_AGE,
                              PHYS_AGE = PHYSIOLOGICAL_AGE, GROW_20YR = RADIAL_INCREMENT_LAST_20_YR,
                              GROW_10YR = RADIAL_INCREMENT_LAST_10_YR,
