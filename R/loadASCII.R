@@ -224,11 +224,10 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                        DEC_CLS = substr(LINE, 30, 30),#    $1.
                        S4 = substr(LINE, 31, 31))]
 
-
   cardb <- allText[REC_ID == "081",
                    .(REC_ID, PAGE_NO, SEQ, CLSTR_ID,
                      PLOT = substr(LINE, 10, 10),#       $1.
-                     MEAS_DTC = substr(LINE, 11, 19),#   $9.
+                     MEAS_DTC = as.Date(substr(LINE, 11, 19), '%Y%b%d'), #   $9.
                      V_BAF = as.numeric(substr(LINE, 20, 23))/100,#      4.2
                      V_FULL = substr(LINE, 24, 24),#     $1.
                      V_HALF = substr(LINE, 25, 25),#     $1.
