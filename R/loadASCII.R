@@ -80,6 +80,8 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                        PHOT_IND = substr(LINE, 24, 25),
                        NOTES1A = substr(LINE, 25, 152),
                        NOTES1B = substr(LINE, 153, 280))]
+  card013[, PHOT_IND := trimws(PHOT_IND, which = "both")]
+  card013[, PHOT_IND := substr(PHOT_IND, 1, 1)]
 
 
   card021 <- allText[REC_ID == "021",
@@ -223,6 +225,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                        REMOVE = substr(LINE, 29, 29),#     $1.
                        DEC_CLS = substr(LINE, 30, 30),#    $1.
                        S4 = substr(LINE, 31, 31))]
+  # CLSTR_ID "03391-0035-MR1" in Yong's file has an invalid date while Rene's has "2002-07-21"
 
   cardb <- allText[REC_ID == "081",
                    .(REC_ID, PAGE_NO, SEQ, CLSTR_ID,
@@ -302,7 +305,9 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                        AUX_AZ = as.numeric(substr(LINE, 44, 46)),#     3.
                        AUX_DIST = as.numeric(substr(LINE, 47, 50))/100)]
   cardb <- rbindlist(list(cardb, card111), fill = TRUE)
-
+  # "3391-0006-MR1" TREE_NO "563" is "12.5" in Yong's and "4" in Rene's
+  # One record has been duplicated in Yong's output CLSTR_ID "CMI5-0333-FR1"
+  # TREE_NO "102"…...Rene's output has a single record with totally different attributes.
   cardc <- allText[REC_ID %in% c("082", "114"),
                    .(REC_ID, PAGE_NO, SEQ, CLSTR_ID,
                      TREE_NO = substr(LINE, 10, 12),#    $3.
@@ -985,6 +990,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                              direction = "long") %>% data.table
 
 
+    c4forage_long[UTIL_X == 0, UTIL_CD := 0]
     c4forage_long[UTIL_X == 1, UTIL_CD := 7.5]
     c4forage_long[UTIL_X == 2, UTIL_CD := 26]
     c4forage_long[UTIL_X == 3, UTIL_CD := 46]
@@ -1001,6 +1007,16 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                         sep = "")
     rm(c4forage_long)
   }
+  # c4forage[UTIL_CD1 == 0,
+  #          UTIL_CD1 := NA]
+  # c4forage[UTIL_CD2 == 0,
+  #          UTIL_CD2 := NA]
+  # c4forage[UTIL_CD3 == 0,
+  #          UTIL_CD3 := NA]
+  # c4forage[UTIL_CD4 == 0,
+  #          UTIL_CD4 := NA]
+  # c4forage[UTIL_AVG == 0,
+  #          UTIL_AVG := NA]
   card043 <- cardnot[REC_ID == "043", .(CLSTR_ID, SEQ, NOTES1A, NOTES1B)]
   card043[, TRANSECT := substr(NOTES1A, 1, 1)]
   card043[, NOTES1A := substr(NOTES1A, 2, 128)]
@@ -1233,7 +1249,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
   cd_eti <- cd_eti[,.(CLSTR_ID, PLOT, SPECIES, ITEM_NO, S1, S2, S3, HT_B1, HT_B2,
                       CVR_A, CVR_B1, CVR_B2, MOSS_DH, MOSS_DW, MOSS_DR,
                       AB_RAD, AB_SHP, D_RAD, D_SHP)]
-
+  cd_eti[, SPECIES := gsub('[0-9]+', '', SPECIES)]
 
   card143 <- cardnot[REC_ID == "143"]
   if(nrow(card143) > 0){
@@ -1289,7 +1305,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                         MOSS_DR = fac_ht(M_DR),
                         HERB = fac_ht(HB))]
   }
-
+  cd_ehi[, SPECIES := gsub('[0-9]+', '', SPECIES)]
   cd_ehh <- card151[,.(CLSTR_ID, PLOT, RADIUS,
                        IMOSS_DH = fac_ht(IMS_DH),
                        IMOSS_DW = fac_ht(IMS_DW),
@@ -1388,6 +1404,7 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                  by = c("CLSTR_ID", "REC_ID", "PAGE_NO"),
                  all.x = TRUE)
   cardh[, ':='(SPECIES = toupper(trimws(SPECIES, "both")),
+               BARK_THKX = as.numeric(BARK_THKX),
                REC_ID = NULL,
                PAGE_NO = NULL,
                SEQ = NULL)]
@@ -1498,7 +1515,6 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
   cardc <- cardc[DBH >= 4,]
   cardc[, LOG1_GRD := trimws(LOG1_GRD)]
   cardc[is.na(NO_LOGS), needchange := TRUE]
-
   cardc[needchange == TRUE,
         ':='(NO_LOGS = 1,
              LOG1_SND = 100,
