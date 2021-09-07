@@ -3,4 +3,5 @@ inst/doc
 .Rhistory
 developmentTools.R
 *.rds
+*.xlsx
 runningCodes.r
