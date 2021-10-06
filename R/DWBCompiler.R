@@ -63,35 +63,11 @@ setMethod(
                                                                RISK_GRP = as.numeric(NA),
                                                                ADJ_ID = as.character(NA))]
     loss_fct <- loss_fct[MEAS_INTENSE %in% c("FULL", "ENHANCED"),]
-    loss_fct[, PATH_IND := "00000000"]
-    for(i in 1:8){
-      loss_fct[, ':='(tempLOC_FRO = as.numeric(unlist(loss_fct[, paste("LOC", i, "_FRO", sep = ""), with = FALSE])),
-                      tempLOSS_IN = unlist(loss_fct[, paste("LOSS", i, "_IN", sep = ""), with = FALSE]))]
-      loss_fct[tempLOSS_IN != "" & is.na(tempLOC_FRO), tempLOC_FRO := 0]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 substr(tempLOSS_IN, 1, 2) %in% c("DD", "DR"),
-               PATH_IND := paste("1", substr(PATH_IND, 2, 8), sep = "")]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("BNK"),
-               PATH_IND := paste(substr(PATH_IND, 1, 1), "1", substr(PATH_IND, 3, 8), sep = "")]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("SCA"),
-               PATH_IND := paste(substr(PATH_IND, 1, 2), "1", substr(PATH_IND, 4, 8), sep = "")]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("FRK", "CRO", "CRK"),
-               PATH_IND := paste(substr(PATH_IND, 1, 3), "1", substr(PATH_IND, 5, 8), sep = "")]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("AFC", "NGC"),
-               PATH_IND := paste(substr(PATH_IND, 1, 4), "1", substr(PATH_IND, 6, 8), sep = "")]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("LRB"),
-               PATH_IND := paste(substr(PATH_IND, 1, 6), "1", substr(PATH_IND, 8, 8), sep = "")]
-      loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("DTP", "BTP"),
-               PATH_IND := paste(substr(PATH_IND, 1, 7), "1", sep = "")]
-    }
 
-    rm(i)
+    loss_fct$PATH_IND <- pathIndicatorGenerator(lossIndicatorMatix = loss_fct[,paste0("LOSS", 1:8, "_IN"), with = FALSE],
+                                                lossIndicatorLocMatrix = loss_fct[,paste0("LOC", 1:8, "_FRO"), with = FALSE],
+                                                merchantableHeight = loss_fct$H_MERCH,
+                                                compiler = "VRI")
     siteAge[, ':='(AGE_DWB = AT_M_TLS,
                    AGE_FLG = "NONE")]
     siteAge[!is.na(AT_M_TLS), AGE_FLG := "TLS"]
