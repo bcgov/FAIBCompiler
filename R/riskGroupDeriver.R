@@ -1,24 +1,25 @@
 #' Derive risk group for standard sample compilation/data
-#' 
-#' 
-#' @description will refine. This function is equivalent to risk_grp.sas macro.
 #'
-#' @param species character, Tree basic species code, which is SP0 in VRI original data.   
-#' @param pathIndex character, A character with length of 8, consists of 0 or 1. 
+#'
+#' @description will refine. This function is equivalent to risk_grp.sas for fiz-based process, risk_v3.sas for
+#'              bec-based process.
+#'
+#' @param species character, Tree basic species code, which is SP0 in VRI original data.
+#' @param pathIndex character, A character with length of 8, consists of 0 or 1.
 #' @param series character, DWB series. It is a lenght of 2 number character and can be derived using
 #'                          \code{\link{getDWBSeries}} function.
 #' @param height numeric, Total tree height.
 #' @param method character, Specifies the method between \code{FIZ} and \code{KBEC} to categorize the risk group. The \code{FIZ} method derives risk
 #'                          group by \code{species}, \code{pathIndex}, \code{series} and \code{height}.
 #'                          \code{KBEC} method derives the risk group using \code{species} and \code{pathIndex}.
-#'                             
-#' 
+#'
+#'
 #' @return Risk group, which is character
-#' 
+#'
 #' @importFrom data.table data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
 #'
-#' 
+#'
 #' @export
 #' @docType methods
 #' @rdname riskGroupDeriver
@@ -39,7 +40,7 @@ setMethod(
                 height = "numeric",
                 method = "character"),
   definition = function(species, pathIndex, series, height, method){
-    worktable <- data.table(uniObs = 1:length(pathIndex), SP0 = species, 
+    worktable <- data.table(uniObs = 1:length(pathIndex), SP0 = species,
                             PATH_IND = pathIndex, RISK_GRP = as.character(NA))
     pathArrayName <- c("CONK", "BCONK", "SCAR", "FRK_CRK", "FRST_CK", "MSLTO", "RTN_BR", "D_BK_TP")
     for (indipath in 1:8){
@@ -50,7 +51,7 @@ setMethod(
       }
     }
     worktable[, ':='(TOT_IND = rowSums(worktable[, pathArrayName, with = FALSE]))]
-    
+
     if(method == "KBEC"){
       worktable[SP0 %in% c("H", "PY", "PW", "D", "MB", "E",
                            "PA", "PL", "S", "L","F","AC", "B", "AT") &
@@ -64,7 +65,7 @@ setMethod(
                            "PA", "PL", "S", "L","F","AC", "B", "AT") & is.na(RISK_GRP) &
                   (CONK %==% 1 | BCONK %==% 1),
                 RISK_GRP := "3"]
-      
+
       worktable[SP0 %in% c("C", "Y") &
                   TOT_IND %==% 0,
                 RISK_GRP := "1"]
@@ -80,27 +81,27 @@ setMethod(
       ###########################################
       ###########################################
       ## logic for sp0 = AC cottonwood
-      if(nrow(worktable[SP0SERIES %in% c("AC01", "AC02", "AC03", "AC10", "AC11", "AC13"),]) > 0){  
-        worktable[SP0SERIES %in% c("AC01", "AC02", "AC03", "AC10", "AC11", "AC13"), 
+      if(nrow(worktable[SP0SERIES %in% c("AC01", "AC02", "AC03", "AC10", "AC11", "AC13"),]) > 0){
+        worktable[SP0SERIES %in% c("AC01", "AC02", "AC03", "AC10", "AC11", "AC13"),
                   RISK_GRP := "1"]
-      } 
-      
+      }
+
       if(nrow(worktable[SP0SERIES %in% c("AC04", "AC12"),]) > 0){
-        worktable[SP0SERIES %in% c("AC04", "AC12") & 
+        worktable[SP0SERIES %in% c("AC04", "AC12") &
                     (TOT_IND %==% 0 |
                        (FRK_CRK %==% 1 & TOT_IND %==% 1)),
                   RISK_GRP := "1"]
         worktable[SP0SERIES %in% c("AC04", "AC12") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("AT01", "AT02", "AT04", "AT12"),]) > 0){ ## logic for AT aspen
-        worktable[SP0SERIES %in% c("AT01", "AT02", "AT04", "AT12"), 
+        worktable[SP0SERIES %in% c("AT01", "AT02", "AT04", "AT12"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("AT03"),]) > 0){
-        worktable[SP0SERIES == "AT03" & 
+        worktable[SP0SERIES == "AT03" &
                     (TOT_IND %==% 0 |
                        !(CONK %==% 1 | BCONK %==% 1)),
                   RISK_GRP := "1"]
@@ -108,15 +109,15 @@ setMethod(
                     (CONK == 1 | BCONK == 1),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("AT10"),]) > 0){
-        worktable[SP0SERIES == "AT10" & 
+        worktable[SP0SERIES == "AT10" &
                     TOT_IND %==% 0,
                   RISK_GRP := "1"]
         worktable[SP0SERIES == "AT10" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("AT11"),]) > 0){
         worktable[SP0SERIES == "AT11" &
                     (TOT_IND %==% 0 |
@@ -128,18 +129,18 @@ setMethod(
         worktable[SP0SERIES == "AT11" & is.na(RISK_GRP) &
                     (CONK %==% 1 | BCONK %==% 1),
                   RISK_GRP := "3"]
-        
+
       }
-      
-      
+
+
       ##################################
       ##################################
       # logic for B balsam
-      if(nrow(worktable[SP0SERIES %in% c("B01", "B03", "B05"),]) > 0){ 
+      if(nrow(worktable[SP0SERIES %in% c("B01", "B03", "B05"),]) > 0){
         worktable[SP0SERIES %in% c("B01", "B03", "B05"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("B02", "B04", "B06"),]) > 0){
         worktable[SP0SERIES %in% c("B02", "B04", "B06") &
                     TOT_IND %==% 0,
@@ -147,7 +148,7 @@ setMethod(
         worktable[SP0SERIES %in% c("B02", "B04", "B06") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("B10", "B11", "B12", "B13",
                                          "B14", "B91", "B92", "B93",
                                          "B94", "B95", "B96", "B97",
@@ -166,7 +167,7 @@ setMethod(
                                    "B98", "B99") & is.na(RISK_GRP) &
                     (((1 %<=% temppath_tot & temppath_tot %<=% 3) |
                         ((1 %<=% temppath_tot & temppath_tot %<=% 2) & FRK_CRK %==% 1)) &
-                       !(CONK %==% 1 | BCONK %==% 1) & 
+                       !(CONK %==% 1 | BCONK %==% 1) &
                        TOT_IND %<=% 3),
                   RISK_GRP := "2"]
         worktable[, temppath_tot := NULL]
@@ -176,16 +177,16 @@ setMethod(
                                    "B98", "B99") & is.na(RISK_GRP),
                   RISK_GRP := "3"]
       }
-      
-      
+
+
       ##############################
       ##############################
       ##  LOGIC FOR SP0=C Cedar
-      if(nrow(worktable[SP0SERIES %in% c("C01", "C03"),]) > 0){  
+      if(nrow(worktable[SP0SERIES %in% c("C01", "C03"),]) > 0){
         worktable[SP0SERIES %in% c("C01", "C03"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("C02", "C04"),]) > 0){
         worktable[SP0SERIES %in% c("C02", "C04") &
                     TOT_IND %==% 0,
@@ -193,16 +194,16 @@ setMethod(
         worktable[SP0SERIES %in% c("C02", "C04") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("C10", "C11", "C12", "C13"),]) > 0){
         worktable[SP0SERIES %in% c("C10", "C11", "C12", "C13") &
-                    (TOT_IND %==% 0 | 
+                    (TOT_IND %==% 0 |
                        ((FRK_CRK %==% 1 | FRST_CK %==% 1) & TOT_IND %==% 1)),
                   RISK_GRP := "1"]
         worktable[SP0SERIES %in% c("C10", "C11", "C12", "C13") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("C14"),]) > 0){
         worktable[SP0SERIES == "C14" &
                     (TOT_IND %==% 0 |
@@ -211,7 +212,7 @@ setMethod(
         worktable[SP0SERIES == "C14" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("C91", "C92", "C93", "C94",
                                          "C95", "C97", "C98"),]) > 0){
         worktable[SP0SERIES %in% c("C91", "C92", "C93", "C94",
@@ -223,7 +224,7 @@ setMethod(
                                    "C95", "C97", "C98") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("C96"),]) > 0){
         worktable[SP0SERIES == "C96" &
                     HT %>=% 40.5,
@@ -231,7 +232,7 @@ setMethod(
         worktable[SP0SERIES == "C96" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("C99"),]) > 0){
         worktable[, temppath_tot := rowSums(worktable[,pathArrayName[c(4,5)], with = FALSE])] # ***11***
         worktable[SP0SERIES == "C99" &
@@ -242,7 +243,7 @@ setMethod(
                   RISK_GRP := "2"]
         worktable[, temppath_tot := NULL]
       }
-      
+
       ###########################################################################
       ###########################################################################
       ### logical for D Alder
@@ -250,7 +251,7 @@ setMethod(
         worktable[SP0SERIES %in% c("D01", "D02", "D10"),
                   RISK_GRP := "1"]
       }
-      
+
       ##############################
       ##############################
       ### LOGIC FOR SP0=E Birch          **/
@@ -258,7 +259,7 @@ setMethod(
         worktable[SP0SERIES %in% c("E01", "E02"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("E10", "E11"),]) > 0){
         worktable[SP0SERIES %in% c("E10", "E11") &
                     TOT_IND %==% 0,
@@ -266,28 +267,28 @@ setMethod(
         worktable[SP0SERIES %in% c("E10", "E11") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
-      
+
+
       ##############################
       ##############################
       ### LOGIC FOR SP0=F Douglas Fir    **/
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F01", "F02", "F03"),]) > 0){
         worktable[SP0SERIES %in% c("F01", "F02", "F03"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F04"),]) > 0){
-        worktable[SP0SERIES == "F04" & 
+        worktable[SP0SERIES == "F04" &
                     TOT_IND %==% 0,
                   RISK_GRP := "1"]
         worktable[SP0SERIES == "F04" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F10", "F11"),]) > 0){
         worktable[SP0SERIES %in% c("F10", "F11") &
-                    (TOT_IND %==% 0 | 
+                    (TOT_IND %==% 0 |
                        ((D_BK_TP %==% 1 | RTN_BR %==% 1 | FRST_CK %==% 1) & TOT_IND %==% 1)),
                   RISK_GRP := "1"]
         worktable[SP0SERIES %in% c("F10", "F11") & is.na(RISK_GRP) &
@@ -298,16 +299,16 @@ setMethod(
                     (CONK %==% 1 | BCONK %==% 1),
                   RISK_GRP := "3"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F12"),]) > 0){
-        worktable[SP0SERIES == "F12" & 
+        worktable[SP0SERIES == "F12" &
                     (TOT_IND %==% 0 |
                        ((MSLTO %==% 1 | RTN_BR %==% 1 | FRST_CK %==% 1) & TOT_IND %==% 1)),
                   RISK_GRP := "1"]
         worktable[SP0SERIES == "F12" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F13"),]) > 0){
         worktable[SP0SERIES == "F13" &
                     (TOT_IND %==% 0 |
@@ -316,7 +317,7 @@ setMethod(
         worktable[SP0SERIES == "F13" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F14"),]) > 0){
         worktable[SP0SERIES == "F14" &
                     (TOT_IND %==% 0 |
@@ -330,11 +331,11 @@ setMethod(
                   RISK_GRP := "2"]
         worktable[, ':='(temppath_tot1 = NULL,
                          temppath_tot2 = NULL)]
-        worktable[SP0SERIES == "F14" & is.na(RISK_GRP) & 
+        worktable[SP0SERIES == "F14" & is.na(RISK_GRP) &
                     (CONK %==% 1 | BCONK %==% 1),
                   RISK_GRP := "3"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("F98", "F99"),]) > 0){
         worktable[, ':='(temppath_tot = rowSums(worktable[,pathArrayName[5:7], with = FALSE]))] # ****111*
         worktable[SP0SERIES %in% c("F98", "F99") &
@@ -345,7 +346,7 @@ setMethod(
                   RISK_GRP := "2"]
         worktable[, temppath_tot := NULL]
       }
-      
+
       ###########################
       ###########################
       ### LOGIC FOR SP0=H Hemlock
@@ -353,7 +354,7 @@ setMethod(
         worktable[SP0SERIES %in% c("H01", "H03"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H02", "H04"),]) > 0){
         worktable[SP0SERIES %in% c("H02", "H04") &
                     TOT_IND %==% 0,
@@ -361,7 +362,7 @@ setMethod(
         worktable[SP0SERIES %in% c("H02", "H04") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H10"),]) > 0){
         worktable[, ':='(temppath_tot = rowSums(worktable[,pathArrayName[3:8], with = FALSE]))] # **111111
         worktable[SP0SERIES == "H10" &
@@ -375,7 +376,7 @@ setMethod(
                   RISK_GRP := "3"]
         worktable[, temppath_tot := NULL]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H11", "H14", "H95", "H96", "H97"),]) > 0){
         worktable[, ':='(temppath_tot1 = rowSums(worktable[,pathArrayName[c(6, 8)], with = FALSE]),    # *****1*1
                          temppath_tot2 = rowSums(worktable[,pathArrayName[3:5], with = FALSE]),        # **111***
@@ -394,7 +395,7 @@ setMethod(
                          temppath_tot2 = NULL,
                          temppath_tot3 = NULL)]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H12"),]) > 0){
         worktable[, ':='(temppath_tot1 = rowSums(worktable[,pathArrayName[3:8], with = FALSE]),    # **111111
                          temppath_tot2 = rowSums(worktable[,pathArrayName[1:2], with = FALSE]))]   # 11******
@@ -408,7 +409,7 @@ setMethod(
                   RISK_GRP := "3"]
         set(worktable, , c("temppath_tot1", "temppath_tot2"), NULL)
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H13"),]) > 0){
         worktable[, ':='(temppath_tot1 = rowSums(worktable[,pathArrayName[3:8], with = FALSE]))]   # 11******
         worktable[SP0SERIES == "H13" &
@@ -421,7 +422,7 @@ setMethod(
                   RISK_GRP := "3"]
         set(worktable, , c("temppath_tot1"), NULL)
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H84", "H85", "H86", "H87",
                                          "H88", "H89", "H90", "H91",
                                          "H92", "H93", "H94"),]) > 0){
@@ -444,7 +445,7 @@ setMethod(
         worktable[, ':='(temppath_tot1 = NULL,
                          temppath_tot2 = NULL)]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H98"),]) > 0){
         worktable[, ':='(temppath_tot1 = rowSums(worktable[,pathArrayName[c(6, 8)], with = FALSE]),    # *****1*1
                          temppath_tot2 = rowSums(worktable[,pathArrayName[c(1:5, 7)], with = FALSE]),  # 11111*1*
@@ -465,7 +466,7 @@ setMethod(
                          temppath_tot3 = NULL,
                          temppath_tot4 = NULL)]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("H99"),]) > 0){
         worktable[, ':='(temppath_tot1 = rowSums(worktable[,pathArrayName[c(6, 8)], with = FALSE]),    # *****1*1
                          temppath_tot2 = rowSums(worktable[,pathArrayName[c(1:5, 7)], with = FALSE]),  # 11111*1*
@@ -486,7 +487,7 @@ setMethod(
                          temppath_tot3 = NULL,
                          temppath_tot4 = NULL)]
       }
-      
+
       ###########################
       ###########################
       ##LOGIC FOR SP0=L Larch          **/
@@ -494,7 +495,7 @@ setMethod(
         worktable[SP0SERIES == "L01",
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("L02"),]) > 0){
         worktable[SP0SERIES == "L02" &
                     TOT_IND %==% 0,
@@ -502,7 +503,7 @@ setMethod(
         worktable[SP0SERIES == "L02" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("L10"),]) > 0){
         worktable[SP0SERIES == "L10" &
                     TOT_IND %==% 0,
@@ -513,7 +514,7 @@ setMethod(
         worktable[SP0SERIES == "L10" & is.na(RISK_GRP),
                   RISK_GRP := "3"]
       }
-      
+
       ####################################
       ####################################
       ### LOGIC FOR SP0=MB Maple          **/
@@ -521,7 +522,7 @@ setMethod(
         worktable[SP0SERIES %in% c("MB01", "MB02"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("MB10"),]) > 0){
         worktable[SP0SERIES == "MB10" &
                     TOT_IND %==% 0,
@@ -529,7 +530,7 @@ setMethod(
         worktable[SP0SERIES == "MB10" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       ########################################
       ########################################
       ## LOGIC FOR SP0=PA White Bark Pine**/
@@ -537,7 +538,7 @@ setMethod(
         worktable[SP0SERIES %in% c("PA01", "PA03"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("PA02", "PA04", "PA10", "PA11"),]) > 0){
         worktable[SP0SERIES %in% c("PA02", "PA04", "PA10", "PA11") &
                     TOT_IND %==% 0,
@@ -545,8 +546,8 @@ setMethod(
         worktable[SP0SERIES %in% c("PA02", "PA04", "PA10", "PA11") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
-      
+
+
       ########################################
       ########################################
       ## LOGIC FOR SP0=PL Lodgepole Pine **/
@@ -554,7 +555,7 @@ setMethod(
         worktable[SP0SERIES == "PL01",
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("PL02", "PL03", "PL04", "PL10", "PL98"),]) > 0){
         worktable[SP0SERIES %in% c("PL02", "PL03", "PL04", "PL10", "PL98") &
                     TOT_IND %==% 0,
@@ -562,7 +563,7 @@ setMethod(
         worktable[SP0SERIES %in% c("PL02", "PL03", "PL04", "PL10", "PL98") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("PL11", "PL12", "PL13", "PL97", "PL99"),]) > 0){
         worktable[SP0SERIES %in% c("PL11", "PL12", "PL13", "PL97", "PL99") &
                     TOT_IND %==% 0,
@@ -574,17 +575,17 @@ setMethod(
                     (CONK %==% 1 | BCONK %==% 1),
                   RISK_GRP := "3"]
       }
-      
-      
+
+
       ############################################
       ############################################
       ## LOGIC FOR SP0=PW White Pine     **/
       if(nrow(worktable[SP0SERIES %in% c("PW01", "PW03"),]) > 0){
         worktable[SP0SERIES %in% c("PW01", "PW03"),
                   RISK_GRP := "1"]
-        
+
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("PW02", "PW04", "PW10", "PW11"),]) > 0){
         worktable[SP0SERIES %in% c("PW02", "PW04", "PW10", "PW11") &
                     TOT_IND %==% 0,
@@ -592,8 +593,8 @@ setMethod(
         worktable[SP0SERIES %in% c("PW02", "PW04", "PW10", "PW11") & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
-      
+
+
       #######################################
       #######################################
       ## LOGIC FOR SP0=PY Yellow Pine    **/
@@ -601,7 +602,7 @@ setMethod(
         worktable[SP0SERIES == "PY01",
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("PY02"),]) > 0){
         worktable[SP0SERIES == "PY02" &
                     TOT_IND %==% 0,
@@ -609,7 +610,7 @@ setMethod(
         worktable[SP0SERIES == "PY02" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("PY10"),]) > 0){
         worktable[SP0SERIES == "PY10" &
                     (TOT_IND %==% 0 |
@@ -618,15 +619,15 @@ setMethod(
         worktable[SP0SERIES == "PY10" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       ####################################
       ####################################
       ## LOGIC FOR SP0=S Spruce         **/
       if(nrow(worktable[SP0SERIES %in% c("S01", "S02", "S03"),]) > 0){
-        worktable[SP0SERIES %in% c("S01", "S02", "S03"), 
+        worktable[SP0SERIES %in% c("S01", "S02", "S03"),
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("S04"),]) > 0){
         worktable[SP0SERIES == "S04" &
                     TOT_IND %==% 0,
@@ -634,7 +635,7 @@ setMethod(
         worktable[SP0SERIES == "S04" & is.na(RISK_GRP),
                   RISK_GRP := "2"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("S10"),]) > 0){
         worktable[, ':='(temppath_tot = rowSums(worktable[,pathArrayName[3:8], with = FALSE]))] #**111111
         worktable[SP0SERIES == "S10" &
@@ -647,7 +648,7 @@ setMethod(
                   RISK_GRP := "2"]
         set(worktable, , c("temppath_tot"), NULL)
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("S11", "S12", "S13", "S95",
                                          "S96", "S97", "S98", "S99"),]) > 0){
         worktable[SP0SERIES %in% c("S11", "S12", "S13", "S95",
@@ -663,7 +664,7 @@ setMethod(
                     (CONK %==% 1 | BCONK %==% 1),
                   RISK_GRP := "3"]
       }
-      
+
       ####################################
       ####################################
       ## LOGIC FOR SP0=Y Yellow Cedar   **/
@@ -671,7 +672,7 @@ setMethod(
         worktable[SP0SERIES == "Y01",
                   RISK_GRP := "1"]
       }
-      
+
       if(nrow(worktable[SP0SERIES %in% c("Y02", "Y10"),]) > 0){
         worktable[SP0SERIES %in% c("Y02", "Y10") &
                     TOT_IND %==% 0,

@@ -31,7 +31,8 @@ group by \code{species}, \code{pathIndex}, \code{series} and \code{height}.
 Risk group, which is character
 }
 \description{
-will refine. This function is equivalent to risk_grp.sas macro.
+will refine. This function is equivalent to risk_grp.sas for fiz-based process, risk_v3.sas for
+bec-based process.
 }
 \author{
 Yong Luo
