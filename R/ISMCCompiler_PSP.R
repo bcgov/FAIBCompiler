@@ -22,6 +22,9 @@
 #'                         which is consistent with our rdw system.
 #' @param equation character, Specifies the taper equation that is used for compiler. Currently supports
 #'                            BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).
+#' @param HTEstimateMethod character, Specifies the method to estimate height based on DBH.
+#'                                    Currently it supports \code{bestMEM}, which is best mixed
+#'                                    effect model.
 #' @param walkThru logical, Speciefies whether the data had been collected using work through method. Default is \code{TRUE},
 #'                          if it is not specified.
 #' @param logMinLength numeric, Specifies minimum length of log when doing log length adjustment,
@@ -71,6 +74,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
                              oracleEnv = "PROD",
                              compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
                              equation = "KBEC",
+                             HTEstimateMethod = "bestMEM",
                              walkThru = TRUE,
                              logMinLength = 0.1,
                              stumpHeight = 0.3,
@@ -206,64 +210,55 @@ ISMCCompiler_PSP <- function(oracleUserName,
   ## vi_h data is the site age trees
   tree_ah1 <- PSPInit_siteTree(data.table::copy(samples),
                                compilationPaths$compilation_sa)
+  tree_ms1[, MEAS_INTENSE := "H-ENHANCED"]
+  tree_nonHT[, MEAS_INTENSE := "NON-ENHANCED"]
   tree_all <- rbindlist(list(tree_ms1, tree_nonHT),
                         fill = TRUE)
   tree_all <- merge(tree_all,
                     unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER,
                                       VISIT_NUMBER,
                                       MEAS_DT,
-                                      BGC_ZONE)],
+                                      BGC_ZONE,
+                                      BGC_SBZN)],
                            by = "CLSTR_ID"),
                     by = "CLSTR_ID",
                     all.x = TRUE)
-  browser()
-  pspTreeCheck(tree_all)
+  tree_all <- merge(tree_all, vi_d[,.(CLSTR_ID, TREE_NO, full = TRUE)],
+                    by = c("CLSTR_ID", "TREE_NO"),
+                    all.x = TRUE)
+  tree_all[MEAS_INTENSE == "NON-ENHANCED" & full == TRUE]
+  tree_all[MEAS_INTENSE == "H-ENHANCED" & full == TRUE,
+           MEAS_INTENSE := "FULL"]
+
+  # tree_all <- readRDS("treeall.rds")
+  # compilationPaths <- readRDS("compilationPaths.rds")
+  # growthrates <- DBHGrowthRateGenerator(tree_all)
+  #
+  # pspTreeCheck(tree_all, growthrates)
+
+  if(HTEstimateMethod == "bestMEM"){
+    height_dbh_coeff <- read.csv(file.path(compilationPaths$compilation_coeff,
+                                       "best_height_models.csv")) %>%
+      data.table
+  }
 
   ## fit height for nonHT trees
-  alltrees <- pspHT(treeData = tree_all,
-                    method = "bestHeightModel",
-                    coeffPath = compilationPaths$compilation_coeff)
-
+  nonHtrees <- pspHT(treeData = tree_all[MEAS_INTENSE == "NON-ENHANCED",],
+                    method = HTEstimateMethod,
+                    coeffs = height_dbh_coeff)
+  browser()
+  alltrees <- rbindlist(list(nonHtrees, tree_all[MEAS_INTENSE != "NON-ENHANCED",]),
+                        fill = TRUE)
   ### 3. vi_c compilation
-  cat(paste(Sys.time(), ": Compile full/enhanced and h-enhanced volume trees.\n", sep = ""))
-  tree_ms1[LOG_G_1 == "*",
-           MEAS_INTENSE := "H-ENHANCED"]
-  ## B sample trees are H-enhnced trees
-  tree_ms1[substr(CLSTR_ID, 9, 9) == "B",
-           MEAS_INTENSE := "H-ENHANCED"]
-  tree_ms1[is.na(MEAS_INTENSE) & PLOT == "I",
-           MEAS_INTENSE := "FULL"]
-  tree_ms1[is.na(MEAS_INTENSE),
-           MEAS_INTENSE := "ENHANCED"]
-  ## for the full/enhanced trees, if the length of first log is missing, assign
-  ## them with tree height
-  tree_ms1[MEAS_INTENSE %in% c("FULL", "ENHANCED") & LOG_L_1 %in% c(NA, 0),
-           LOG_L_1 := HEIGHT]
-  ## for the zero tree height trees, force them as non-enhanced trees, which means
-  ## they only have DBH information
-  tree_ms1[HEIGHT %in% c(NA, 0), MEAS_INTENSE := "NON-ENHANCED"]
-  nonenhancedtreedata <- tree_ms1[MEAS_INTENSE == "NON-ENHANCED",]
-  voltrees <- data.table::copy(tree_ms1)[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),]
-  voltrees <- merge(voltrees, unique(samples[,.(CLSTR_ID, FIZ, BGC_ZONE, BGC_SBZN, BGC_VAR)],
-                                     by = "CLSTR_ID"),
-                    by = "CLSTR_ID",
-                    all.x = TRUE)
-
-  voltrees[is.na(SP0), ':='(SPECIES = "X", SP0 = "F")]
-  best_height_models <- read.csv(file.path(compilationPaths$compilation_coeff,
-                                           "best_height_models.csv"),
-                                 stringsAsFactors = FALSE) %>%
-    data.table
-  tree_ms6 <- VRIVolTree(treeData = data.table::copy(voltrees),
+  tree_ms6 <- PSPVolTree(treeData = data.table::copy(alltrees),
                          equation = equation,
                          logMinLength = logMinLength,
                          stumpHeight = stumpHeight,
                          breastHeight = breastHeight,
                          UTOPDIB = UTOPDIB,
-                         bestHeightModels = best_height_models,
-                         HTBTOPModel = "height")
-  tree_ms6 <- rbindlist(list(tree_ms6, nonenhancedtreedata), fill = TRUE)
-  rm(tree_ms1, voltrees, nonenhancedtreedata)
+                         HTEstimateMethod = HTEstimateMethod,
+                         htDBHCoeff = height_dbh_coeff)
+
 
   ######################
   ###################### start the site age compilation
@@ -308,13 +303,20 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                                by = "CLSTR_ID"),
                                         by = "CLSTR_ID",
                                         all.x = TRUE)
-  tree_ms7 <- DWBCompiler(treeMS = tree_ms6[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
+
+
+  tree_ms7 <- DWBCompiler_PSP(treeMS = tree_ms6[MEAS_INTENSE == "FULL",],
                           siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
-                          treeLossFactors = vi_d, equation = "KBEC")
+                          treeLossFactors = vi_d,
+                          equation = "KBEC")
 
   tree_ms7 <- rbindlist(list(tree_ms7,
                              tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
                         fill = TRUE)
+  browser()
+  save(list = ls(),
+       file = "alldata.rdata")
+  load("alldata.rdata")
   vi_c_sa <- readRDS(file.path(compilationPaths$compilation_sa,
                                "vi_c.rds"))
   tree_ms7[, ADJ_ID := NULL]

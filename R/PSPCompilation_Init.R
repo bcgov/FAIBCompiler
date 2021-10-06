@@ -22,6 +22,9 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                 IP_UTM = UTM_ZONE, IP_EAST = UTM_EASTING, IP_NRTH = UTM_NORTHING,
                                 IP_ELEV = ELEVATION)]
+  samplesites[, namelength := nchar(SAMPLE_SITE_NAME)]
+  samplesites[, PSP_TYPE := substr(SAMPLE_SITE_NAME, namelength, namelength)]
+  samplesites <- samplesites[PSP_TYPE != "I",]
   if(nrow(samplesites) != length(unique(samplesites$SITE_IDENTIFIER))){
     warning("samplesites file: SITE_IDENTIFIER is not unique.")
   }
@@ -30,25 +33,34 @@ PSPCompilation_Init <- function(inputPath, outputPath){
     data.table
   SampleSiteVisits[, newMD := SAMPLE_SITE_VISIT_START_DATE + 60*60]
 
-
   vi_a <- SampleSiteVisits[,.(CLSTR_ID = NA,
                               SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
+                              STAND_DISTURBANCE_CODE, STAND_STRUCTURE_CODE,
+                              SAMPLE_BREAK_POINT, SAMPLE_BREAK_POINT_TYPE,
+                              STEM_MAP_REQD_IND,
                               SAMP_NO = PROJECT_NUMBER, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
                               VISIT_NUMBER,
                               MEAS_DT = substr(newMD, 1, 10),
                               IP_AZ_PN = NA,
                               IP_DT_PN = NA, IP_AZ_GP = NA, IP_DT_GP = NA, IP_GPSID = NA)]
+  ### for the sample site 4016893 and visit 3,
+  ### the sample date is 2008-04-01 based on Chris
+  ### see email on 2021-08-26
+  vi_a[SITE_IDENTIFIER == 4016893 &
+         VISIT_NUMBER == 3,
+       MEAS_DT := "2008-04-01"]
+  vi_a <- vi_a[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
   vi_a <- merge(vi_a, samplesites,
                 by = "SITE_IDENTIFIER",
                 all.x = TRUE)
-  rm(samplesites, SampleSiteVisits)
+  rm(SampleSiteVisits)
   gc()
   vi_a[, TYPE_CD := paste0(TYPE_CD, VISIT_NUMBER)]
   vi_a[,CLSTR_ID := paste(SITE_IDENTIFIER, TYPE_CD, sep = "-")]
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
                              full.names = TRUE))
-
+  plotdetails <- plotdetails[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
   plotdetails <- merge(plotdetails, vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER,
                                             CLSTR_ID)],
                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
@@ -163,6 +175,7 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                                   full.names = TRUE)) %>%
     data.table
   treemeasurements[, COMMENT_TEXT := NULL]
+  treemeasurements <- treemeasurements[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
 
   treemeasurements <- merge(treemeasurements,
                             unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID)],
@@ -199,7 +212,8 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                              WL_CROWN = CROWN_CONDITION_CODE,
                              WL_BARK = BARK_RETENTION_CODE,
                              WL_WOOD = WOOD_CONDITION_CODE,
-                             WL_LICHE = LICHEN_LOADING_RATING_CODE)]
+                             WL_LICHE = LICHEN_LOADING_RATING_CODE,
+                             MEASUREMENT_ANOMALY_CODE)]
 
   #   treelog <- readRDS(dir(inputPath, "TreeLogAssessments.rds",
   #                          full.names = TRUE)) %>%
@@ -377,6 +391,8 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   treeloss <- readRDS(dir(inputPath, "TreeLossIndicators.rds",
                           full.names = TRUE)) %>%
     data.table
+  treeloss <- treeloss[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
+
   # vi_d <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 &
   #                            OUT_OF_PLOT_IND == "N",
   #                          .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT_CATEGORY_CODE,
@@ -440,6 +456,7 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   treedamage <- readRDS(dir(inputPath, "TreeDamageOccurrences.rds",
                             full.names = TRUE)) %>%
     data.table
+  treedamage <- treedamage[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
 
   treedamage <- treedamage[order(SITE_IDENTIFIER, VISIT_NUMBER,
                                  PLOT_NUMBER, TREE_NUMBER),]
@@ -469,12 +486,12 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER",
                        "PLOT", "TREE_NUMBER"),
                 all = TRUE)
-browser()
   rm(treeloss, treedamage, maxneworder)
   vi_d <- merge(vi_d[, ind := TRUE],
-                treemeasurements[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT = PLOT_NUMBER,
-                                    TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
-                                    DISTANCE = STEM_MAP_DISTANCE, AZIMUTH = STEM_MAP_BEARING,
+                treemeasurements[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER,
+                                    PLOT,
+                                    TREE_NUMBER, SPECIES, SP0,
+                                    DISTANCE, AZIMUTH,
                                     OUT_OF_PLOT_IND, MEASUREMENT_ANOMALY_CODE)],
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT", "TREE_NUMBER"),
                 all = TRUE)
@@ -494,6 +511,7 @@ browser()
   SmallLiveTreeTallies <- readRDS(dir(inputPath,
                                       pattern =  "SmallLiveTreeTallies.rds",
                                       full.names = TRUE))
+  SmallLiveTreeTallies <- SmallLiveTreeTallies[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
   SmallLiveTreeTallies <- merge(SmallLiveTreeTallies,
                                 unique(vi_a[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
@@ -526,6 +544,7 @@ browser()
 
   stumptallies <- readRDS(dir(inputPath, pattern = "StumpTallies.rds",
                               full.names = TRUE))
+  stumptallies <- stumptallies[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
   stumptallies <- merge(stumptallies,
                         unique(vi_a[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),

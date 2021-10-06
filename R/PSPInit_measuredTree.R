@@ -65,6 +65,7 @@ PSPInit_measuredTree<- function(clusterplotHeader,
                  LV_D, S_F,
                  TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,
                  HEIGHT = TREE_LEN, BARK_PER,
-                 HT_PROJ, DIAM_BTP, BROKEN_TOP_IND)]
+                 HT_PROJ, DIAM_BTP, BROKEN_TOP_IND,
+                 MEASUREMENT_ANOMALY_CODE)]
   return(vi_c)
 }
