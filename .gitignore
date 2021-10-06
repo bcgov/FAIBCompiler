@@ -5,3 +5,4 @@ developmentTools.R
 *.rds
 *.xlsx
 runningCodes.r
+alldata.rdata
