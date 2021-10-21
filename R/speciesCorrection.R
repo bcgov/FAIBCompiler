@@ -82,6 +82,16 @@ speciesCorrection <- function(species, BEC, BEC_subzone){
                  process == FALSE,
                ':='(species = "SS",
                     process = TRUE)]
+  processtable[BEC == "CWH" &
+                 species %in% c("SE", "SW") &
+                 process == FALSE,
+               ':='(species = "SS",
+                    process = TRUE)]
+  processtable[BEC %in% c("ESSF", "MH") &
+                 species %in% c("SW") &
+                 process == FALSE,
+               ':='(species = "SE",
+                    process = TRUE)]
   # else if species in ('B','BA') and bec_i_c = 'I' then
   # species = 'BL';
   processtable[BEC_I_C == "I" &
@@ -127,16 +137,16 @@ speciesCorrection <- function(species, BEC, BEC_subzone){
 
   # else if species in ('H','HXM') and bec_i_c = 'C' and bgc_zone in ('MH') then
   # species = 'HM';
-  processtable[BEC == "MH" &
-                 species %in% c("H", "HXM") &
+  processtable[BEC %in% c("MH", "ESSF") &
+                 species %in% c("H", "HXM", "HX") &
                  process == FALSE,
                ':='(species = "HM",
                     process = TRUE)]
 
   # else if species in ('H','HXM') and bec_i_c = 'C' and bgc_zone not in ('MH') then
   # species = 'HW';
-  processtable[BEC_I_C == "C" &
-                 species %in% c("H", "HXM") &
+  processtable[(BEC_I_C == "C" | BEC %in% c("ICH", "SBS")) &
+                 species %in% c("H", "HXM", "HX") &
                  process == FALSE,
                ':='(species = "HW",
                     process = TRUE)]

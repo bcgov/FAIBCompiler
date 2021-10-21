@@ -148,8 +148,8 @@ ISMCCompiler <- function(oracleUserName,
                                                   PROJ_ID, SAMP_NO)],
                                 by = "SAMP_POINT")
   saveRDS(spatialLookups_simp,
-              file.path(compilationPaths$compilation_db,
-                        "spatiallookup.rds"))
+          file.path(compilationPaths$compilation_db,
+                    "spatiallookup.rds"))
   cat("    Saved spatial attribute table as spatiallookup \n")
 
 
@@ -189,11 +189,17 @@ ISMCCompiler <- function(oracleUserName,
                                    walkThru)
   ### 2.3 load vi_d data
   ## vi_d contains call grading data for fully measured trees and enhanced trees
-  vi_d <- VRIInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO)],
+  vi_d <- VRIInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SPECIES_ORG, SP0)],
                              dataSourcePath = compilationPaths$compilation_sa)
-vi_d_temp <- readRDS(file.path(compilationPaths$compilation_sa, "vi_d.rds"))
-saveRDS(vi_d_temp,
-        file.path(compilationPaths$compilation_db, "compiled_vi_d.rds"))
+
+  vi_d_temp <- readRDS(file.path(compilationPaths$compilation_sa, "vi_d.rds"))
+  vi_d_temp[,':='(SPECIES = NULL,
+                  SP0 = NULL)]
+  vi_d_temp <- merge(vi_d_temp,
+                     vi_d[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SPECIES_ORG, SP0)],
+                     by = c("CLSTR_ID", "PLOT", "TREE_NO"))
+  saveRDS(vi_d_temp,
+          file.path(compilationPaths$compilation_db, "compiled_vi_d.rds"))
   ### 2.4 load vi_i data
   ## vi_i has trees in auxi plots without height information (mostly), however, some of these trees are also in vi_c
   tree_ax1 <- VRIInit_auxTree(data.table::copy(samples),
@@ -338,11 +344,11 @@ saveRDS(vi_d_temp,
     coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
     if(compilationYear > 2021){ ## comparison starts from 2022 to select the better model to predict BA-WSV relationship
       fixedcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                        paste0("fixedCoefs", compilationYear-1, ".rds")))
+                                           paste0("fixedCoefs", compilationYear-1, ".rds")))
       fixedcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
 
       randomcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                        paste0("randomCoefs", compilationYear-1, ".rds")))
+                                            paste0("randomCoefs", compilationYear-1, ".rds")))
       randomcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
 
       allfix <- merge(coefs$fixedcoeff[,.(uni_strata,
@@ -374,8 +380,8 @@ saveRDS(vi_d_temp,
 
       randomcoeff_final <- randomcoeff_crt[uni_strata %in% allfix[YEAR_FIT == compilationYear,]$uni_strata,]
       randomcoeff_final <- rbindlist(list(randomcoeff_final,
-                                         randomcoeff_prev[uni_strata %in% allfix[YEAR_FIT != compilationYear,]$uni_strata,]),
-                                    fill = TRUE)
+                                          randomcoeff_prev[uni_strata %in% allfix[YEAR_FIT != compilationYear,]$uni_strata,]),
+                                     fill = TRUE)
       randomcoeff_final[,':='(uni_strata = NULL)]
       randomcoeff_final[is.na(YEAR_FIT),':='(YEAR_FIT = compilationYear)]
     } else {
@@ -542,9 +548,9 @@ saveRDS(vi_d_temp,
     allfiles_indifolder <- gsub(".rds", "", allfiles_indifolder)
 
     for (indifile in allfiles_indifolder) {
-        thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
-        write.xlsx(thedata,
-                   file.path(indifolder, paste0(indifile, ".xlsx")))
+      thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
+      write.xlsx(thedata,
+                 file.path(indifolder, paste0(indifile, ".xlsx")))
     }
   }
 

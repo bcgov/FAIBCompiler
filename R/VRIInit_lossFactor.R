@@ -25,12 +25,16 @@ VRIInit_lossFactor<- function(fullMeasuredTrees,
                         dataSourcePath){
     lossfactors <- readRDS(file.path(dataSourcePath, "vi_d.rds")) %>% data.table
     names(lossfactors) <- toupper(names(lossfactors))
+    lossfactors[, ':='(SPECIES = NULL,
+                       SP0 = NULL)]
     lossfactors <- lossfactors[, c("CLSTR_ID", "PLOT", "TREE_NO", paste("LOSS", 1:8, "_IN", sep = ""),
                                    paste("LOC", 1:8, "_FRO", sep = "")), with = FALSE]
     lossfactors <- unique(lossfactors, by = c("CLSTR_ID", "PLOT", "TREE_NO"))
     fullMeasuredTrees[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
     lossfactors[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
     lossfactors <- lossfactors[clusterplottree %in% fullMeasuredTrees$clusterplottree,]
+    lossfactors <- merge(lossfactors,
+                         fullMeasuredTrees[,.(clusterplottree, SPECIES, SPECIES_ORG, SP0)])
     lossfactors[, ':='(clusterplottree = NULL)]
     return(lossfactors)
   }
