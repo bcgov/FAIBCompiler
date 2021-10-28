@@ -36,7 +36,7 @@ pathIndicatorGenerator <- function(lossIndicatorMatix,
     for(i in 1:8){
       loss_fct[, ':='(tempLOSS_IN = unlist(loss_fct[, paste("LOSS", i, "_IN", sep = ""),
                                                     with = FALSE]))]
-      loss_fct[substr(tempLOSS_IN, 1, 2) %in% c("DD", "DR", "CN", "DI"),
+      loss_fct[substr(tempLOSS_IN, 1, 2) %in% c("DD", "DR", "CN", "DI", "D"),
                PATH_IND := paste("1", substr(PATH_IND, 2, 8), sep = "")]
       loss_fct[tempLOSS_IN %in% c("BNK"),
                PATH_IND := paste(substr(PATH_IND, 1, 1), "1", substr(PATH_IND, 3, 8), sep = "")]
@@ -50,7 +50,7 @@ pathIndicatorGenerator <- function(lossIndicatorMatix,
                PATH_IND := paste(substr(PATH_IND, 1, 5), "1", substr(PATH_IND, 7, 8), sep = "")]
       loss_fct[tempLOSS_IN %in% c("LRB"),
                PATH_IND := paste(substr(PATH_IND, 1, 6), "1", substr(PATH_IND, 8, 8), sep = "")]
-      loss_fct[tempLOSS_IN %in% c("DTP", "BTP"),
+      loss_fct[tempLOSS_IN %in% c("DTP", "BTP", "CD"),
                PATH_IND := paste(substr(PATH_IND, 1, 7), "1", sep = "")]
     }
   } else if (compiler == "VRI"){
@@ -63,7 +63,7 @@ pathIndicatorGenerator <- function(lossIndicatorMatix,
                       tempLOSS_IN = unlist(loss_fct[, paste("LOSS", i, "_IN", sep = ""), with = FALSE]))]
       loss_fct[tempLOSS_IN != "" & is.na(tempLOC_FRO), tempLOC_FRO := 0]
       loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 substr(tempLOSS_IN, 1, 2) %in% c("DD", "DR", "CN", "DI"),
+                 substr(tempLOSS_IN, 1, 2) %in% c("DD", "DR", "CN", "DI", "D"),
                PATH_IND := paste("1", substr(PATH_IND, 2, 8), sep = "")]
       loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
                  tempLOSS_IN %in% c("BNK"),
@@ -84,7 +84,7 @@ pathIndicatorGenerator <- function(lossIndicatorMatix,
                  tempLOSS_IN %in% c("LRB"),
                PATH_IND := paste(substr(PATH_IND, 1, 6), "1", substr(PATH_IND, 8, 8), sep = "")]
       loss_fct[(tempLOC_FRO %<<% H_MERCH | is.na(H_MERCH)) &
-                 tempLOSS_IN %in% c("DTP", "BTP"),
+                 tempLOSS_IN %in% c("DTP", "BTP", "CD"),
                PATH_IND := paste(substr(PATH_IND, 1, 7), "1", sep = "")]
     }
   } else {
