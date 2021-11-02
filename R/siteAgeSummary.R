@@ -49,11 +49,19 @@ setMethod(
                                                              HT_TOP = HEIGHT, SP_TOP = SPECIES)]
     ah_ta <- unique(ah_ta, by = "CLSTR_ID")
 
+    ## as suggested by Rene as per communication on 20211029
+    ## the site trees without si suitability
+    ## if a site tree suitable for age and height, this is suitable for site index
+    cpldSiteAgeData[is.na(SUIT_SI) & SUIT_TR == "Y" &
+                      SUIT_HT == "Y", SUIT_SI := "Y"]
+
+    cpldSiteAgeData[is.na(SUIT_SI), SUIT_SI := "N"]
 
     tlsxo <- cpldSiteAgeData[TH_TREE %in% c("T", "S", "L", "X", "O")][, ':='(N_height = 1, N_age_bh = 1)]
     tlsxo[SUIT_TR == "N", ':='(AGE_BH = as.numeric(NA),
                                AGE_TOT = as.numeric(NA))]
     tlsxo[SUIT_HT == "N", HEIGHT := as.numeric(NA)]
+    tlsxo[SUIT_SI == "N", SI_TREE := as.numeric(NA)]
     tlsxo[is.na(HEIGHT), N_height := 0]
     tlsxo[is.na(AGE_BH), N_age_bh := 0]
 

@@ -128,7 +128,7 @@ setMethod(
     siteAgeData[, ':='(HT_OLD = NULL)]
     siteAgeData[SUIT_HT == "N" | SUIT_TR == "N", SI_TREE := as.numeric(NA)]
     siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID, PLOT, TREE_NO, SPECIES,
-                                               SUIT_TR, SUIT_HT, FIZ, BGC_ZONE, REGION_IC,
+                                               SUIT_TR, SUIT_HT, SUIT_SI, FIZ, BGC_ZONE, REGION_IC,
                                                TH_TREE, TP_TREE, RA_TREE,
                                                AGE_BASE, SP0,
                                                GROW_5YR, GROW_10YR, GROW_20YR, AGE_CORR, TOTAL_AG, PHYS_AGE,

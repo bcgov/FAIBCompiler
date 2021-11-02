@@ -32,6 +32,37 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
     data.table
   SampleSiteVisits[, newMD := SAMPLE_SITE_VISIT_START_DATE + 60*60]
 
+  ## extract suit_si from notes there are 7912 observations found, with 7900 have valid suit_si code, i.e., yes or no
+
+  samplesitevisitenotes <- SampleSiteVisits[,.(SITE_IDENTIFIER, VISIT_NUMBER, SAMPLE_SITE_VISIT_COMMENT)]
+  samplesitevisitenotes[, SAMPLE_SITE_VISIT_COMMENT := toupper(gsub(" ", "", SAMPLE_SITE_VISIT_COMMENT))]
+  samplesitevisitenotes <- samplesitevisitenotes[grepl("SITEINDEXTREESUITABILITY", SAMPLE_SITE_VISIT_COMMENT, fixed = TRUE), ]
+  suit_si_from_notes <- NULL
+  for(indirow in 1:nrow(samplesitevisitenotes)){
+    indipositiontable <- data.table(start_position = as.numeric(gregexpr("SITEINDEXTREESUITABILITY",
+                                           samplesitevisitenotes$SAMPLE_SITE_VISIT_COMMENT[indirow])[[1]]))
+
+    indipositiontable[,':='(SITE_IDENTIFIER = samplesitevisitenotes$SITE_IDENTIFIER[indirow],
+                            VISIT_NUMBER = samplesitevisitenotes$VISIT_NUMBER[indirow],
+                            SAMPLE_SITE_VISIT_COMMENT = samplesitevisitenotes$SAMPLE_SITE_VISIT_COMMENT[indirow])]
+
+    suit_si_from_notes <- rbind(suit_si_from_notes, indipositiontable)
+  }
+
+  suit_si_from_notes[, firstcut := substr(SAMPLE_SITE_VISIT_COMMENT, start_position+24, start_position+30)]
+
+  suit_si_from_notes[, yesposition := unlist(lapply(firstcut, function(x){as.numeric(gregexpr("YES", x)[[1]])}))]
+  suit_si_from_notes[, noposition := unlist(lapply(firstcut, function(x){as.numeric(gregexpr("NO", x)[[1]][1])}))]
+
+  suit_si_from_notes[yesposition > 0, TREE_NO_yes := as.numeric(substr(firstcut, 1, yesposition-1))]
+  suit_si_from_notes[noposition > 0, TREE_NO_no := as.numeric(substr(firstcut, 1, noposition-1))]
+
+  suit_si_from_notes[(!is.na(TREE_NO_yes) & is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_yes,
+                                                                   SUIT_SI_temp = "Y")]
+  suit_si_from_notes[(is.na(TREE_NO_yes) & !is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_no,
+                                                                   SUIT_SI_temp = "N")]
+  suit_si_from_notes <- suit_si_from_notes[!is.na(TREE_NUMBER),.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, SUIT_SI_temp)]
+
 
   vi_a <- SampleSiteVisits[,.(CLSTR_ID = NA,
                               SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
@@ -159,7 +190,20 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
-  treemeasurements[, COMMENT_TEXT := NULL]
+
+  # merge suit_si_from_notes to all tree measurements
+  treemeasurements <- merge(treemeasurements, suit_si_from_notes,
+                            by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
+                            all.x = TRUE)
+  treemeasurements[!is.na(SUIT_SI_temp),
+                   SUITABLE_FOR_SITE_INDEX_IND := SUIT_SI_temp]
+  treemeasurements[, SUIT_SI_temp := NULL]
+
+  suit_si_from_notes <- merge(suit_si_from_notes,
+                              treemeasurements[,.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, intreemeas = TRUE)],
+                            by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
+                            all.x = TRUE)
+
   ### for the NFI samples the tree number changes
   ## the next few line to modify tree number and make them
   ## the same as the previous ones. the crosswalk table is prepared
@@ -317,6 +361,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
                              BNG_DIAM = DIAMETER_AT_BORING_HEIGHT, BARK_THK = BARK_THICKNESS,
                              SUIT_TR = SUITABLE_FOR_AGE_IND, BORED_HT = AGE_MEASMT_HEIGHT,
                              SUIT_HT = SUITABLE_FOR_HEIGHT_IND,
+                             SUIT_SI = SUITABLE_FOR_SITE_INDEX_IND,
                              PLOT_TYP = NA, # not sure
                              BARK_THKX = NA, # not sure
                              MEAS_COD = AGE_MEASURE_CODE,
