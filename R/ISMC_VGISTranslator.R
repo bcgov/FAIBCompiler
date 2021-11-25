@@ -347,7 +347,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   ## see email on August 25, 2021
   treemeasurements[is.na(AGE_CORE_MISSED_YEARS),
                    AGE_CORE_MISSED_YEARS := 0]
-  vi_h <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT),
+  vi_h <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
                            .(CLSTR_ID, PLOT = PLOT_CATEGORY_CODE,
                              TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE, SP0,
                              CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
@@ -367,7 +367,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
                              MEAS_COD = AGE_MEASURE_CODE,
                              RANDOM_TREE_IND, RESIDUAL_IND)]
 
-  vi_h_th <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT),
+  vi_h_th <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
                               .(CLSTR_ID, PLOT = PLOT_CATEGORY_CODE,
                                 TREE_NO = TREE_NUMBER,
                                 TOP_HEIGHT_TREE_IND, LEADING_SPECIES_TREE_IND,
@@ -418,6 +418,20 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   vi_h[is.na(TH_TREE) & RESIDUAL_IND == "N" & is.na(RA_TREE),
        TH_TREE := "N"]
   vi_h[, RESIDUAL_IND := NULL]
+  vi_h[, site_id := substr(CLSTR_ID, 1, 7)]
+
+  vi_h_add <- vi_h[!is.na(BORED_HT),
+                   .(BORED_HT_pre = unique(BORED_HT)),
+                   by = c("site_id", "PLOT", "TREE_NO")]
+  vi_h <- merge(vi_h, vi_h_add,
+                by = c("site_id", "PLOT", "TREE_NO"),
+                all.x = TRUE)
+  vi_h[is.na(BORED_HT) &
+         !is.na(BORED_HT_pre),
+       BORED_HT := BORED_HT_pre]
+  vi_h[, ':='(site_id = NULL,
+              BORED_HT_pre = NULL)]
+  vi_h[is.na(BORED_HT), BORED_HT := 1.3] # temporary fix for the bored trees with bored height
   saveRDS(vi_h, file.path(outputPath, "vi_h.rds"))
 
   vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
