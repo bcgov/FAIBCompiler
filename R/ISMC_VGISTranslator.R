@@ -40,7 +40,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   suit_si_from_notes <- NULL
   for(indirow in 1:nrow(samplesitevisitenotes)){
     indipositiontable <- data.table(start_position = as.numeric(gregexpr("SITEINDEXTREESUITABILITY",
-                                           samplesitevisitenotes$SAMPLE_SITE_VISIT_COMMENT[indirow])[[1]]))
+                                                                         samplesitevisitenotes$SAMPLE_SITE_VISIT_COMMENT[indirow])[[1]]))
 
     indipositiontable[,':='(SITE_IDENTIFIER = samplesitevisitenotes$SITE_IDENTIFIER[indirow],
                             VISIT_NUMBER = samplesitevisitenotes$VISIT_NUMBER[indirow],
@@ -58,9 +58,9 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   suit_si_from_notes[noposition > 0, TREE_NO_no := as.numeric(substr(firstcut, 1, noposition-1))]
 
   suit_si_from_notes[(!is.na(TREE_NO_yes) & is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_yes,
-                                                                   SUIT_SI_temp = "Y")]
+                                                                     SUIT_SI_temp = "Y")]
   suit_si_from_notes[(is.na(TREE_NO_yes) & !is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_no,
-                                                                   SUIT_SI_temp = "N")]
+                                                                     SUIT_SI_temp = "N")]
   suit_si_from_notes <- suit_si_from_notes[!is.na(TREE_NUMBER),.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, SUIT_SI_temp)]
 
 
@@ -201,8 +201,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
 
   suit_si_from_notes <- merge(suit_si_from_notes,
                               treemeasurements[,.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, intreemeas = TRUE)],
-                            by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
-                            all.x = TRUE)
+                              by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
+                              all.x = TRUE)
 
   ### for the NFI samples the tree number changes
   ## the next few line to modify tree number and make them
@@ -423,6 +423,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   vi_h_add <- vi_h[!is.na(BORED_HT),
                    .(BORED_HT_pre = unique(BORED_HT)),
                    by = c("site_id", "PLOT", "TREE_NO")]
+  vi_h_add <- unique(vi_h_add, by = c("site_id", "PLOT", "TREE_NO"))
   vi_h <- merge(vi_h, vi_h_add,
                 by = c("site_id", "PLOT", "TREE_NO"),
                 all.x = TRUE)
@@ -432,6 +433,28 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   vi_h[, ':='(site_id = NULL,
               BORED_HT_pre = NULL)]
   vi_h[is.na(BORED_HT), BORED_HT := 1.3] # temporary fix for the bored trees with bored height
+  vi_h <- merge(vi_h,
+                unique(vi_a[,.(CLSTR_ID, MEAS_DT)],
+                       by = "CLSTR_ID"),
+                by = "CLSTR_ID",
+                all.x = TRUE)
+  agecorrecttable <- siteAgeCorrection(vih = vi_h)
+  agecorrecttable <- agecorrecttable$age_corrected
+  vi_h <- merge(vi_h,
+                agecorrecttable,
+                by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                all.x = TRUE)
+  vi_h[!is.na(BORE_AGE_crt),
+       BORE_AGE := BORE_AGE_crt]
+  vi_h[!is.na(BORAG_FL_crt),
+       BORAG_FL := BORAG_FL_crt]
+  vi_h[!is.na(TOTAL_AG_crt),
+       TOTAL_AG := TOTAL_AG_crt]
+  set(vi_h, , c("MEAS_DT", "meas_year",  "refer_year",
+                "BORE_AGE_org", "BORE_AGE_crt", "BORE_AGE_dif", "BORAG_FL_org",
+                "BORAG_FL_crt", "BORAG_FL_dif", "TOTAL_AG_org", "TOTAL_AG_crt",
+                "TOTAL_AG_dif"),
+      NULL)
   saveRDS(vi_h, file.path(outputPath, "vi_h.rds"))
 
   vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
