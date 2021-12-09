@@ -20,7 +20,6 @@
 #' @rdname VRIInit_lossFactor
 #'
 #' @author Yong Luo
-#'
 VRIInit_lossFactor<- function(fullMeasuredTrees,
                         dataSourcePath){
     lossfactors <- readRDS(file.path(dataSourcePath, "vi_d.rds")) %>% data.table
