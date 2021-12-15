@@ -14,6 +14,7 @@
 #' @param utilLevel numeric, Utilization levels.
 #' @param weirdUtil character, Weird util. Default is No. Otherwise need to be specified as a number.
 #' @param equation character, Specifies whether the compiler is based on \code{KBEC} or \code{KFIZ}.
+#' @param nvafRatio data.table, NVAF adjustment table based on \code{BEC}, \code{Species}, and \code{LV_D}.
 #'
 #' @return Cluster and species-level volume summaries; cluster-level volume summaries; cluster-level height summaries;
 #'         cluster-level species composition summaries and log file.
@@ -31,7 +32,8 @@
 #' @author Yong Luo
 #'
 setGeneric("VRISummaries",
-           function(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation) {
+           function(allVolumeTrees, clusterPlotHeader, utilLevel,
+                    weirdUtil, equation, nvafRatio) {
              standardGeneric("VRISummaries")
            })
 
@@ -42,13 +44,15 @@ setMethod(
                 clusterPlotHeader = "data.table",
                 utilLevel = "numeric",
                 weirdUtil = "character",
-                equation = "character"),
-  definition = function(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation){
+                equation = "character",
+                nvafRatio = "data.table"),
+  definition = function(allVolumeTrees, clusterPlotHeader, utilLevel,
+                        weirdUtil, equation, nvafRatio){
     allVolumeTrees <- FAIBBase::merge_dupUpdate(allVolumeTrees,
-                                      unique(clusterPlotHeader[,.(CLSTR_ID, PLOT, PROJ_ID, NO_PLOTS, PLOT_DED,
-                                                           BGC_ZONE, PLOT_WT, SAMP_TYP)],
-                                             by = c("CLSTR_ID", "PLOT")),
-                                      by = c("CLSTR_ID", "PLOT"))
+                                                unique(clusterPlotHeader[,.(CLSTR_ID, PLOT, PROJ_ID, NO_PLOTS, PLOT_DED,
+                                                                            BGC_ZONE, PLOT_WT, SAMP_TYP, SA_VEGCOMP)],
+                                                       by = c("CLSTR_ID", "PLOT")),
+                                                by = c("CLSTR_ID", "PLOT"))
     if(toupper(weirdUtil) == "NO"){
       dbhcatlist <- c(4, (1:utilLevel)*5+2.5)
     } else {
@@ -60,15 +64,112 @@ setMethod(
                               weirdUtil = weirdUtil,
                               equation = equation)
     # write.csv(volsmy_cs, file.path(r_path, "smy_cs.csv"), row.names = F)
+    specieslookup <- unique(lookup_species()[,.(SPECIES, SP0)], by = "SPECIES")
+    volsmy_cs <- merge(volsmy_cs,
+                       specieslookup,
+                       by = "SPECIES",
+                       all.x = TRUE)
+    volsmy_cs <- merge(volsmy_cs,
+                       unique(clusterPlotHeader[,.(CLSTR_ID,
+                                                   BGC_SBZN, SA_VEGCOMP)],
+                              by = "CLSTR_ID"),
+                       by = "CLSTR_ID",
+                       all.x = TRUE)
+    volsmy_cs[, ':='(MATURITY1 = "All",
+                     MATURITY2 = "Imm")]
+    volsmy_cs[SA_VEGCOMP > 120,
+              MATURITY2 := "Mat"]
+    # rene's comment: •	For assigning age class, we use the intersected VEGCOMP
+    # rank1 layer, where immature is (1-120yrs) and mature is (121+yrs)
+    volsmy_cs <- merge(volsmy_cs,
+                       nvafRatio[LV_D == "Live",
+                                 .(BGC_ZONE, BGC_SBZN, SP0,
+                                   MATURITY1  = MATURITY,
+                                   GVAF_L1 = GVAF, NVAF_L1 = NVAF)],
+                       by = c("BGC_ZONE", "BGC_SBZN", "SP0",
+                              "MATURITY1"),
+                       all.x = TRUE) # this is the second priority
+    volsmy_cs <- merge(volsmy_cs,
+                       nvafRatio[LV_D == "Live",
+                                 .(BGC_ZONE, BGC_SBZN, SP0,
+                                   MATURITY2  = MATURITY,
+                                   GVAF_L2 = GVAF, NVAF_L2 = NVAF)],
+                       by = c("BGC_ZONE", "BGC_SBZN", "SP0",
+                              "MATURITY2"),
+                       all.x = TRUE) # this is the priority
+    volsmy_cs <- merge(volsmy_cs,
+                       nvafRatio[LV_D == "Live" & is.na(BGC_SBZN),
+                                 .(BGC_ZONE, SP0,
+                                   MATURITY2  = MATURITY,
+                                   GVAF_L3 = GVAF, NVAF_L3 = NVAF)],
+                       by = c("BGC_ZONE", "SP0",
+                              "MATURITY2"),
+                       all.x = TRUE)
+    volsmy_cs[, ':='(GVAF_L = GVAF_L2,
+                     NVAF_L = NVAF_L2)] ## using sub bec zone * imm/mat combination
+    volsmy_cs[is.na(GVAF_L),
+              ':='(GVAF_L = GVAF_L1,
+                   NVAF_L = NVAF_L1)] ## using sub bec zone * all combination
+    volsmy_cs[is.na(GVAF_L),
+              ':='(GVAF_L = GVAF_L3,
+                   NVAF_L = NVAF_L3)] ## using bec zone * imm/mat combination
+    volsmy_cs[is.na(GVAF_L),
+              ':='(GVAF_L = 1,
+                   NVAF_L = 1)] # if gvaf and nvaf can not be found, using 1 for no adjustment
+
+    volsmy_cs <- merge(volsmy_cs,
+                       nvafRatio[LV_D == "Dead",
+                                 .(BGC_ZONE, BGC_SBZN, SP0,
+                                   MATURITY1  = MATURITY,
+                                   GVAF_D1 = GVAF, NVAF_D1 = NVAF)],
+                       by = c("BGC_ZONE", "BGC_SBZN", "SP0",
+                              "MATURITY1"),
+                       all.x = TRUE) # this is the second priority
+    volsmy_cs <- merge(volsmy_cs,
+                       nvafRatio[LV_D == "Dead",
+                                 .(BGC_ZONE, BGC_SBZN, SP0,
+                                   MATURITY2  = MATURITY,
+                                   GVAF_D2 = GVAF, NVAF_D2 = NVAF)],
+                       by = c("BGC_ZONE", "BGC_SBZN", "SP0",
+                              "MATURITY2"),
+                       all.x = TRUE) # this is the priority
+    volsmy_cs <- merge(volsmy_cs,
+                       nvafRatio[LV_D == "Dead" & is.na(BGC_SBZN),
+                                 .(BGC_ZONE, SP0,
+                                   MATURITY2  = MATURITY,
+                                   GVAF_D3 = GVAF, NVAF_D3 = NVAF)],
+                       by = c("BGC_ZONE", "SP0",
+                              "MATURITY2"),
+                       all.x = TRUE)
+    volsmy_cs[, ':='(GVAF_D = GVAF_D2,
+                     NVAF_D = NVAF_D2)] ## using sub bec zone * imm/mat combination
+    volsmy_cs[is.na(GVAF_D),
+              ':='(GVAF_D = GVAF_D1,
+                   NVAF_D = NVAF_D1)] ## using sub bec zone * all combination
+    volsmy_cs[is.na(GVAF_D),
+              ':='(GVAF_D = GVAF_D3,
+                   NVAF_D = NVAF_D3)] ## using bec zone * imm/mat combination
+    volsmy_cs[is.na(GVAF_D),
+              ':='(GVAF_D = 1,
+                   NVAF_D = 1)] # if gvaf and nvaf can not be found, using 1 for no adjustment
+
+    set(volsmy_cs, , c(paste0("GVAF_L", 1:3), paste0("NVAF_L", 1:3),
+                       paste0("GVAF_D", 1:3), paste0("NVAF_D", 1:3)), NULL)
+    volsmy_cs[, ':='(VHA_WSV_GVAF_L = (VHA_WSV + VHA_WSVLF) * GVAF_L,
+                     VHA_WSV_GVAF_D = (VHA_WSVDS + VHA_WSVDF) * GVAF_D,
+                     VHA_MER_GVAF_L = (VHA_MER + VHA_MERLF) * GVAF_L,
+                     VHA_MER_GVAF_D = (VHA_MERDS + VHA_MERDF) * GVAF_D,
+                     VHA_NTWB_NVAF_L = (VHA_NTWB + VHA_NTWBLF) * NVAF_L,
+                     VHA_NTWB_NVAF_D = (VHA_NTWBDS + VHA_NTWBDF) * NVAF_D)]
 
     ## volume summary by cluster
     volsmy_c <- volSmry_byC(volSmryByCS = volsmy_cs)
     volsmy_cs[, ':='(VPT_WSV = sum(VHA_WSV, na.rm = TRUE),
-                  VPT_NETM = sum(VHA_NETM, na.rm = TRUE),
-                  VPT_MER = sum(VHA_MER, na.rm = TRUE),
-                  BA_PT = sum(BA_HA, na.rm = TRUE),
-                  VPT_WSVDS = sum(VHA_WSVDS, na.rm = TRUE)),
-           by = c("CLSTR_ID", "UTIL")]
+                     VPT_NETM = sum(VHA_NETM, na.rm = TRUE),
+                     VPT_MER = sum(VHA_MER, na.rm = TRUE),
+                     BA_PT = sum(BA_HA, na.rm = TRUE),
+                     VPT_WSVDS = sum(VHA_WSVDS, na.rm = TRUE)),
+              by = c("CLSTR_ID", "UTIL")]
     volsmy_cs[VPT_WSV %>>% 0, VPC_WSV := 100*VHA_WSV/VPT_WSV]
     volsmy_cs[VPT_NETM %>>% 0, VPC_NETM := 100*VHA_NETM/VPT_NETM]
     volsmy_cs[VPT_MER %>>% 0, VPC_MER := 100*VHA_MER/VPT_MER]
@@ -77,7 +178,7 @@ setMethod(
     volsmy_cs[,c("VPT_WSV", "VPT_NETM", "VPT_MER", "VPT_WSVDS", "BA_PT") := NULL]
     formatcols <- c("VPC_WSV", "VPC_NETM", "VPC_MER", "BA_PC", "VPC_WSVDS")
     volsmy_cs[, c(formatcols) := lapply(.SD, function(s) round(s, 1)),
-           .SDcols = formatcols]
+              .SDcols = formatcols]
 
     ## height summary by cluster
     heightsmry_c <- heightSmry_byC(treeMC = allVolumeTrees)
@@ -101,7 +202,7 @@ setMethod(
 
     volsmy_cs[, c("PRJ_GRP", "NO_PLOTS", "PLOT_DED", "PROJ_ID") := NULL]
     volsmy_cs <- merge(allclustersByUtil, volsmy_cs, by = c("CLSTR_ID", "UTIL"),
-                        all = TRUE)
+                       all = TRUE)
     volsmy_cs[is.na(VHA_WSV), c(summarycolsLS) := 0]
     volsmy_cs[is.na(VHA_WSVLF), c(summarycolsLF) := 0]
     volsmy_cs[is.na(VHA_WSVDS), c(summarycolsDS) := 0]
@@ -109,12 +210,18 @@ setMethod(
 
     volsmy_c[, c("PRJ_GRP", "NO_PLOTS", "PLOT_DED", "PROJ_ID") := NULL]
     volsmy_c <- merge(allclustersByUtil, volsmy_c, by = c("CLSTR_ID", "UTIL"),
-                        all = TRUE)
+                      all = TRUE)
     volsmy_c[is.na(VHA_WSV),
              c(summarycolsLS, "NO_TREES", "QMD", "QMDLF", "QMDDS", "QMDDF") := 0]
     volsmy_c[is.na(VHA_WSVLF), c(summarycolsLF) := 0]
     volsmy_c[is.na(VHA_WSVDS), c(summarycolsDS) := 0]
     volsmy_c[is.na(VHA_WSVDF), c(summarycolsDF) := 0]
+    volsmy_c[is.na(VHA_WSV_GVAF_L), VHA_WSV_GVAF_L := 0]
+    volsmy_c[is.na(VHA_WSV_GVAF_D), VHA_WSV_GVAF_D := 0]
+    volsmy_c[is.na(VHA_MER_GVAF_L), VHA_MER_GVAF_L := 0]
+    volsmy_c[is.na(VHA_MER_GVAF_D), VHA_MER_GVAF_D := 0]
+    volsmy_c[is.na(VHA_NTWB_NVAF_L), VHA_NTWB_NVAF_L := 0]
+    volsmy_c[is.na(VHA_NTWB_NVAF_D), VHA_NTWB_NVAF_D := 0]
     cl_spc <- merge(allclustersByUtil, cl_spc,
                     by = c("CLSTR_ID", "UTIL"),
                     all = TRUE)

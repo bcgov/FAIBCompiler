@@ -37,11 +37,16 @@ setMethod(
     summarycolsLF <- paste(summarycolsLS, "LF", sep = "")
     summarycolsDS <- paste(summarycolsLS, "DS", sep = "")
     summarycolsDF <- paste(summarycolsLS, "DF", sep = "")
+    summarycolsGVAFNVAF <- c("VHA_WSV_GVAF_L", "VHA_WSV_GVAF_D",
+                             "VHA_MER_GVAF_L", "VHA_MER_GVAF_D",
+                             "VHA_NTWB_NVAF_L", "VHA_NTWB_NVAF_D")
     output <- unique(volSmryByCS[,.(CLSTR_ID, UTIL, PRJ_GRP, NO_PLOTS, PLOT_DED,
                                     PROJ_ID)],
                      by = c("CLSTR_ID", "UTIL"))
     smrytable <- volSmryByCS[,lapply(.SD, sum), .SDcols = c(summarycolsLS, summarycolsLF,
-                                                            summarycolsDS, summarycolsDF, "NO_TREES"),
+                                                            summarycolsDS, summarycolsDF,
+                                                            summarycolsGVAFNVAF,
+                                                            "NO_TREES"),
                              by = c("CLSTR_ID", "UTIL")]
     output <- FAIBBase::merge_dupUpdate(output, smrytable, by = c("CLSTR_ID", "UTIL"))
     output[STEMS_HA %>>% 0, QMD := sqrt(DBH2/STEMS_HA)]

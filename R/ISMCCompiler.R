@@ -112,6 +112,11 @@ ISMCCompiler <- function(oracleUserName,
     cat("        and will be calculated by this compiler.\n")
     needNewCoffs <- TRUE
   }
+  cat("    Check stand age table from vegcomp:.\n")
+  if(!file.exists(file.path(compilationPaths$compilation_coeff,
+                           paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")))){
+    stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
+  }
 
   sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
                    "O", "F", "E", "C", "B")
@@ -159,6 +164,22 @@ ISMCCompiler <- function(oracleUserName,
   samples[,':='(SITE_IDENTIFIER = substr(CLSTR_ID, 1, 7),
                 SAMPLE_SITE_PURPOSE_TYPE_CODE = substr(CLSTR_ID, 9, 9),
                 VISIT_NUMBER = substr(CLSTR_ID, 10, 10))]
+  standage_vegcomp <- read.xlsx(file.path(compilationPaths$compilation_coeff,
+                                          paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")),
+                                detectDates = TRUE) %>%
+    data.table
+  samples <- merge(samples,
+                   standage_vegcomp[,.(SITE_IDENTIFIER = as.character(SITE_IDENTIFIER), PROJ_AGE_1,
+                                       PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
+                   by = "SITE_IDENTIFIER",
+                   all.x = TRUE)
+  samples[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
+
+  samples[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
+  samples[, ':='(PROJ_AGE_1 = NULL,
+                 PROJECTED_Year = NULL,
+                 measYear = NULL)]
+
   saveRDS(samples,
           file.path(compilationPaths$compilation_db, "samples.rds"))
   # write.csv(samples, file.path(compilationPaths$compilation_db, "samples.csv"), row.names = FALSE)
@@ -480,11 +501,14 @@ ISMCCompiler <- function(oracleUserName,
 
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
   cat(paste(Sys.time(), ": Summarize volume and age.\n", sep = ""))
+  nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
+    data.table
   vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
                                clusterPlotHeader = samples,
                                utilLevel = utilLevel,
                                weirdUtil = weirdUtil,
-                               equation = equation)
+                               equation = equation,
+                               nvafRatio = nvafratio)
   saveRDS(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.rds"))
   saveRDS(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.rds"))
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
@@ -511,8 +535,9 @@ ISMCCompiler <- function(oracleUserName,
   vi_f[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_e[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
-  smalltreecompile <- smallTreeVolSmry(smallTreeData = vi_f,
-                                       smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
+  smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
+                                       smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",],
+                                    compiler = "VRICompiler")
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
