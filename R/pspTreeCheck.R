@@ -346,6 +346,7 @@ pspTreeCheck<- function(treeData){
                                 maxChangeRate = 9,
                                 toleranceAbs = 3,
                                 toleranceRel = 0.2)
+
   sizecheck_non_cott <- checkSize_remeas(subjectID = treedata_non_cott$uniTreeID,
                                 measTime = as.numeric(treedata_non_cott$lastGrowthYear),
                                 size = treedata_non_cott$DBH,

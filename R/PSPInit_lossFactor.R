@@ -23,6 +23,7 @@
 #'
 PSPInit_lossFactor<- function(fullMeasuredTrees,
                               dataSourcePath){
+  browser()
   lossfactors <- readRDS(file.path(dataSourcePath, "vi_d.rds")) %>% data.table
   names(lossfactors) <- toupper(names(lossfactors))
   targetnames <- names(lossfactors)
@@ -35,9 +36,9 @@ PSPInit_lossFactor<- function(fullMeasuredTrees,
                                  paste("LOC", 1:targetnames_max, "_FRO", sep = "")), with = FALSE]
   rm(targetnames, targetnames_max)
   lossfactors <- unique(lossfactors, by = c("CLSTR_ID", "PLOT", "TREE_NO"))
-  fullMeasuredTrees[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
-  lossfactors[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
-  lossfactors <- lossfactors[clusterplottree %in% fullMeasuredTrees$clusterplottree,]
-  lossfactors[, ':='(clusterplottree = NULL)]
+  # fullMeasuredTrees[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
+  # lossfactors[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
+  # lossfactors <- lossfactors[clusterplottree %in% fullMeasuredTrees$clusterplottree,]
+  # lossfactors[, ':='(clusterplottree = NULL)]
   return(lossfactors)
 }

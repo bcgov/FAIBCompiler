@@ -194,7 +194,7 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                             all.x = TRUE)
   treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
                    TREE_SPECIES_CODE := "X"]
-  vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & !is.na(LENGTH) &
+  vi_c <- treemeasurements[!is.na(DIAMETER) & !is.na(LENGTH) &
                              OUT_OF_PLOT_IND == "N" &
                              MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N"), ## non tally tree, can not used for volume, see scott's comments
                            .(CLSTR_ID, PLOT = PLOT_NUMBER,
@@ -313,6 +313,7 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                              BNG_DIAM = DIAMETER_AT_BORING_HEIGHT, BARK_THK = BARK_THICKNESS,
                              SUIT_TR = SUITABLE_FOR_AGE_IND, BORED_HT = AGE_MEASMT_HEIGHT,
                              SUIT_HT = SUITABLE_FOR_HEIGHT_IND,
+                             SUIT_SI = SUITABLE_FOR_SITE_INDEX_IND,
                              PLOT_TYP = NA, # not sure
                              BARK_THKX = NA, # not sure
                              MEAS_COD = AGE_MEASURE_CODE,
@@ -373,7 +374,7 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   rm(vi_h, vi_h_th)
   gc()
 
-  vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
+  vi_i <- treemeasurements[!is.na(DIAMETER) & is.na(LENGTH),
                            .(CLSTR_ID, PLOT = PLOT_NUMBER,
                              TREE_NO = TREE_NUMBER,
                              SPECIES = TREE_SPECIES_CODE, SP0,
@@ -517,7 +518,7 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                                 all.x = TRUE)
-  SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE) - 1]
+  SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE)]
   vi_f <- SmallLiveTreeTallies[,.(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
                                   low_bnd, TOTAL = NUMBER_OF_TREES)]
   vi_f <- vi_f[,.(TOTAL = sum(TOTAL)),

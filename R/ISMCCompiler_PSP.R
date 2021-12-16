@@ -114,7 +114,11 @@ ISMCCompiler_PSP <- function(oracleUserName,
   #   cat("        and will be calculated by this compiler.\n")
   #   needNewCoffs <- TRUE
   # }
-
+  cat("    Check stand age table from vegcomp:.\n")
+  if(!file.exists(file.path(compilationPaths$compilation_coeff,
+                            paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")))){
+    stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
+  }
   sampletypes <- c("PSP")
 
   if(!(toupper(oracleEnv) %in% c("INT", "TST", "PROD"))){
@@ -176,20 +180,6 @@ ISMCCompiler_PSP <- function(oracleUserName,
   ##                             3) H-enhanced trees in auxi plots (trees have dbh, height)
   ##                             4) B-sample trees in fixed area lidar projects (trees have dbh, height)
 
-  # equation  <- "KBEC"
-  # walkThru <-  TRUE
-  # logMinLength <-  0.1
-  # stumpHeight <-  0.3
-  # breastHeight <-  1.3
-  # UTOPDIB <-  10
-  # utilLevel <-  4
-  # weirdUtil = "No"
-
-  # samples <- readRDS("D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_db/samples.rds")
-  # compilationPaths <- list()
-  # compilationPaths$compilation_sa <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_sa"
-
-
   tree_ms1 <- PSPInit_measuredTree(data.table::copy(samples),
                                    compilationPaths$compilation_sa)
   ### 2.3 load vi_d data
@@ -214,6 +204,50 @@ ISMCCompiler_PSP <- function(oracleUserName,
   tree_nonHT[, MEAS_INTENSE := "NON-ENHANCED"]
   tree_all <- rbindlist(list(tree_ms1, tree_nonHT),
                         fill = TRUE)
+  # browser()
+  # save(list = ls(),
+  #      file = "alldata.rdata")
+  # load("alldata.rdata")
+  # browser()
+  # tree_all <- merge(tree_all,
+  #                   vi_d[,.(CLSTR_ID, PLOT, TREE_NO, hasLossInd = TRUE)],
+  #                   by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+  #                   all.x = TRUE)
+  #
+  # vid_mis <- merge(vi_d,
+  #                  tree_all[,.(CLSTR_ID, PLOT, TREE_NO, intreeall = TRUE)],
+  #                  by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+  #                  all.x = TRUE)
+  # vid_mis <- vid_mis[is.na(intreeall),]
+  # treemeasurements[, CLSTR_ID := paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER)]
+  #
+  # vid_mis_clfound <- vid_mis[CLSTR_ID %in% tree_all$CLSTR_ID,]
+  # vid_mis_clnotfound <- vid_mis[!(CLSTR_ID %in% tree_all$CLSTR_ID),]
+  #
+  # vid_mis_clfound <- merge(vid_mis_clfound, treemeasurements[,.(CLSTR_ID,
+  #                                                               PLOT = PLOT_NUMBER,
+  #                                                               TREE_NO = TREE_NUMBER,
+  #                                                               TREE_EXTANT_CODE,
+  #                                                               TREE_CLASS_CODE)],
+  #                          by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+  #                          all.x = TRUE)
+  #
+  # backlogpsp <- read.csv("D:/ISMC project/ISMC PSP backlog data/match_status.csv") %>%
+  #   data.table
+  #
+  # backlogpsp[, CLSTR_ID := paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER)]
+  #
+  # backlogpsp[CLSTR_ID %in% vid_mis_clnotfound$CLSTR_ID,
+  #            missingDiameterHT := TRUE]
+  # backlogpsp[is.na(missingDiameterHT),
+  #            missingDiameterHT := FALSE]
+  # backlogpsp[missingDiameterHT == FALSE,]
+  #
+  # vid_mis_clnotfound[CLSTR_ID %in% backlogpsp$CLSTR_ID,
+  #                    pspbacklog := TRUE]
+  #
+  # vid_mis_clnotfound[is.na(pspbacklog)]
+
   tree_all <- merge(tree_all,
                     unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER,
                                       VISIT_NUMBER,
@@ -246,7 +280,6 @@ ISMCCompiler_PSP <- function(oracleUserName,
   nonHtrees <- pspHT(treeData = tree_all[MEAS_INTENSE == "NON-ENHANCED",],
                     method = HTEstimateMethod,
                     coeffs = height_dbh_coeff)
-  browser()
   alltrees <- rbindlist(list(nonHtrees, tree_all[MEAS_INTENSE != "NON-ENHANCED",]),
                         fill = TRUE)
   ### 3. vi_c compilation
@@ -264,6 +297,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
   ###################### start the site age compilation
   ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
+  browser()
   tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
                                         samples[,.(CLSTR_ID, PLOT,
                                                    FIZ = as.character(FIZ),
@@ -305,193 +339,46 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                         all.x = TRUE)
 
 
-  tree_ms7 <- DWBCompiler_PSP(treeMS = tree_ms6[MEAS_INTENSE == "FULL",],
+
+  tree_ms7 <- DWBCompiler_PSP(treeMS = tree_ms6,
                           siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
                           treeLossFactors = vi_d,
                           equation = "KBEC")
 
-  tree_ms7 <- rbindlist(list(tree_ms7,
-                             tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
-                        fill = TRUE)
-  browser()
-  save(list = ls(),
-       file = "alldata.rdata")
-  load("alldata.rdata")
+
   vi_c_sa <- readRDS(file.path(compilationPaths$compilation_sa,
                                "vi_c.rds"))
   tree_ms7[, ADJ_ID := NULL]
-  tree_ms7 <- merge(tree_ms7,
+  prep_smy <- merge(tree_ms7,
                     vi_c_sa[,.(CLSTR_ID, PLOT, TREE_NO,
                                CR_CL, WALKTHRU_STATUS,
                                SECTOR, RESIDUAL,
                                HT_BRCH)],
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                     all.x = TRUE)
-  saveRDS(tree_ms7, file.path(compilationPaths$compilation_db,
+  saveRDS(prep_smy, file.path(compilationPaths$compilation_db,
                               "compiled_vi_c.rds"))
   # write.csv(tree_ms7, file.path(compilationPaths$compilation_db,
   #                             "compiled_vi_c.csv"), row.names = FALSE)
   rm(vi_d, siteAgeTable, tree_ms6)
 
-  #######
-  ### 6. start to calculate tree volume components for H-enhanced and non-enhanced trees in auxi plots
-  cat(paste(Sys.time(), ": Compile NON- and H-enhanced trees.\n", sep = ""))
-  # derive ratio and regression routine
 
-  if(needNewCoffs){
-    cat(paste0("    Start to derive coefficients and ratios for year ", compilationYear, "\n"))
-    alltreelist <- mergeAllVolTrees(treeMS = data.table::copy(tree_ms7),
-                                    treeAX = data.table::copy(tree_nonHT))
-    samples_beccls <- unique(samples[,.(CLSTR_ID, BGC_ZONE)], by = "CLSTR_ID")
-    alltreelist <- merge(alltreelist, samples_beccls, by = "CLSTR_ID", all.x = TRUE)
-    allbecsplvd <- unique(alltreelist[,.(BGC_ZONE, SP0, LV_D)])
-
-    ## if the regratiodata can not be found in coeff folder
-    ## generate regratiodata and derive coeff and ratio using mixed effect models
-    regRatioData <- regRatioDataSelect(samples, tree_ms7, usage = "ismc")
-    saveRDS(regRatioData,
-            file.path(compilationPaths$compilation_coeff,
-                      paste0("regRatioData", compilationYear, ".rds")))
-    cat(paste0("        Selected data and saved to regRatioData", compilationYear, "\n"))
-    coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
-    if(compilationYear > 2021){ ## comparison starts from 2022 to select the better model to predict BA-WSV relationship
-      fixedcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                           paste0("fixedCoefs", compilationYear-1, ".rds")))
-      fixedcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
-
-      randomcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                            paste0("randomCoefs", compilationYear-1, ".rds")))
-      randomcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
-
-      allfix <- merge(coefs$fixedcoeff[,.(uni_strata,
-                                          R2_Marginal_crt = R2_Marginal)],
-                      fixedcoeff_prev[,.(uni_strata,
-                                         R2_Marginal_prev = R2_Marginal,
-                                         YEAR_FIT_prev = YEAR_FIT)],
-                      by = c("uni_strata"),
-                      all = TRUE)
-      allfix[R2_Marginal_crt+0.05 >= R2_Marginal_prev,
-             YEAR_FIT := compilationYear] ## 0.01 was chosen as an indicator
-      ## of a significant improvement
-      allfix[!is.na(R2_Marginal_crt) & is.na(R2_Marginal_prev),
-             YEAR_FIT := compilationYear] ## the new strata
-      allfix[is.na(YEAR_FIT),
-             YEAR_FIT := YEAR_FIT_prev]
-
-      fixedcoeff_crt <- coefs$fixedcoeff
-      fixedcoeff_crt[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
-      randomcoeff_crt <- coefs$randomcoeff
-      randomcoeff_crt[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
-
-      fixedcoeff_final <- fixedcoeff_crt[uni_strata %in% allfix[YEAR_FIT == compilationYear,]$uni_strata,]
-      fixedcoeff_final <- rbindlist(list(fixedcoeff_final,
-                                         fixedcoeff_prev[uni_strata %in% allfix[YEAR_FIT != compilationYear,]$uni_strata,]),
-                                    fill = TRUE)
-      fixedcoeff_final[,':='(uni_strata = NULL)]
-      fixedcoeff_final[is.na(YEAR_FIT),':='(YEAR_FIT = compilationYear)]
-
-      randomcoeff_final <- randomcoeff_crt[uni_strata %in% allfix[YEAR_FIT == compilationYear,]$uni_strata,]
-      randomcoeff_final <- rbindlist(list(randomcoeff_final,
-                                          randomcoeff_prev[uni_strata %in% allfix[YEAR_FIT != compilationYear,]$uni_strata,]),
-                                     fill = TRUE)
-      randomcoeff_final[,':='(uni_strata = NULL)]
-      randomcoeff_final[is.na(YEAR_FIT),':='(YEAR_FIT = compilationYear)]
-    } else {
-      fixedcoeff_final <- coefs$fixedcoeff
-      fixedcoeff_final[,':='(YEAR_FIT = compilationYear)]
-
-      randomcoeff_final <- coefs$randomcoeff
-      randomcoeff_final[,':='(YEAR_FIT = compilationYear)]
-    }
-    saveRDS(fixedcoeff_final,
-            file.path(compilationPaths$compilation_coeff,
-                      paste0("fixedCoefs", compilationYear, ".rds")))
-    saveRDS(randomcoeff_final,
-            file.path(compilationPaths$compilation_coeff,
-                      paste0("randomCoefs", compilationYear, ".rds")))
-    write.table(fixedcoeff_final,
-                file.path(compilationPaths$compilation_coeff,
-                          paste0("fixedCoefs", compilationYear, ".txt")),
-                row.names = FALSE, sep = ",")
-    write.table(randomcoeff_final,
-                file.path(compilationPaths$compilation_coeff,
-                          paste0("randomCoefs", compilationYear, ".txt")),
-                row.names = FALSE, sep = ",")
-    cat(paste0("        Derived and saved coefficients to fixedCoefs", compilationYear, "\n"))
-    cat(paste0("                                     and randomCoefs", compilationYear, "\n"))
-    ratios <- toWSVRatio(inputData = regRatioData, needCombs = allbecsplvd)
-    saveRDS(ratios,
-            file.path(compilationPaths$compilation_coeff,
-                      paste0("ratios", compilationYear, ".rds")))
-    write.table(ratios,
-                file.path(compilationPaths$compilation_coeff,
-                          paste0("ratios", compilationYear, ".txt")),
-                row.names = FALSE, sep = ",")
-    cat(paste0("        Calculated and saved ratios to ratios", compilationYear, "\n"))
-    rm(coefs, ratios, regRatioData)
-  } else {
-    cat(paste0("    Use the existing coefficients and ratios of year ", compilationYear, "\n"))
-  }
-  fixedcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                   paste0("fixedCoefs", compilationYear, ".rds")))
-
-  randomcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                    paste0("randomCoefs", compilationYear, ".rds")))
-  ratios <- readRDS(file.path(compilationPaths$compilation_coeff,
-                              paste0("ratios", compilationYear, ".rds")))
-  auxtreecompilation <- auxiTreeCompiler(fullMeasuredTrees = data.table::copy(tree_ms7),
-                                         auxiTrees = data.table::copy(tree_nonHT),
-                                         clusterPlotHeader = samples,
-                                         fixedCoeff = fixedcoeffs,
-                                         randomCoeff = randomcoeffs,
-                                         ratios = ratios)
-  useRatioCurve <- TRUE
-  if(useRatioCurve){
-    merRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                      "mer_ratio_curve.rds"))
-    ntwbRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                       "ntwb_ratio_curve.rds"))
-    HnonenhancedTrees <- merge(auxtreecompilation$HnonenhancedTrees,
-                               merRatioCoef[,.(BGC_ZONE, SP0, LV_D, a, b, c)],
-                               by = c("BGC_ZONE", "SP0", "LV_D"),
-                               all.x = TRUE)
-    HnonenhancedTrees[, MER_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-    HnonenhancedTrees[MEAS_INTENSE == "NON-ENHANCED", VOL_MER := MER_RATIO * VOL_WSV]
-    HnonenhancedTrees[, c("a", "b", "c", "MER_RATIO") := NULL]
-
-    HnonenhancedTrees <- merge(HnonenhancedTrees,
-                               ntwbRatioCoef[,.(BGC_ZONE, SP0, LV_D, a, b, c)],
-                               by = c("BGC_ZONE", "SP0", "LV_D"),
-                               all.x = TRUE)
-
-    HnonenhancedTrees[, NTWB_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-    HnonenhancedTrees[!is.na(a), VOL_NTWB := NTWB_RATIO * VOL_WSV]
-    HnonenhancedTrees[, c("a", "b", "c", "NTWB_RATIO") := NULL]
-    prep_smy <- rbindlist(list(auxtreecompilation$fullenhancedtrees,
-                               HnonenhancedTrees),
-                          fill = TRUE)
-  } else {
-    prep_smy <- rbindlist(list(auxtreecompilation$fullenhancedtrees,
-                               auxtreecompilation$HnonenhancedTrees),
-                          fill = TRUE)
-  }
-
-  prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"), VOL_SRCE := "Calc"]
-  prep_smy[is.na(VOL_SRCE), VOL_SRCE := "Unk"]
   prep_smy <- merge(prep_smy, unique(lookup_species()[,.(SPECIES, SP_TYPE)], by = "SPECIES"),
                     by = "SPECIES", all.x = TRUE)
-  volVariables <- c(paste("VOL_",c("NET", "MER", "NETM", "NTW2",
+  volVariables <- c(paste("VOL_",c("MER", "NETM", "NTW2",
                                    "NTWB", "D", "DW", "DWB"),
-                          sep = ""), "VAL_MER")
+                          sep = ""))
   prep_smy[DBH < 10, c(volVariables) := 0]
   saveRDS(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
   # write.csv(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
   #         file.path(compilationPaths$compilation_db, "treelist.csv"), row.names = FALSE)
-  rm(auxtreecompilation)
-
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
   cat(paste(Sys.time(), ": Summarize volume and age.\n", sep = ""))
+  prep_smy[, ':='(SF_COMPILE = S_F,
+                  VOL_NET = 0,
+                  VAL_MER = 0)]
+  prep_smy[is.na(S_F), SF_COMPILE := "S"]
   vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
                                clusterPlotHeader = samples,
                                utilLevel = utilLevel,
@@ -523,7 +410,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
   vi_f[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_e[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
-  smalltreecompile <- smallTreeVolSmry(smallTreeData = vi_f,
+  smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
                                        smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
