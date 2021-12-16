@@ -3,12 +3,26 @@
 \docType{methods}
 \name{VRISummaries}
 \alias{VRISummaries}
-\alias{VRISummaries,data.table,data.table,numeric,character,character-method}
+\alias{VRISummaries,data.table,data.table,numeric,character,character,data.table-method}
 \title{Summarize the tree-level data at cluster or cluster/species level-VRI specific}
 \usage{
-VRISummaries(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation)
+VRISummaries(
+  allVolumeTrees,
+  clusterPlotHeader,
+  utilLevel,
+  weirdUtil,
+  equation,
+  nvafRatio
+)
 
-\S4method{VRISummaries}{data.table,data.table,numeric,character,character}(allVolumeTrees, clusterPlotHeader, utilLevel, weirdUtil, equation)
+\S4method{VRISummaries}{data.table,data.table,numeric,character,character,data.table}(
+  allVolumeTrees,
+  clusterPlotHeader,
+  utilLevel,
+  weirdUtil,
+  equation,
+  nvafRatio
+)
 }
 \arguments{
 \item{allVolumeTrees}{data.table, All tree data from vi_c and vi_i that have been compiled with
@@ -21,6 +35,8 @@ tree volume.}
 \item{weirdUtil}{character, Weird util. Default is No. Otherwise need to be specified as a number.}
 
 \item{equation}{character, Specifies whether the compiler is based on \code{KBEC} or \code{KFIZ}.}
+
+\item{nvafRatio}{data.table, NVAF adjustment table based on \code{BEC}, \code{Species}, and \code{LV_D}.}
 }
 \value{
 Cluster and species-level volume summaries; cluster-level volume summaries; cluster-level height summaries;
