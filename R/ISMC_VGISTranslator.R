@@ -440,6 +440,8 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
                 all.x = TRUE)
   agecorrecttable <- siteAgeCorrection(vih = vi_h)
   agecorrecttable <- agecorrecttable$age_corrected
+  agecorrecttable[BORE_AGE_crt < 0,
+                  BORE_AGE_crt := BORE_AGE_org]
   vi_h <- merge(vi_h,
                 agecorrecttable,
                 by = c("CLSTR_ID", "PLOT", "TREE_NO"),
@@ -450,7 +452,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
        BORAG_FL := BORAG_FL_crt]
   vi_h[!is.na(TOTAL_AG_crt),
        TOTAL_AG := TOTAL_AG_crt]
-  set(vi_h, , c("MEAS_DT", "meas_year",  "refer_year",
+  set(vi_h, , c("MEAS_DT", "refer_year",
                 "BORE_AGE_org", "BORE_AGE_crt", "BORE_AGE_dif", "BORAG_FL_org",
                 "BORAG_FL_crt", "BORAG_FL_dif", "TOTAL_AG_org", "TOTAL_AG_crt",
                 "TOTAL_AG_dif"),
