@@ -208,7 +208,8 @@ siteAgeCorrection<- function(vih){
   # problemsite <- vih[siteid == 1355611,
   #                    .(CLSTR_ID, PLOT, TREE_NO, SPECIES, meas_year, TREE_LEN,
   #                      BORE_AGE, BORAG_FL, TOTAL_AG)]
-
+  age_corrected_meas[, ':='(meas_year.x = NULL,
+                            meas_year.y = NULL)]
   return(list("age_corrected" = age_corrected_meas,
               "age_corrected_trees_big_dif" = age_corrected_trees_big_dif,
               "age_corrected_trees_missing_age" = age_corrected_trees_missing_age))
