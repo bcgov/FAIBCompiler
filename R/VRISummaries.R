@@ -155,12 +155,19 @@ setMethod(
 
     set(volsmy_cs, , c(paste0("GVAF_L", 1:3), paste0("NVAF_L", 1:3),
                        paste0("GVAF_D", 1:3), paste0("NVAF_D", 1:3)), NULL)
-    volsmy_cs[, ':='(VHA_WSV_GVAF_L = (VHA_WSV + VHA_WSVLF) * GVAF_L,
-                     VHA_WSV_GVAF_D = (VHA_WSVDS + VHA_WSVDF) * GVAF_D,
-                     VHA_MER_GVAF_L = (VHA_MER + VHA_MERLF) * GVAF_L,
-                     VHA_MER_GVAF_D = (VHA_MERDS + VHA_MERDF) * GVAF_D,
-                     VHA_NTWB_NVAF_L = (VHA_NTWB + VHA_NTWBLF) * NVAF_L,
-                     VHA_NTWB_NVAF_D = (VHA_NTWBDS + VHA_NTWBDF) * NVAF_D)]
+    volsmy_cs[, ':='(VHA_WSV_GVAF_LS = VHA_WSV * GVAF_L,
+                     VHA_WSV_GVAF_LF = VHA_WSVLF * GVAF_L,
+                     VHA_WSV_GVAF_DS = VHA_WSVDS * GVAF_D,
+                     VHA_WSV_GVAF_DF = VHA_WSVDF * GVAF_D,
+                     VHA_MER_GVAF_LS = VHA_MER * GVAF_L,
+                     VHA_MER_GVAF_LF = VHA_MERLF * GVAF_L,
+                     VHA_MER_GVAF_DS = VHA_MERDS * GVAF_D,
+                     VHA_MER_GVAF_DF = VHA_MERDF * GVAF_D,
+                     VHA_NTWB_NVAF_LS = VHA_NTWB * NVAF_L,
+                     VHA_NTWB_NVAF_LF = VHA_NTWBLF * NVAF_L,
+                     VHA_NTWB_NVAF_DS = VHA_NTWBDS * NVAF_D,
+                     VHA_NTWB_NVAF_DF = VHA_NTWBDF * NVAF_D)]
+
 
     ## volume summary by cluster
     volsmy_c <- volSmry_byC(volSmryByCS = volsmy_cs)
@@ -216,12 +223,18 @@ setMethod(
     volsmy_c[is.na(VHA_WSVLF), c(summarycolsLF) := 0]
     volsmy_c[is.na(VHA_WSVDS), c(summarycolsDS) := 0]
     volsmy_c[is.na(VHA_WSVDF), c(summarycolsDF) := 0]
-    volsmy_c[is.na(VHA_WSV_GVAF_L), VHA_WSV_GVAF_L := 0]
-    volsmy_c[is.na(VHA_WSV_GVAF_D), VHA_WSV_GVAF_D := 0]
-    volsmy_c[is.na(VHA_MER_GVAF_L), VHA_MER_GVAF_L := 0]
-    volsmy_c[is.na(VHA_MER_GVAF_D), VHA_MER_GVAF_D := 0]
-    volsmy_c[is.na(VHA_NTWB_NVAF_L), VHA_NTWB_NVAF_L := 0]
-    volsmy_c[is.na(VHA_NTWB_NVAF_D), VHA_NTWB_NVAF_D := 0]
+    volsmy_c[is.na(VHA_WSV_GVAF_LS), VHA_WSV_GVAF_LS := 0]
+    volsmy_c[is.na(VHA_WSV_GVAF_LF), VHA_WSV_GVAF_LF := 0]
+    volsmy_c[is.na(VHA_WSV_GVAF_DS), VHA_WSV_GVAF_DS := 0]
+    volsmy_c[is.na(VHA_WSV_GVAF_DF), VHA_WSV_GVAF_DF := 0]
+    volsmy_c[is.na(VHA_MER_GVAF_LS), VHA_MER_GVAF_LS := 0]
+    volsmy_c[is.na(VHA_MER_GVAF_LF), VHA_MER_GVAF_LF := 0]
+    volsmy_c[is.na(VHA_MER_GVAF_DS), VHA_MER_GVAF_DS := 0]
+    volsmy_c[is.na(VHA_MER_GVAF_DF), VHA_MER_GVAF_DF := 0]
+    volsmy_c[is.na(VHA_NTWB_NVAF_LS), VHA_NTWB_NVAF_LS := 0]
+    volsmy_c[is.na(VHA_NTWB_NVAF_LF), VHA_NTWB_NVAF_LF := 0]
+    volsmy_c[is.na(VHA_NTWB_NVAF_DS), VHA_NTWB_NVAF_DS := 0]
+    volsmy_c[is.na(VHA_NTWB_NVAF_DF), VHA_NTWB_NVAF_DF := 0]
     cl_spc <- merge(allclustersByUtil, cl_spc,
                     by = c("CLSTR_ID", "UTIL"),
                     all = TRUE)

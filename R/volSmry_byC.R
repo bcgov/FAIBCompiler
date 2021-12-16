@@ -37,9 +37,12 @@ setMethod(
     summarycolsLF <- paste(summarycolsLS, "LF", sep = "")
     summarycolsDS <- paste(summarycolsLS, "DS", sep = "")
     summarycolsDF <- paste(summarycolsLS, "DF", sep = "")
-    summarycolsGVAFNVAF <- c("VHA_WSV_GVAF_L", "VHA_WSV_GVAF_D",
-                             "VHA_MER_GVAF_L", "VHA_MER_GVAF_D",
-                             "VHA_NTWB_NVAF_L", "VHA_NTWB_NVAF_D")
+    summarycolsGVAFNVAF <- c("VHA_WSV_GVAF_LS", "VHA_WSV_GVAF_LF",
+                             "VHA_WSV_GVAF_DS", "VHA_WSV_GVAF_DF",
+                             "VHA_MER_GVAF_LS",  "VHA_MER_GVAF_LF",
+                             "VHA_MER_GVAF_DS", "VHA_MER_GVAF_DF",
+                             "VHA_NTWB_NVAF_LS", "VHA_NTWB_NVAF_LF",
+                             "VHA_NTWB_NVAF_DS", "VHA_NTWB_NVAF_DF")
     output <- unique(volSmryByCS[,.(CLSTR_ID, UTIL, PRJ_GRP, NO_PLOTS, PLOT_DED,
                                     PROJ_ID)],
                      by = c("CLSTR_ID", "UTIL"))
