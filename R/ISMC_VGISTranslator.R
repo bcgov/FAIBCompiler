@@ -577,7 +577,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
                                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                                 all.x = TRUE)
-  SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE) - 1]
+  SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE)]
   vi_f <- SmallLiveTreeTallies[,.(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
                                   low_bnd, TOTAL = NUMBER_OF_TREES)]
   vi_f <- vi_f[,.(TOTAL = sum(TOTAL)),
