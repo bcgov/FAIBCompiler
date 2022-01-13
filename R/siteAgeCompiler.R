@@ -65,30 +65,34 @@ setMethod(
     siteAgeData[HEIGHT %<=% 1.3, ':='(HEIGHT = 1.31)]
 
     ## assign bored age, first part of the age-ind.sas
-
     ## need check with rene to make sure the order makes sense
     siteAgeData[, HT_CALC := BORED_HT]
     siteAgeData[!(BORE_AGE %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Bore(officeBoredAge = as.numeric(BORE_AGE)),
-                     AGE_BASE = "Bore")]
+                     AGE_BASE = "Bore",
+                     AGE_SOURCE = "Lab Age")]
     siteAgeData[is.na(AGE_BASE) &
                   !(BORAG_FL %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Bore(fieldBoredAge = as.numeric(BORAG_FL)),
-                     AGE_BASE = "Bore")]
+                     AGE_BASE = "Bore",
+                     AGE_SOURCE = "Field Age")]
     siteAgeData[is.na(AGE_BASE) &
                   !(TOTAL_AG %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Total(as.numeric(TOTAL_AG)),
-                     AGE_BASE = "Total")]
+                     AGE_BASE = "Total",
+                     AGE_SOURCE = "Total Age")]
     siteAgeData[is.na(AGE_BASE) &
                   !(PHYS_AGE %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Phys(as.numeric(PHYS_AGE)),
-                     AGE_BASE = "Phys")]
+                     AGE_BASE = "Phys",
+                     AGE_SOURCE = "Physiologic Age")]
     siteAgeData[PRO_LEN %>>% 0 & PRO_RING %>>% 0,
                 ':='(AGE_BOR = boredAgeCalculator_Prorated(ringLength_prorated = PRO_LEN,
                                                            ringCount_prorated = PRO_RING,
                                                            boreDiameter = BNG_DIAM,
                                                            barkThickness = BARK_TEMP),
-                     AGE_BASE = "Pro")]
+                     AGE_BASE = "Pro",
+                     AGE_SOURCE = "Prorated Age")]
     ## call boredagecalculator_crted
     siteAgeData[HT_CALC %!=% 1.3 & HT_CALC %!=% 0,
                 ':='(AGE_BOR = boredAgeCalculator_Crted(boredAge = AGE_BOR,
@@ -97,7 +101,8 @@ setMethod(
                                                         species = SP_SINDEX,
                                                         FIZ = REGION_IC),
                      HT_CALC = 1.3,
-                     AGE_BASE = "Bh_cr")]
+                     AGE_BASE = "Bh_cr",
+                     AGE_ADJUST_TO_BH = "yes")]
 
     siteAgeData[, ':='(CORR = 0,
                        AGE_TOT = as.numeric(NA),
@@ -134,7 +139,8 @@ setMethod(
                                                GROW_5YR, GROW_10YR, GROW_20YR, AGE_CORR, TOTAL_AG, PHYS_AGE,
                                                CR_CL, TREE_LEN, HEIGHT, BNG_DIAM, BARK_THK, PRO_LEN,
                                                PRO_RING, BORE_AGE, BORED_HT, SI_SP, AGE_BH, AGE_TOT, SI_TREE,
-                                               BARK_PCT, RATE_5, RATE_10, RATE_20, SP_SINDEX)]
+                                               BARK_PCT, RATE_5, RATE_10, RATE_20, SP_SINDEX,
+                                               AGE_SOURCE, AGE_ADJUST_TO_BH)]
     return(siteAgeData)
   })
 
