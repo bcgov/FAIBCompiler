@@ -589,9 +589,9 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
                   idvar = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE"),
                   direction = "wide",
                   sep = "")
-  vi_f[is.na(TOTAL1), TOTAL1 := 0]
-  vi_f[is.na(TOTAL2), TOTAL2 := 0]
-  vi_f[is.na(TOTAL3), TOTAL3 := 0]
+  vi_f[is.na(TOTAL2), TOTAL2 := 0] # 2 Live trees with height between 10 and 29 cm
+  vi_f[is.na(TOTAL3), TOTAL3 := 0] # 3 Live trees with height between 30 cm and 1.3 meters
+  vi_f[is.na(TOTAL4), TOTAL4 := 0] # 4 Live trees with height greater than 1.3 meters with diameter less than 4 cm
   vi_f <- merge(vi_f, specieslookup,
                 by = "TREE_SPECIES_CODE", all.x = TRUE)
   setnames(vi_f, "TREE_SPECIES_CODE", "SPECIES")
