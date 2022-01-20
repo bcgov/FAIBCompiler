@@ -79,7 +79,7 @@ ISMCCompiler <- function(oracleUserName,
                          breastHeight = 1.3,
                          UTOPDIB = 10,
                          utilLevel = 4,
-                         weirdUtil = "No"){
+                         weirdUtil = "4"){
 
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
@@ -232,7 +232,6 @@ ISMCCompiler <- function(oracleUserName,
   ## vi_h data is the site age trees
   tree_ah1 <- VRIInit_siteTree(data.table::copy(samples),
                                compilationPaths$compilation_sa)
-
 
 
   ### 3. vi_c compilation
@@ -530,14 +529,13 @@ ISMCCompiler <- function(oracleUserName,
   ## small tree data
   vi_f <- readRDS(file.path(compilationPaths$compilation_sa, "vi_f.rds")) %>% data.table
   names(vi_f) <- toupper(names(vi_f))
-  vi_f[, obslength := length(TOTAL1), by = c("CLSTR_ID", "PLOT", "SPECIES")]
+  vi_f[, obslength := length(TOTAL2), by = c("CLSTR_ID", "PLOT", "SPECIES")]
   vi_f <- unique(vi_f, by = c("CLSTR_ID", "PLOT", "SPECIES"))
   vi_f[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_e[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
   smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
-                                       smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",],
-                                    compiler = "VRICompiler")
+                                       smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
