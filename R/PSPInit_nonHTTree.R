@@ -48,7 +48,10 @@ PSPInit_nonHTTree<- function(clusterplotHeader,
                                                plotWeight = 1, treeBasalArea = BA_TREE)]
     return(vi_i[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES_ORG, SPECIES,
                    DBH, BA_TREE,
-                   PHF_TREE, LV_D)])
+                   PHF_TREE, LV_D,
+                   BROKEN_TOP_IND, DIAM_BTP,
+                   HT_PROJ,
+                   HT_BTOP = HEIGHT_TO_BREAK)])
   } else {
     return(vi_i[,.(CLSTR_ID, PLOT, SPECIES, TREE_NO)])
   }

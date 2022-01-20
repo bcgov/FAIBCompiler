@@ -73,10 +73,10 @@ PSPVolTree<- function(treeData, equation, logMinLength,
            BTOP := "H"] ## projected height for broken top tree
   treeData[BROKEN_TOP_IND == "Y" & is.na(BTOP),
            BTOP := "D"] # diameter at broken top
-  treeData[is.na(BTOP), HT := round(HEIGHT, 1)]
-  treeData[!is.na(BTOP), HT_BTOP := round(HEIGHT, 1)]
+  treeData[is.na(BTOP), HT := round(HEIGHT, 1)] ## HT is total height
   treeData[BTOP == "H",
-           HT := round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1)]
+           ':='(HT = round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1),
+                HEIGHT_SOURCE = "Projected_in_field")]
   ## should add a note here
   treeData[BTOP == "H" & HT_BTOP > HT,
            HT_BTOP := round(HT, 1)]

@@ -23,7 +23,6 @@
 #'
 PSPInit_lossFactor<- function(fullMeasuredTrees,
                               dataSourcePath){
-  browser()
   lossfactors <- readRDS(file.path(dataSourcePath, "vi_d.rds")) %>% data.table
   names(lossfactors) <- toupper(names(lossfactors))
   targetnames <- names(lossfactors)

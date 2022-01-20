@@ -63,7 +63,6 @@ setMethod(
     #                                                                             RISK_GRP = as.numeric(NA),
     #                                                                             ADJ_ID = as.character(NA))]
     # loss_fct <- loss_fct[MEAS_INTENSE %in% c("FULL", "ENHANCED"),]
-    browser()
     set(loss_fct, , c(paste0("LOC", 7:8, "_FRO"),
                       paste0("LOSS", 7:8, "_IN")), NA)
     loss_fct$PATH_IND <- pathIndicatorGenerator(lossIndicatorMatix = loss_fct[,paste0("LOSS", 1:8, "_IN"), with = FALSE],

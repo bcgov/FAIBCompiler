@@ -80,8 +80,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
                              stumpHeight = 0.3,
                              breastHeight = 1.3,
                              UTOPDIB = 10,
-                             utilLevel = 4,
-                             weirdUtil = "No"){
+                             utilLevel = 3,
+                             weirdUtil = c("2", "4")){
 
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
@@ -142,6 +142,41 @@ ISMCCompiler_PSP <- function(oracleUserName,
   cat(paste(Sys.time(), ": Update spatial attributes.\n", sep = ""))
   spatialLookups <- updateSpatial(samplesites = vi_a,
                                   mapPath = compilationPaths$compilation_map)
+  spatialLookups[, ':='(BEC_source = "fromMap",
+                        TSA_source = "fromMap",
+                        FIZ_source = "fromMap")]
+  ## for PSP, some samples do not have good spatial coordinates, hence, causing
+  ## missing spatial attributes
+  ## for those samples, the compiler takes those variables from SAS outputs
+  spatialAttributes_fromSAS <- read.csv(file.path(compilationPaths$compilation_coeff,
+                                                  "spatialAttributes_fromSAS.csv")) %>%
+    data.table
+  spatialLookups <- merge(spatialLookups,
+                          spatialAttributes_fromSAS,
+                          by = "SITE_IDENTIFIER",
+                          all.x = TRUE)
+  spatialLookups[is.na(BEC), ':='(BEC = BGC_ZONE_sas,
+                                  BEC_SBZ = BGC_SUBZONE_sas,
+                                  BEC_VAR = BGC_VAR_sas,
+                                  BEC_source = "fromOldSAS")]
+  spatialLookups[, TSA_sas := as.character(TSA_sas)]
+  spatialLookups[nchar(TSA_sas) == 1,
+                 TSA_sas := paste0("0", TSA_sas)]
+  spatialLookups[is.na(TSA), ':='(TSA = TSA_sas,
+                                  TSA_DESC = MGMT_UNIT_sas,
+                                  TSA_source = "fromOldSAS")]
+  spatialLookups[is.na(FIZ), ':='(FIZ = FIZ_sas,
+                                  FIZ_source = "fromOldSAS")]
+  spatialLookups[,':='(BGC_ZONE_sas = NULL,
+                       BGC_SUBZONE_sas = NULL,
+                       BGC_VAR_sas = NULL,
+                       OWNER_sas = NULL,
+                       TSA_sas = NULL,
+                       MGMT_UNIT_sas = NULL,
+                       FIZ_sas = NULL)]
+  ### end of spatial update from sas output
+
+
   saveRDS(spatialLookups,
           file.path(compilationPaths$compilation_sa,
                     "vi_a.rds"))
@@ -149,7 +184,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                                   IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
                                                   Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
                                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
-                                                  PROJ_ID, SAMP_NO)],
+                                                  PROJ_ID, SAMP_NO, BEC_source, TSA_source, FIZ_source)],
                                 by = "SAMP_POINT")
   saveRDS(spatialLookups_simp,
           file.path(compilationPaths$compilation_db,
@@ -168,7 +203,21 @@ ISMCCompiler_PSP <- function(oracleUserName,
           VISIT_NUMBER := as.numeric(substr(CLSTR_ID, 12, 13))]
   samples[nchar(CLSTR_ID) == 14,
           VISIT_NUMBER := as.numeric(substr(CLSTR_ID, 12, 14))]
+  standage_vegcomp <- read.xlsx(file.path(compilationPaths$compilation_coeff,
+                                          paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")),
+                                detectDates = TRUE) %>%
+    data.table
+  samples <- merge(samples,
+                   standage_vegcomp[,.(SITE_IDENTIFIER = as.character(SITE_IDENTIFIER), PROJ_AGE_1,
+                                       PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
+                   by = "SITE_IDENTIFIER",
+                   all.x = TRUE)
+  samples[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
 
+  samples[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
+  samples[, ':='(PROJ_AGE_1 = NULL,
+                 PROJECTED_Year = NULL,
+                 measYear = NULL)]
   saveRDS(samples,
           file.path(compilationPaths$compilation_db, "samples.rds"))
   # write.csv(samples, file.path(compilationPaths$compilation_db, "samples.csv"), row.names = FALSE)
@@ -182,6 +231,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
 
   tree_ms1 <- PSPInit_measuredTree(data.table::copy(samples),
                                    compilationPaths$compilation_sa)
+
   ### 2.3 load vi_d data
   ## vi_d contains call grading data for fully measured trees and enhanced trees
   vi_d <- PSPInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO)],
@@ -200,54 +250,17 @@ ISMCCompiler_PSP <- function(oracleUserName,
   ## vi_h data is the site age trees
   tree_ah1 <- PSPInit_siteTree(data.table::copy(samples),
                                compilationPaths$compilation_sa)
-  tree_ms1[, MEAS_INTENSE := "H-ENHANCED"]
+
+  tree_ms1[BROKEN_TOP_IND != "Y",
+           MEAS_INTENSE := "H-ENHANCED"] # for the non-broken top trees, tree height is tree length
+  tree_ms1[BROKEN_TOP_IND == "Y",
+           MEAS_INTENSE := "NON-ENHANCED"] # for the broken top trees,
+                                           # tree height needs to be estimated using either projected height
+                                           # or DBH-height equations
+
   tree_nonHT[, MEAS_INTENSE := "NON-ENHANCED"]
   tree_all <- rbindlist(list(tree_ms1, tree_nonHT),
                         fill = TRUE)
-  # browser()
-  # save(list = ls(),
-  #      file = "alldata.rdata")
-  # load("alldata.rdata")
-  # browser()
-  # tree_all <- merge(tree_all,
-  #                   vi_d[,.(CLSTR_ID, PLOT, TREE_NO, hasLossInd = TRUE)],
-  #                   by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-  #                   all.x = TRUE)
-  #
-  # vid_mis <- merge(vi_d,
-  #                  tree_all[,.(CLSTR_ID, PLOT, TREE_NO, intreeall = TRUE)],
-  #                  by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-  #                  all.x = TRUE)
-  # vid_mis <- vid_mis[is.na(intreeall),]
-  # treemeasurements[, CLSTR_ID := paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER)]
-  #
-  # vid_mis_clfound <- vid_mis[CLSTR_ID %in% tree_all$CLSTR_ID,]
-  # vid_mis_clnotfound <- vid_mis[!(CLSTR_ID %in% tree_all$CLSTR_ID),]
-  #
-  # vid_mis_clfound <- merge(vid_mis_clfound, treemeasurements[,.(CLSTR_ID,
-  #                                                               PLOT = PLOT_NUMBER,
-  #                                                               TREE_NO = TREE_NUMBER,
-  #                                                               TREE_EXTANT_CODE,
-  #                                                               TREE_CLASS_CODE)],
-  #                          by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-  #                          all.x = TRUE)
-  #
-  # backlogpsp <- read.csv("D:/ISMC project/ISMC PSP backlog data/match_status.csv") %>%
-  #   data.table
-  #
-  # backlogpsp[, CLSTR_ID := paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER)]
-  #
-  # backlogpsp[CLSTR_ID %in% vid_mis_clnotfound$CLSTR_ID,
-  #            missingDiameterHT := TRUE]
-  # backlogpsp[is.na(missingDiameterHT),
-  #            missingDiameterHT := FALSE]
-  # backlogpsp[missingDiameterHT == FALSE,]
-  #
-  # vid_mis_clnotfound[CLSTR_ID %in% backlogpsp$CLSTR_ID,
-  #                    pspbacklog := TRUE]
-  #
-  # vid_mis_clnotfound[is.na(pspbacklog)]
-
   tree_all <- merge(tree_all,
                     unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER,
                                       VISIT_NUMBER,
@@ -264,12 +277,6 @@ ISMCCompiler_PSP <- function(oracleUserName,
   tree_all[MEAS_INTENSE == "H-ENHANCED" & full == TRUE,
            MEAS_INTENSE := "FULL"]
 
-  # tree_all <- readRDS("treeall.rds")
-  # compilationPaths <- readRDS("compilationPaths.rds")
-  # growthrates <- DBHGrowthRateGenerator(tree_all)
-  #
-  # pspTreeCheck(tree_all, growthrates)
-
   if(HTEstimateMethod == "bestMEM"){
     height_dbh_coeff <- read.csv(file.path(compilationPaths$compilation_coeff,
                                        "best_height_models.csv")) %>%
@@ -280,8 +287,11 @@ ISMCCompiler_PSP <- function(oracleUserName,
   nonHtrees <- pspHT(treeData = tree_all[MEAS_INTENSE == "NON-ENHANCED",],
                     method = HTEstimateMethod,
                     coeffs = height_dbh_coeff)
+
   alltrees <- rbindlist(list(nonHtrees, tree_all[MEAS_INTENSE != "NON-ENHANCED",]),
                         fill = TRUE)
+  alltrees[is.na(HEIGHT_SOURCE),
+           HEIGHT_SOURCE := "Measured"]
   ### 3. vi_c compilation
   tree_ms6 <- PSPVolTree(treeData = data.table::copy(alltrees),
                          equation = equation,
@@ -292,12 +302,10 @@ ISMCCompiler_PSP <- function(oracleUserName,
                          HTEstimateMethod = HTEstimateMethod,
                          htDBHCoeff = height_dbh_coeff)
 
-
   ######################
   ###################### start the site age compilation
   ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
-  browser()
   tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
                                         samples[,.(CLSTR_ID, PLOT,
                                                    FIZ = as.character(FIZ),
@@ -379,20 +387,18 @@ ISMCCompiler_PSP <- function(oracleUserName,
                   VOL_NET = 0,
                   VAL_MER = 0)]
   prep_smy[is.na(S_F), SF_COMPILE := "S"]
+  nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
+    data.table
   vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
                                clusterPlotHeader = samples,
                                utilLevel = utilLevel,
                                weirdUtil = weirdUtil,
-                               equation = equation)
+                               equation = equation,
+                               nvafRatio = nvafratio)
   saveRDS(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.rds"))
   saveRDS(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.rds"))
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
   saveRDS(vrisummaries$compositionsmry_byc, file.path(compilationPaths$compilation_db, "Smries_speciesComposition_byCL.rds"))
-
-  # write.csv(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.csv"), row.names = FALSE)
-  # write.csv(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.csv"), row.names = FALSE)
-  # write.csv(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.csv"), row.names = FALSE)
-  # write.csv(vrisummaries$compositionsmry_byc, file.path(compilationPaths$compilation_db, "Smries_speciesComposition_byCL.csv"), row.names = FALSE)
 
 
   ## 8. small tree and stump compilation
@@ -416,10 +422,6 @@ ISMCCompiler_PSP <- function(oracleUserName,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCLSP.rds"))
-  # write.csv(smalltreecompile$clusterSummaries,
-  #         file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.csv"), row.names = FALSE)
-  # write.csv(smalltreecompile$clusterSpeciesSummaries,
-  # file.path(compilationPaths$compilation_db, "Smries_smallTree_byCLSP.csv"), row.names = FALSE)
   rm(smalltreecompile)
   vi_g <- readRDS(file.path(compilationPaths$compilation_sa, "vi_g.rds")) %>% data.table
   names(vi_g) <- toupper(names(vi_g))
@@ -434,10 +436,6 @@ ISMCCompiler_PSP <- function(oracleUserName,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCL.rds"))
   saveRDS(stumpCompile$stmp_cs,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
-  # write.csv(stumpCompile$stmp_c,
-  #         file.path(compilationPaths$compilation_db, "Smries_stump_byCL.csv"), row.names = FALSE)
-  # write.csv(stumpCompile$stmp_cs,
-  #         file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.csv"), row.names = FALSE)
   #############################
 
   for (indifolder in c(compilationPaths$compilation_db,
@@ -448,34 +446,29 @@ ISMCCompiler_PSP <- function(oracleUserName,
 
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
-      write.xlsx(thedata,
-                 file.path(indifolder, paste0(indifile, ".xlsx")))
+      write.csv(thedata,
+                 file.path(indifolder, paste0(indifile, ".csv")),
+                 na = "",
+                row.names = FALSE)
     }
   }
 
   ## generate reports
-  cat(paste(Sys.time(), ": Generate reports and save them to report folder.\n", sep = ""))
-
-  # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env"
-  # compilationPaths <- list()
-  # compilationPaths$compilation_db <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_db"
-  # compilationPaths$compilation_report <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_report"
-  # compilationPaths$compilation_last <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/Archive_20210415"
-  # compilationDate <- "20210421"
-
-  lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
-                              compilationPaths$compilation_last)
-  rmarkdown::render(input = file.path(compilationPaths$compilation_report,
-                                      "general_report.Rmd"),
-                    params = list(crtPath = compilationPaths$compilation_db,
-                                  lastPath = compilationPaths$compilation_last,
-                                  mapPath = compilationPaths$compilation_map,
-                                  coeffPath = compilationPaths$compilation_coeff,
-                                  compilationDate = compilationDate,
-                                  lastCompilationDate = lastCompilationDate,
-                                  compilationYear = compilationYear,
-                                  sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
-                    quiet = TRUE)
+  # cat(paste(Sys.time(), ": Generate reports and save them to report folder.\n", sep = ""))
+  #
+  # lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
+  #                             compilationPaths$compilation_last)
+  # rmarkdown::render(input = file.path(compilationPaths$compilation_report,
+  #                                     "general_report.Rmd"),
+  #                   params = list(crtPath = compilationPaths$compilation_db,
+  #                                 lastPath = compilationPaths$compilation_last,
+  #                                 mapPath = compilationPaths$compilation_map,
+  #                                 coeffPath = compilationPaths$compilation_coeff,
+  #                                 compilationDate = compilationDate,
+  #                                 lastCompilationDate = lastCompilationDate,
+  #                                 compilationYear = compilationYear,
+  #                                 sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
+  #                   quiet = TRUE)
 
   cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
 

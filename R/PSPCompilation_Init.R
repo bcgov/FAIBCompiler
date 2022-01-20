@@ -194,12 +194,15 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                             all.x = TRUE)
   treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
                    TREE_SPECIES_CODE := "X"]
+
+
   vi_c <- treemeasurements[!is.na(DIAMETER) & !is.na(LENGTH) &
                              OUT_OF_PLOT_IND == "N" &
                              MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N"), ## non tally tree, can not used for volume, see scott's comments
                            .(CLSTR_ID, PLOT = PLOT_NUMBER,
                              TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
                              DBH = DIAMETER, BROKEN_TOP_IND, DIAM_BTP = BROKEN_TOP_DIAMETER,
+                             HEIGHT_TO_BREAK,
                              CR_CL = CROWN_CLASS_CODE, TREE_LEN = LENGTH,
                              HT_PROJ = PROJECTED_HEIGHT,
                              HT_BRCH = HEIGHT_TO_LIVE_CROWN,
@@ -380,7 +383,11 @@ PSPCompilation_Init <- function(inputPath, outputPath){
                              SPECIES = TREE_SPECIES_CODE, SP0,
                              DBH = DIAMETER,
                              LV_D = TREE_EXTANT_CODE,
-                             S_F = TREE_STANCE_CODE)]
+                             S_F = TREE_STANCE_CODE,
+                             BROKEN_TOP_IND,
+                             DIAM_BTP = BROKEN_TOP_DIAMETER,
+                             HEIGHT_TO_BREAK,
+                             HT_PROJ = PROJECTED_HEIGHT)]
   saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
   rm(vi_i)
   treemeasurements <- treemeasurements[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT = PLOT_NUMBER,
