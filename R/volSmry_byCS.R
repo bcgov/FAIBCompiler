@@ -1,21 +1,21 @@
 #' Summarize volume components per hectare by cluster and species-VRI specific
-#' 
-#' 
+#'
+#'
 #' @description Summarizes volume components per hectare by cluster and species.
 #'              The function is last part of \code{vol_ha_2017.sas}.
 #'
-#' @param treeMC data.table, Tree-level compiled data for all volume trees. 
+#' @param treeMC data.table, Tree-level compiled data for all volume trees.
 #' @param utilLevel numeric, Utilization levels. Default is 4.
 #' @param weirdUtil character, Weird util. Default is \code{No}. Otherwise need to be specified as a number.
 #' @param equation character, Specifies whether the compiler is based on \code{KBEC} or \code{KFIZ}.
-#'                            Default is \code{KBEC}.       
-#'                                                                     
+#'                            Default is \code{KBEC}.
+#'
 #' @return A data table summarizes volume components by cluster and species. Equevalent to \code{smy_cs}.
-#' 
+#'
 #' @importFrom data.table ':='
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
 #'
-#' 
+#'
 #' @export
 #' @docType methods
 #' @rdname volSmry_byCS
@@ -41,7 +41,6 @@ setMethod(
     vha_lf <- paste(vha_ls, "LF", sep = "")
     vha_ds <- paste(vha_ls, "DS", sep = "")
     vha_df <- paste(vha_ls, "DF", sep = "")
-    
     treeMC[, ':='(DBH2 = DBH^2,
                   STEMS_HA = 1,
                   PRJ_GRP = prj_ID2Grp(PROJ_ID))]
@@ -49,11 +48,14 @@ setMethod(
     ## NO matter a tree is live or dead, as long as it is falling
     treeMC[SF_COMPILE == "F", TREE_FACTOR := PHF_TREE]
     treeMC[LV_D == "D" & SF_COMPILE == "S", TREE_FACTOR := PHF_TREE/PLOT_DED]
-    
-    if(toupper(weirdUtil) == "NO"){
-      dbhcatlist <- c(0, (1:utilLevel)*5+2.5)
+    if(length(weirdUtil) == 1){
+      if(toupper(weirdUtil) == "NO"){
+        dbhcatlist <- c(0, (1:utilLevel)*5+2.5)
+      } else {
+        dbhcatlist <- sort(unique(c((1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
+      }
     } else {
-      dbhcatlist <- sort(unique(c(0, (1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
+      dbhcatlist <- sort(unique(c((1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
     }
     all_volList <- lapply(dbhcatlist, function(s) dbhcatsummary(summarizeddata = treeMC,
                                                                 dbhcat = s))
@@ -62,7 +64,7 @@ setMethod(
         smy_cs_all <- all_volList[[i]]
       } else {
         smy_cs_all <- rbindlist(list(smy_cs_all,
-                                  all_volList[[i]]))
+                                     all_volList[[i]]))
       }
     }
     rm(all_volList, i)
@@ -142,8 +144,8 @@ setMethod(
                 equation = "missing"),
   definition = function(treeMC){
     return(volSmry_byCS(treeMC, utilLevel = 4,
-                              weirdUtil = "No", 
-                              equation = "KBEC"))
+                        weirdUtil = "No",
+                        equation = "KBEC"))
   })
 
 
@@ -160,9 +162,9 @@ dbhcatsummary <- function(summarizeddata, dbhcat){
   lssummarycolumns <- c(paste("VHA_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                        "NTWB", "D", "DW", "DWB"),
                               sep = ""), "DHA_MER", "DBH2", "BA_HA", "STEMS_HA")
-  
-  
-  summarizedoutput <- unique(summarizeddata[,.(CLSTR_ID, SPECIES, PRJ_GRP, NO_PLOTS, PLOT_DED, 
+
+
+  summarizedoutput <- unique(summarizeddata[,.(CLSTR_ID, SPECIES, PRJ_GRP, NO_PLOTS, PLOT_DED,
                                                PROJ_ID, BGC_ZONE)],
                              by = c("CLSTR_ID", "SPECIES"))
   summarizedoutput1 <- summarizeddata[,c(.N, lapply(.SD, function(s) sum(s, na.rm = TRUE))),
@@ -177,15 +179,15 @@ dbhcatsummary <- function(summarizeddata, dbhcat){
         setnames(subtable, c("N", summaryColumns), c("LIVE", lssummarycolumns))
       } else if (lv == "L" & sf == "F") {
         lfsummarycolumns <- paste(lssummarycolumns, "LF", sep = "")
-        setnames(subtable, c("N", summaryColumns), 
+        setnames(subtable, c("N", summaryColumns),
                  c("LIVE_FALL", lfsummarycolumns))
       } else if (lv == "D" & sf == "S") {
         dssummarycolumns <- paste(lssummarycolumns, "DS", sep = "")
-        setnames(subtable, c("N", summaryColumns), 
+        setnames(subtable, c("N", summaryColumns),
                  c("DEAD_STAND", dssummarycolumns))
       } else if (lv == "D" & sf == "F") {
         dfsummarycolumns <- paste(lssummarycolumns, "DF", sep = "")
-        setnames(subtable, c("N", summaryColumns), 
+        setnames(subtable, c("N", summaryColumns),
                  c("DEAD_FALL", dfsummarycolumns))
       }
       summarizedoutput <- merge(summarizedoutput, subtable,
@@ -194,37 +196,36 @@ dbhcatsummary <- function(summarizeddata, dbhcat){
     }
   }
   rm(lv, sf, summarizedoutput1, subtable)
-  
+
   summarizedoutput[, UTIL := dbhcat]
-  summarizedoutput[UTIL == 0, UTIL := 4]
   ## can have dead and live for the same species, can have live only or dead only,
   ## therefore not D, or not L is the best test.
   summarizedoutput[is.na(DEAD_STAND),  c(dssummarycolumns) := 0]
   summarizedoutput[is.na(DEAD_STAND),  DEAD_STAND := 0]
-  
+
   summarizedoutput[is.na(DEAD_FALL),  c(dfsummarycolumns) := 0]
   summarizedoutput[is.na(DEAD_FALL),  DEAD_FALL := 0]
-  
+
   summarizedoutput[is.na(LIVE_FALL),  c(lfsummarycolumns) := 0]
   summarizedoutput[is.na(LIVE_FALL),  LIVE_FALL := 0]
-  
+
   summarizedoutput[is.na(LIVE),  c(lssummarycolumns) := 0]
   summarizedoutput[is.na(LIVE),  LIVE := 0]
-  
+
   summarizedoutput[STEMS_HA %>>% 0, QMD := sqrt(DBH2/STEMS_HA)]
   summarizedoutput[is.na(QMD), QMD := 0]
-  
+
   summarizedoutput[STEMS_HALF %>>% 0, QMDLF := sqrt(DBH2LF/STEMS_HALF)]
   summarizedoutput[is.na(QMDLF), QMDLF := 0]
-  
+
   summarizedoutput[STEMS_HADS %>>% 0, QMDDS := sqrt(DBH2DS/STEMS_HADS)]
   summarizedoutput[is.na(QMDDS), QMDDS := 0]
-  
+
   summarizedoutput[STEMS_HADF %>>% 0, QMDDF := sqrt(DBH2DF/STEMS_HADF)]
   summarizedoutput[is.na(QMDDF), QMDDF := 0]
-  
+
   summarizedoutput[, NO_TREES := LIVE + LIVE_FALL + DEAD_STAND + DEAD_FALL]
-  summarizedoutput[, c("LIVE", "LIVE_FALL", "DEAD_STAND", "DEAD_FALL") := NULL]  
+  summarizedoutput[, c("LIVE", "LIVE_FALL", "DEAD_STAND", "DEAD_FALL") := NULL]
   return(summarizedoutput)
 }
 

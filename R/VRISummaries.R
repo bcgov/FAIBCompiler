@@ -53,10 +53,14 @@ setMethod(
                                                                             BGC_ZONE, PLOT_WT, SAMP_TYP, SA_VEGCOMP)],
                                                        by = c("CLSTR_ID", "PLOT")),
                                                 by = c("CLSTR_ID", "PLOT"))
-    if(toupper(weirdUtil) == "NO"){
-      dbhcatlist <- c(4, (1:utilLevel)*5+2.5)
+    if(length(weirdUtil) == 1){
+      if(toupper(weirdUtil) == "NO"){
+        dbhcatlist <- c(4, (1:utilLevel)*5+2.5)
+      } else {
+        dbhcatlist <- sort(unique(c((1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
+      }
     } else {
-      dbhcatlist <- sort(unique(c(4, (1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
+      dbhcatlist <- sort(unique(c((1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
     }
 
     volsmy_cs <- volSmry_byCS(treeMC = data.table::copy(allVolumeTrees),
