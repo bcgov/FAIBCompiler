@@ -60,11 +60,14 @@ PSPInit_measuredTree<- function(clusterplotHeader,
   # vi_c[substr(CLSTR_ID, 9, 9) %in% c("F", "M", "Y", "L") & DBH < 9,
   #      PHF_TREE := PHF_TREE*4]
   vi_c[BROKEN_TOP_IND == "Y" &
-         !is.na(HEIGHT_TO_BREAK),
-       HT_BTOP := HEIGHT_TO_BREAK] ## break height is height_to_break, if it is available
+         !is.na(TREE_LEN),
+       HT_BTOP := TREE_LEN] ## as long as TREE_LEN is available, the break height is TREE_LEN
+
   vi_c[BROKEN_TOP_IND == "Y" &
-         is.na(HEIGHT_TO_BREAK),
-       HT_BTOP := TREE_LEN] ## otherwise, use tree length as break height
+         is.na(TREE_LEN) &
+         !is.na(HEIGHT_TO_BREAK),
+       HT_BTOP := HEIGHT_TO_BREAK] ## otherwise, the height_to_break is used as break height
+
   vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),
                .(CLSTR_ID, PLOT, TREE_NO,
                  SPECIES, SPECIES_ORG,
