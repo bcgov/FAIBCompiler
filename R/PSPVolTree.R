@@ -69,6 +69,10 @@ PSPVolTree<- function(treeData, equation, logMinLength,
   treeData[VOL_MULT > 1.2 | VOL_MULT < 0.9, VOL_MULT := 1]
 
   ## 2. estimate tree height for broken top trees
+  ## as suggested by Rene, as the quality of projected height is bad,
+  ## even though we have projected height for broken top trees,
+  ## we should not use it
+  treeData[, HT_PROJ := NA] ## force projected height as NA
   treeData[HT_PROJ > 0 & BROKEN_TOP_IND == "Y",
            BTOP := "H"] ## projected height for broken top tree
   treeData[BROKEN_TOP_IND == "Y" & is.na(BTOP),
