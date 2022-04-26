@@ -21,9 +21,12 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   samplesites[, ELEVATION := NULL]
   samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                 IP_UTM = UTM_ZONE, IP_EAST = UTM_EASTING, IP_NRTH = UTM_NORTHING,
-                                IP_ELEV = ELEVATION)]
+                                IP_ELEV = ELEVATION,
+                                SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
+                                FOREST_INVENTORY_ZONE_CD)]
   samplesites[, namelength := nchar(SAMPLE_SITE_NAME)]
   samplesites[, PSP_TYPE := substr(SAMPLE_SITE_NAME, namelength, namelength)]
+  samplesites[, namelength := NULL]
   samplesites <- samplesites[PSP_TYPE != "I",]
   if(nrow(samplesites) != length(unique(samplesites$SITE_IDENTIFIER))){
     warning("samplesites file: SITE_IDENTIFIER is not unique.")
@@ -300,14 +303,16 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   ## as explained by Scott and Rene, we need to adjust field age and lab age
   ## based on missed year from pith
   ## see email on August 25, 2021
-  treemeasurements[is.na(AGE_CORE_MISSED_YEARS),
-                   AGE_CORE_MISSED_YEARS := 0]
+  treemeasurements[is.na(AGE_CORE_MISSED_YEARS_FIELD),
+                   AGE_CORE_MISSED_YEARS_FIELD := 0]
+  treemeasurements[is.na(AGE_CORE_MISSED_YEARS_LAB),
+                   AGE_CORE_MISSED_YEARS_LAB := 0]
   vi_h <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT),
                            .(CLSTR_ID, PLOT = PLOT_NUMBER,
                              TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE, SP0,
                              CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
-                             BORAG_FL = BORING_AGE + AGE_CORE_MISSED_YEARS,
-                             BORE_AGE = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS,
+                             BORAG_FL = BORING_AGE + AGE_CORE_MISSED_YEARS_FIELD,
+                             BORE_AGE = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS_LAB,
                              AGE_CORR = AGE_CORRECTION,  TOTAL_AG = TOTAL_AGE,
                              PHYS_AGE = PHYSIOLOGICAL_AGE, GROW_20YR = RADIAL_INCREMENT_LAST_20_YR,
                              GROW_10YR = RADIAL_INCREMENT_LAST_10_YR,
