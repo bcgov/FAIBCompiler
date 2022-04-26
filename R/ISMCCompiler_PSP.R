@@ -144,39 +144,22 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                   mapPath = compilationPaths$compilation_map)
   spatialLookups[, ':='(BEC_source = "fromMap",
                         TSA_source = "fromMap",
-                        FIZ_source = "fromMap")]
+                        FIZ_source = "fromMap",
+                        TFL_source = "fromMap",
+                        OWNER_source = "fromMap")]
   ## for PSP, some samples do not have good spatial coordinates, hence, causing
   ## missing spatial attributes
-  ## for those samples, the compiler takes those variables from SAS outputs
-  spatialAttributes_fromSAS <- read.csv(file.path(compilationPaths$compilation_coeff,
-                                                  "spatialAttributes_fromSAS.csv")) %>%
-    data.table
-  spatialLookups <- merge(spatialLookups,
-                          spatialAttributes_fromSAS,
-                          by = "SITE_IDENTIFIER",
-                          all.x = TRUE)
-  spatialLookups[is.na(BEC), ':='(BEC = BGC_ZONE_sas,
-                                  BEC_SBZ = BGC_SUBZONE_sas,
-                                  BEC_VAR = BGC_VAR_sas,
-                                  BEC_source = "fromOldSAS")]
-  spatialLookups[, TSA_sas := as.character(TSA_sas)]
-  spatialLookups[nchar(TSA_sas) == 1,
-                 TSA_sas := paste0("0", TSA_sas)]
-  spatialLookups[is.na(TSA), ':='(TSA = TSA_sas,
-                                  TSA_DESC = MGMT_UNIT_sas,
-                                  TSA_source = "fromOldSAS")]
-  spatialLookups[is.na(FIZ), ':='(FIZ = FIZ_sas,
-                                  FIZ_source = "fromOldSAS")]
-  spatialLookups[,':='(BGC_ZONE_sas = NULL,
-                       BGC_SUBZONE_sas = NULL,
-                       BGC_VAR_sas = NULL,
-                       OWNER_sas = NULL,
-                       TSA_sas = NULL,
-                       MGMT_UNIT_sas = NULL,
-                       FIZ_sas = NULL)]
-  ### end of spatial update from sas output
-
-
+  spUpdateMethod <- "fromRegionCompartMap"
+  if(spUpdateMethod == "fromOldSAS"){
+    ## for those samples, the compiler takes those variables from SAS outputs
+    spatialLookups <- updateMissingSpAttribute(spatialtable = spatialLookups,
+                                               coeffPath = compilationPaths$compilation_coeff,
+                                               updateMethod = spUpdateMethod)
+  } else if (spUpdateMethod == "fromRegionCompartMap"){
+    spatialLookups <- updateMissingSpAttribute(spatialtable = spatialLookups,
+                                               mapPath = compilationPaths$compilation_map,
+                                               updateMethod = spUpdateMethod)
+  }
   saveRDS(spatialLookups,
           file.path(compilationPaths$compilation_sa,
                     "vi_a.rds"))
@@ -184,7 +167,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                                   IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
                                                   Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
                                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
-                                                  PROJ_ID, SAMP_NO, BEC_source, TSA_source, FIZ_source)],
+                                                  PROJ_ID, SAMP_NO, BEC_source, TSA_source, FIZ_source,
+                                                  TFL_source, OWNER_source)],
                                 by = "SAMP_POINT")
   saveRDS(spatialLookups_simp,
           file.path(compilationPaths$compilation_db,
@@ -255,8 +239,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
            MEAS_INTENSE := "H-ENHANCED"] # for the non-broken top trees, tree height is tree length
   tree_ms1[BROKEN_TOP_IND == "Y",
            MEAS_INTENSE := "NON-ENHANCED"] # for the broken top trees,
-                                           # tree height needs to be estimated using either projected height
-                                           # or DBH-height equations
+  # tree height needs to be estimated using either projected height
+  # or DBH-height equations
 
   tree_nonHT[, MEAS_INTENSE := "NON-ENHANCED"]
   tree_all <- rbindlist(list(tree_ms1, tree_nonHT),
@@ -279,14 +263,14 @@ ISMCCompiler_PSP <- function(oracleUserName,
 
   if(HTEstimateMethod == "bestMEM"){
     height_dbh_coeff <- read.csv(file.path(compilationPaths$compilation_coeff,
-                                       "best_height_models.csv")) %>%
+                                           "best_height_models.csv")) %>%
       data.table
   }
 
   ## fit height for nonHT trees
   nonHtrees <- pspHT(treeData = tree_all[MEAS_INTENSE == "NON-ENHANCED",],
-                    method = HTEstimateMethod,
-                    coeffs = height_dbh_coeff)
+                     method = HTEstimateMethod,
+                     coeffs = height_dbh_coeff)
 
   alltrees <- rbindlist(list(nonHtrees, tree_all[MEAS_INTENSE != "NON-ENHANCED",]),
                         fill = TRUE)
@@ -349,9 +333,9 @@ ISMCCompiler_PSP <- function(oracleUserName,
 
 
   tree_ms7 <- DWBCompiler_PSP(treeMS = tree_ms6,
-                          siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
-                          treeLossFactors = vi_d,
-                          equation = "KBEC")
+                              siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
+                              treeLossFactors = vi_d,
+                              equation = "KBEC")
 
 
   vi_c_sa <- readRDS(file.path(compilationPaths$compilation_sa,
@@ -417,7 +401,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
   vi_e[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
   smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
-                                       smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
+                                    smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
@@ -447,8 +431,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
       write.csv(thedata,
-                 file.path(indifolder, paste0(indifile, ".csv")),
-                 na = "",
+                file.path(indifolder, paste0(indifile, ".csv")),
+                na = "",
                 row.names = FALSE)
     }
   }
