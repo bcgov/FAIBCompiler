@@ -158,7 +158,24 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
                        FORBS_Q = substr(LINE, 48, 48), # FORBS_Q  $1.
                        MS_GRAM = as.numeric(substr(LINE, 49, 53))/10, # MS_GRAM   5.1
                        MS_FORB = as.numeric(substr(LINE, 54, 58))/10)]
+  card041_temp <- data.table::copy(card041)
+  card041_temp[,':='(REC_ID = NULL, PAGE_NO = NULL, SEQ = NULL,
+                     NO_PAGES = NULL)]
+#   1)	Range Measurement [ISMC_RANGE_MEASUREMENT] – CLSTR_ID, F_FULL, F_HALF, F_QRTR, GRAM_Q, FORBS_Q, MS_GRAM, MS_FORB
+# 2)	Forage Transect [ISMC_VRI_TRANSECT] – CLSTR_ID, TRANSECT, AZIMUTH, OBS_LLEN, TOT_LLEN (there should be 2 transects)
+# 3)	Forage Plot [ISMC_RANGE_MICRO_PLOT] – CLSTR_ID, TRANSECT, PLOT, UTIL_X, (there should be 2 plots per transect)
 
+  write.xlsx(card041_temp[,.(CLSTR_ID, F_FULL, F_HALF, F_QRTR,
+                             GRAM_Q, FORBS_Q, MS_GRAM, MS_FORB)],
+             file.path(savePath,
+                       "card_forage_range_measurement.xlsx"),
+             overwrite = TRUE)
+  write.xlsx(card041_temp[,.(CLSTR_ID, TRANSECT, PLOT,
+                             UTIL_X1, UTIL_X2,
+                             UTIL_X3, UTIL_X4)],
+             file.path(savePath,
+                       "card_forage_range_micro_plot.xlsx"),
+             overwrite = TRUE)
   card042 <- allText[REC_ID == "042",
                      .(REC_ID, PAGE_NO, SEQ, CLSTR_ID,
                        TRANSECT = substr(LINE, 10, 10),#   $1.
@@ -1160,6 +1177,8 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
     noteep[, ':='(NOTES1A = paste(NOTES1A, collapse = " "),
                   NOTES1B = paste(NOTES1B, collapse = " ")),
            by = c("CLSTR_ID", "SEQ")]
+    noteep <- unique(noteep,
+                     by = c("CLSTR_ID", "SEQ"))
     noteep <- reshape(noteep,
                       varying = list(c("NOTES1A", "NOTES1B")),
                       times = c(1, 2),
@@ -1663,7 +1682,8 @@ loadASCII <- function(txtLocation, saveThem = FALSE, savePath){
         setnames(indidata, "tempname", indiname)
       }
       saveRDS(indidata, file.path(savePath, paste0(indifile, ".rds")))
-      write.xlsx(indidata, file.path(savePath, paste0(indifile, ".xlsx")))
+      write.xlsx(indidata, file.path(savePath, paste0(indifile, ".xlsx")),
+                 overwrite = TRUE)
     }
   } else if (!saveThem){
 
