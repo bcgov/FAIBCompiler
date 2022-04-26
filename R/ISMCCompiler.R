@@ -497,6 +497,17 @@ ISMCCompiler <- function(oracleUserName,
                                    "NTWB", "D", "DW", "DWB"),
                           sep = ""), "VAL_MER")
   prep_smy[DBH < 10, c(volVariables) := 0]
+  prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
+             VOL_NETM %>>% VOL_MER,
+           VOL_NETM := VOL_MER]
+  prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
+             VOL_NTW2 %>>% VOL_MER,
+           VOL_NTW2 := VOL_MER]
+  prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
+             VOL_NTWB %>>% VOL_MER,
+           VOL_NTWB := VOL_MER]
+
+
   saveRDS(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
   # write.csv(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
