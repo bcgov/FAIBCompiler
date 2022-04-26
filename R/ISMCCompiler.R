@@ -484,8 +484,13 @@ ISMCCompiler <- function(oracleUserName,
                           fill = TRUE)
   }
 
-  prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"), VOL_SRCE := "Calc"]
-  prep_smy[is.na(VOL_SRCE), VOL_SRCE := "Unk"]
+  prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"), WSV_VOL_SRCE := "Calculated"]
+  prep_smy[!is.na(VOL_WSV) &
+             MEAS_INTENSE == "NON-ENHANCED",
+           WSV_VOL_SRCE := "Regression"]
+  prep_smy[is.na(VOL_WSV),
+           WSV_VOL_SRCE := "Not applicable"]
+
   prep_smy <- merge(prep_smy, unique(lookup_species()[,.(SPECIES, SP_TYPE)], by = "SPECIES"),
                     by = "SPECIES", all.x = TRUE)
   volVariables <- c(paste("VOL_",c("NET", "MER", "NETM", "NTW2",
