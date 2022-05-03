@@ -179,8 +179,10 @@ ISMCCompiler <- function(oracleUserName,
   samples[, ':='(PROJ_AGE_1 = NULL,
                  PROJECTED_Year = NULL,
                  measYear = NULL)]
-
-  saveRDS(samples,
+  samples_tmp <- data.table::copy(samples)
+  samples_tmp[, ':='(PRJ_GRP = NULL,
+                     SA_VEGCOMP = NULL)]
+  saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db, "samples.rds"))
   # write.csv(samples, file.path(compilationPaths$compilation_db, "samples.csv"), row.names = FALSE)
 
