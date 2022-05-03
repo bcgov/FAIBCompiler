@@ -114,13 +114,14 @@ setMethod(
                    AGET_TXO = round(AGET_TXO, 1),
                    HT_TXO = round(HT_TXO, 1),
                    SI_M_TXO = round(SI_M_TXO, 1))]
-    ahs_msp[, ':='(STSpecies = siteToolsSpeciesConvertor(SPECIES))]
+    ahs_msp[, ':='(SP_SINDEX = siteToolsSpeciesConvertor(SPECIES))]
     ahs_msp[AGEB_TLS > 0 & HT_TLS > 0,
             SI_C_TLS := SiteTools_HTBoredAge2SI(boredAge = AGEB_TLS, height = HT_TLS,
-                                                species = STSpecies,
+                                                species = SP_SINDEX,
                                                 ICRegion = FIZ, ageType = 1, estType = 1)]
     ahs_msp[AGEB_TXO > 0 & HT_TXO > 0,
-            SI_C_TXO := SiteTools_HTBoredAge2SI(boredAge = AGEB_TXO, height = HT_TXO, species = STSpecies,
+            SI_C_TXO := SiteTools_HTBoredAge2SI(boredAge = AGEB_TXO, height = HT_TXO,
+                                                species = SP_SINDEX,
                                                 ICRegion = FIZ, ageType = 1, estType = 1)]
     ahs_msp[,':='(SI_C_TLS = round(SI_C_TLS, 1),
                   SI_C_TXO = round(SI_C_TXO, 1))]
