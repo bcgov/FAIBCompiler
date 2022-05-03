@@ -33,8 +33,8 @@ PSPInit_clusterplot <- function(dataSourcePath){
        BEC := prj_ID2BEC(PROJ_ID)]
 
   ## keep key columns for further compilation
-  vi_a <- vi_a[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD, MEAS_DT, TSA, FIZ, BGC_ZONE = BEC,
-                  BGC_SBZN = BEC_SBZ, BGC_VAR = BEC_VAR, PRJ_GRP,
+  vi_a <- vi_a[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD, MEAS_DT, TSA, FIZ, BEC_ZONE = BEC,
+                  BEC_SBZ, BEC_VAR, PRJ_GRP,
                   SAMPLE_SITE_NAME)]
   vi_b <- readRDS(file.path(dataSourcePath, "vi_b.rds")) %>% data.table
   names(vi_b) <- toupper(names(vi_b))

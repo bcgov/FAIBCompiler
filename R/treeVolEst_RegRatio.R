@@ -32,9 +32,9 @@
 #'
 treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, ratioTable){
   nonVolTrees[, SAMP_POINT := as.numeric(substr(CLSTR_ID, 1, 7))]
-  fixedCoeffTable <- fixedCoeffTable[,.(BGC_ZONE, SP0, LV_D, INTERCEPT, SLOPE)]
-  randomCoeffTable <- unique(randomCoeffTable[,.(BGC_ZONE, SP0, LV_D, SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM)],
-                             by = c("BGC_ZONE", "SP0", "LV_D", "SAMP_POINT"))
+  fixedCoeffTable <- fixedCoeffTable[,.(BEC_ZONE, SP0, LV_D, INTERCEPT, SLOPE)]
+  randomCoeffTable <- unique(randomCoeffTable[,.(BEC_ZONE, SP0, LV_D, SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM)],
+                             by = c("BEC_ZONE", "SP0", "LV_D", "SAMP_POINT"))
 
   volVariables <- c(paste("VOL_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                    "NTWB", "D", "DW", "DWB"),
@@ -44,12 +44,12 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
   ratioVariables <- paste("RATIO_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                      "NTWB", "D", "DW", "DWB", "VAL"),
                           sep = "")
-  ratioTable <- ratioTable[, c("BGC_ZONE", "SP0", "LV_D", ratioVariables), with = FALSE]
+  ratioTable <- ratioTable[, c("BEC_ZONE", "SP0", "LV_D", ratioVariables), with = FALSE]
   nonVolTrees <- merge(nonVolTrees, fixedCoeffTable,
-                                 by = c("BGC_ZONE", "SP0", "LV_D"),
+                                 by = c("BEC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
   nonVolTrees <- merge(nonVolTrees, randomCoeffTable,
-                                 by = c("BGC_ZONE", "SP0", "LV_D", "SAMP_POINT"),
+                                 by = c("BEC_ZONE", "SP0", "LV_D", "SAMP_POINT"),
                                  all.x = TRUE)
   nonVolTrees[is.na(INTERCEPT_RDM), INTERCEPT_RDM := 0]
   nonVolTrees[is.na(SLOPE_RDM), SLOPE_RDM := 0]
@@ -57,8 +57,8 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
   nonVolTrees[MEAS_INTENSE == "NON-ENHANCED", VOL_WSV := VOL_WSV_new]
   if(nrow(nonVolTrees[MEAS_INTENSE == "NON-ENHANCED" & is.na(INTERCEPT)]) > 0){
     a <- nonVolTrees[MEAS_INTENSE == "NON-ENHANCED" & is.na(INTERCEPT),.(No_of_Trees = paste0(length(DBH), " trees")),
-                     by = c("BGC_ZONE", "SP0", "LV_D")]
-    a[, text := paste0(BGC_ZONE, " + ", SP0, " + ", LV_D, ": ", No_of_Trees, "\n")]
+                     by = c("BEC_ZONE", "SP0", "LV_D")]
+    a[, text := paste0(BEC_ZONE, " + ", SP0, " + ", LV_D, ": ", No_of_Trees, "\n")]
     warning("Whole stem volume for below trees can not be derived using regression method: \n", a$text)
   }
   nonVolTrees[,':='(INTERCEPT = NULL,
@@ -68,7 +68,7 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
                     VOL_WSV_new = NULL)]
 
   nonVolTrees <- FAIBBase::merge_dupUpdate(nonVolTrees, ratioTable,
-                                 by = c("BGC_ZONE", "SP0", "LV_D"),
+                                 by = c("BEC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
   # nonVolTrees[, NET_FCT_METHOD := "Ratio"]
   nonVolTrees[is.na(VOL_WSV), VOL_WSV := 0]

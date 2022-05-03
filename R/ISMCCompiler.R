@@ -254,7 +254,7 @@ ISMCCompiler <- function(oracleUserName,
   tree_ms1[HEIGHT %in% c(NA, 0), MEAS_INTENSE := "NON-ENHANCED"]
   nonenhancedtreedata <- tree_ms1[MEAS_INTENSE == "NON-ENHANCED",]
   voltrees <- data.table::copy(tree_ms1)[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),]
-  voltrees <- merge(voltrees, unique(samples[,.(CLSTR_ID, FIZ, BGC_ZONE, BGC_SBZN, BGC_VAR)],
+  voltrees <- merge(voltrees, unique(samples[,.(CLSTR_ID, FIZ, BEC_ZONE, BEC_SBZ, BEC_VAR)],
                                      by = "CLSTR_ID"),
                     by = "CLSTR_ID",
                     all.x = TRUE)
@@ -280,9 +280,10 @@ ISMCCompiler <- function(oracleUserName,
   ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
   tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
-                                        samples[,.(CLSTR_ID, PLOT,
+                                        unique(samples[,.(CLSTR_ID, PLOT,
                                                    FIZ = as.character(FIZ),
-                                                   BGC_ZONE)],
+                                                   BEC_ZONE)],
+                                               by = c("CLSTR_ID", "PLOT")),
                                         by = c("CLSTR_ID", "PLOT"),
                                         all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
@@ -313,7 +314,7 @@ ISMCCompiler <- function(oracleUserName,
                                             by = "CLSTR_ID",
                                             all.x = TRUE)
   tree_ms6 <- FAIBBase::merge_dupUpdate(tree_ms6,
-                                        unique(samples[,.(CLSTR_ID, PROJ_ID, BGC_ZONE, BGC_SBZN, BGC_VAR,
+                                        unique(samples[,.(CLSTR_ID, PROJ_ID, BEC_ZONE, BEC_SBZ, BEC_VAR,
                                                           TSA, TYPE_CD)],
                                                by = "CLSTR_ID"),
                                         by = "CLSTR_ID",
@@ -350,9 +351,9 @@ ISMCCompiler <- function(oracleUserName,
     cat(paste0("    Start to derive coefficients and ratios for year ", compilationYear, "\n"))
     alltreelist <- mergeAllVolTrees(treeMS = data.table::copy(tree_ms7),
                                     treeAX = data.table::copy(tree_ax1))
-    samples_beccls <- unique(samples[,.(CLSTR_ID, BGC_ZONE)], by = "CLSTR_ID")
+    samples_beccls <- unique(samples[,.(CLSTR_ID, BEC_ZONE)], by = "CLSTR_ID")
     alltreelist <- merge(alltreelist, samples_beccls, by = "CLSTR_ID", all.x = TRUE)
-    allbecsplvd <- unique(alltreelist[,.(BGC_ZONE, SP0, LV_D)])
+    allbecsplvd <- unique(alltreelist[,.(BEC_ZONE, SP0, LV_D)])
 
     ## if the regratiodata can not be found in coeff folder
     ## generate regratiodata and derive coeff and ratio using mixed effect models
@@ -365,11 +366,11 @@ ISMCCompiler <- function(oracleUserName,
     if(compilationYear > 2021){ ## comparison starts from 2022 to select the better model to predict BA-WSV relationship
       fixedcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
                                            paste0("fixedCoefs", compilationYear-1, ".rds")))
-      fixedcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+      fixedcoeff_prev[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
       randomcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
                                             paste0("randomCoefs", compilationYear-1, ".rds")))
-      randomcoeff_prev[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+      randomcoeff_prev[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
       allfix <- merge(coefs$fixedcoeff[,.(uni_strata,
                                           R2_Marginal_crt = R2_Marginal)],
@@ -387,9 +388,9 @@ ISMCCompiler <- function(oracleUserName,
              YEAR_FIT := YEAR_FIT_prev]
 
       fixedcoeff_crt <- coefs$fixedcoeff
-      fixedcoeff_crt[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+      fixedcoeff_crt[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
       randomcoeff_crt <- coefs$randomcoeff
-      randomcoeff_crt[, uni_strata := paste0(BGC_ZONE, SP0, LV_D)]
+      randomcoeff_crt[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
       fixedcoeff_final <- fixedcoeff_crt[uni_strata %in% allfix[YEAR_FIT == compilationYear,]$uni_strata,]
       fixedcoeff_final <- rbindlist(list(fixedcoeff_final,
@@ -460,16 +461,16 @@ ISMCCompiler <- function(oracleUserName,
     ntwbRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
                                        "ntwb_ratio_curve.rds"))
     HnonenhancedTrees <- merge(auxtreecompilation$HnonenhancedTrees,
-                               merRatioCoef[,.(BGC_ZONE, SP0, LV_D, a, b, c)],
-                               by = c("BGC_ZONE", "SP0", "LV_D"),
+                               merRatioCoef[,.(BEC_ZONE, SP0, LV_D, a, b, c)],
+                               by = c("BEC_ZONE", "SP0", "LV_D"),
                                all.x = TRUE)
     HnonenhancedTrees[, MER_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
     HnonenhancedTrees[MEAS_INTENSE == "NON-ENHANCED", VOL_MER := MER_RATIO * VOL_WSV]
     HnonenhancedTrees[, c("a", "b", "c", "MER_RATIO") := NULL]
 
     HnonenhancedTrees <- merge(HnonenhancedTrees,
-                               ntwbRatioCoef[,.(BGC_ZONE, SP0, LV_D, a, b, c)],
-                               by = c("BGC_ZONE", "SP0", "LV_D"),
+                               ntwbRatioCoef[,.(BEC_ZONE, SP0, LV_D, a, b, c)],
+                               by = c("BEC_ZONE", "SP0", "LV_D"),
                                all.x = TRUE)
 
     HnonenhancedTrees[, NTWB_RATIO := a * (1 - exp(-b * (DBH-10)))^c]

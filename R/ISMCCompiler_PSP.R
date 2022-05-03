@@ -249,8 +249,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
                     unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER,
                                       VISIT_NUMBER,
                                       MEAS_DT,
-                                      BGC_ZONE,
-                                      BGC_SBZN)],
+                                      BEC_ZONE,
+                                      BEC_SBZ)],
                            by = "CLSTR_ID"),
                     by = "CLSTR_ID",
                     all.x = TRUE)
@@ -291,9 +291,10 @@ ISMCCompiler_PSP <- function(oracleUserName,
   ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
   tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
-                                        samples[,.(CLSTR_ID, PLOT,
-                                                   FIZ = as.character(FIZ),
-                                                   BGC_ZONE)],
+                                        unique(samples[,.(CLSTR_ID, PLOT,
+                                                          FIZ = as.character(FIZ),
+                                                          BEC_ZONE)],
+                                               by = c("CLSTR_ID", "PLOT")),
                                         by = c("CLSTR_ID", "PLOT"),
                                         all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
@@ -324,7 +325,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                             by = "CLSTR_ID",
                                             all.x = TRUE)
   tree_ms6 <- FAIBBase::merge_dupUpdate(tree_ms6,
-                                        unique(samples[,.(CLSTR_ID, PROJ_ID, BGC_ZONE, BGC_SBZN, BGC_VAR,
+                                        unique(samples[,.(CLSTR_ID, PROJ_ID, BEC_ZONE, BEC_SBZ, BEC_VAR,
                                                           TSA, TYPE_CD)],
                                                by = "CLSTR_ID"),
                                         by = "CLSTR_ID",

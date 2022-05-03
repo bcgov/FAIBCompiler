@@ -23,7 +23,7 @@
 #'
 regBA_WSV <- function(inputData, needCombs){
   all_trees_reg <- inputData[,.(SAMP_POINT = as.numeric(substr(CLSTR_ID, 1, 7)),
-                                CLSTR_ID, BGC_ZONE, SP0, LV_D, BA_TREE, VOL_WSV,
+                                CLSTR_ID, BEC_ZONE, SP0, LV_D, BA_TREE, VOL_WSV,
                                 logba = log(BA_TREE), logwsv = log(VOL_WSV))]
   specieslookuptable <- lookup_species()
   specieslookuptable <- unique(specieslookuptable[,.(SP0, SP_TYPE)], by = "SP0")
@@ -38,7 +38,7 @@ regBA_WSV <- function(inputData, needCombs){
   strata_failed <- allStrata[0,]
 
   for(i in 1:nrow(allStrata)){
-    indidataset <- all_trees_reg[BGC_ZONE == allStrata$BGC_ZONE[i] &
+    indidataset <- all_trees_reg[BEC_ZONE == allStrata$BEC_ZONE[i] &
                                    SP0 == allStrata$SP0[i] &
                                    LV_D == allStrata$LV_D[i] &
                                    logwsv != -Inf]
@@ -56,7 +56,7 @@ regBA_WSV <- function(inputData, needCombs){
       randomcoeff$SAMP_POINT <- row.names(randomcoeff)
       randomcoeff <- data.table(randomcoeff)
       outputs_coeff <- rbind(outputs_coeff,
-                             cbind(data.table(BGC_ZONE = allStrata$BGC_ZONE[i],
+                             cbind(data.table(BEC_ZONE = allStrata$BEC_ZONE[i],
                                         SP0 = allStrata$SP0[i],
                                         LV_D = allStrata$LV_D[i],
                                         NOOBS = nrow(indidataset),
@@ -65,7 +65,7 @@ regBA_WSV <- function(inputData, needCombs){
                                         DATA_SRCE = "BEC+SP0+LV_D"),
                                    r2s))
       outputs_random <- rbind(outputs_random,
-                              randomcoeff[,.(BGC_ZONE = allStrata$BGC_ZONE[i],
+                              randomcoeff[,.(BEC_ZONE = allStrata$BEC_ZONE[i],
                                              SP0 = allStrata$SP0[i],
                                              LV_D = allStrata$LV_D[i],
                                              SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM,
@@ -82,17 +82,17 @@ regBA_WSV <- function(inputData, needCombs){
 
   if(nrow(strata_failed) > 0){ # initiate second attempt
     # The second attempt is to group bgc zone into coastal and interior
-    strata_failed[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    strata_failed[is.na(BGC_REG), BGC_REG := "INTERIOR"]
-    all_trees_reg[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    all_trees_reg[is.na(BGC_REG), BGC_REG := "INTERIOR"]
-    workstrata <- unique(strata_failed[,.(BGC_REG, SP0, LV_D)],
-                         by = c("BGC_REG", "SP0", "LV_D"))
+    strata_failed[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    strata_failed[is.na(BEC_REG), BEC_REG := "INTERIOR"]
+    all_trees_reg[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    all_trees_reg[is.na(BEC_REG), BEC_REG := "INTERIOR"]
+    workstrata <- unique(strata_failed[,.(BEC_REG, SP0, LV_D)],
+                         by = c("BEC_REG", "SP0", "LV_D"))
     workstrata_failed <- workstrata[0,]
     outputs_coeff <- NULL
     outputs_random <- NULL
     for(i in 1:nrow(workstrata)){
-      indidataset <- all_trees_reg[BGC_REG == workstrata$BGC_REG[i] &
+      indidataset <- all_trees_reg[BEC_REG == workstrata$BEC_REG[i] &
                                      SP0 == workstrata$SP0[i] &
                                      LV_D == workstrata$LV_D[i] &
                                      logwsv != -Inf]
@@ -110,7 +110,7 @@ regBA_WSV <- function(inputData, needCombs){
         randomcoeff$SAMP_POINT <- row.names(randomcoeff)
         randomcoeff <- data.table(randomcoeff)
         outputs_coeff <- rbind(outputs_coeff,
-                               cbind(data.table(BGC_REG = workstrata$BGC_REG[i],
+                               cbind(data.table(BEC_REG = workstrata$BEC_REG[i],
                                           SP0 = workstrata$SP0[i],
                                           LV_D = workstrata$LV_D[i],
                                           NOOBS = nrow(indidataset),
@@ -119,7 +119,7 @@ regBA_WSV <- function(inputData, needCombs){
                                           DATA_SRCE = "BEC_GRP+SP0+LV_D"),
                                      r2s))
         outputs_random <- rbind(outputs_random,
-                                randomcoeff[,.(BGC_REG = workstrata$BGC_REG[i],
+                                randomcoeff[,.(BEC_REG = workstrata$BEC_REG[i],
                                                SP0 = workstrata$SP0[i],
                                                LV_D = workstrata$LV_D[i],
                                                SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM,
@@ -132,15 +132,15 @@ regBA_WSV <- function(inputData, needCombs){
 
 
     coeff_succ2 <- merge(strata_failed, outputs_coeff,
-                         by = c("BGC_REG", "SP0", "LV_D"))
+                         by = c("BEC_REG", "SP0", "LV_D"))
     random_succ2 <- merge(strata_failed, outputs_random,
-                          by = c("BGC_REG", "SP0", "LV_D"),
+                          by = c("BEC_REG", "SP0", "LV_D"),
                           allow.cartesian = TRUE)
     coeff_succ <- rbindlist(list(coeff_succ, coeff_succ2), fill = TRUE)
     random_succ <- rbindlist(list(random_succ, random_succ2), fill = TRUE)
     rm(coeff_succ2, random_succ2, outputs_coeff, outputs_random)
     strata_failed <- merge(workstrata_failed, strata_failed,
-                           by = c("BGC_REG", "SP0", "LV_D"))
+                           by = c("BEC_REG", "SP0", "LV_D"))
 
     if(nrow(strata_failed) > 0){ ## initiate third attempt
       ## third attempt by sp0 and lv_d, regardless of bec
@@ -253,13 +253,13 @@ regBA_WSV <- function(inputData, needCombs){
 
   if(nrow(strata_missing) > 0){ # for missing species, using all the species for a given lv_d status
 
-    workstrata <- unique(strata_missing, by = c("BGC_ZONE", "LV_D"))
+    workstrata <- unique(strata_missing, by = c("BEC_ZONE", "LV_D"))
     workstrata_failed <- workstrata[0,]
 
     outputs_coeff <- NULL
     outputs_random <- NULL
     for(i in 1:nrow(workstrata)){
-      indidataset <- all_trees_reg[BGC_ZONE == workstrata$BGC_ZONE[i] &
+      indidataset <- all_trees_reg[BEC_ZONE == workstrata$BEC_ZONE[i] &
                                      LV_D == workstrata$LV_D[i] &
                                      logwsv != -Inf]
       indidataset[, noobs := length(SP0), by = "SAMP_POINT"]
@@ -276,7 +276,7 @@ regBA_WSV <- function(inputData, needCombs){
         randomcoeff$SAMP_POINT <- row.names(randomcoeff)
         randomcoeff <- data.table(randomcoeff)
         outputs_coeff <- rbind(outputs_coeff,
-                               cbind(data.table(BGC_ZONE = workstrata$BGC_ZONE[i],
+                               cbind(data.table(BEC_ZONE = workstrata$BEC_ZONE[i],
                                           LV_D = workstrata$LV_D[i],
                                           NOOBS = nrow(indidataset),
                                           INTERCEPT = as.numeric(mixmodel$coefficients$fixed)[1],
@@ -284,7 +284,7 @@ regBA_WSV <- function(inputData, needCombs){
                                           DATA_SRCE = "BEC+LV_D"),
                                      r2s))
         outputs_random <- rbind(outputs_random,
-                                randomcoeff[,.(BGC_ZONE = workstrata$BGC_ZONE[i],
+                                randomcoeff[,.(BEC_ZONE = workstrata$BEC_ZONE[i],
                                                LV_D = workstrata$LV_D[i],
                                                SAMP_POINT, INTERCEPT_RDM, SLOPE_RDM,
                                                DATA_SRCE = "BEC+LV_D")])
@@ -294,9 +294,9 @@ regBA_WSV <- function(inputData, needCombs){
     }
     rm(i, workstrata)
     coeff_succ5 <- merge(strata_missing, outputs_coeff,
-                         by = c("BGC_ZONE", "LV_D"))
+                         by = c("BEC_ZONE", "LV_D"))
     random_succ5 <- merge(strata_missing, outputs_random,
-                          by = c("BGC_ZONE", "LV_D"),
+                          by = c("BEC_ZONE", "LV_D"),
                           allow.cartesian = TRUE)
     coeff_succ <- rbindlist(list(coeff_succ, coeff_succ5), fill = TRUE)
     random_succ <- rbindlist(list(random_succ, random_succ5), fill = TRUE)
@@ -312,7 +312,7 @@ regBA_WSV <- function(inputData, needCombs){
 
   if(exists("allstrata_failed")){
     if(nrow(allstrata_failed) > 0){
-      allstrata_failed[, texts := paste0(BGC_ZONE, " + ", SP0, " + ", LV_D, "\n")]
+      allstrata_failed[, texts := paste0(BEC_ZONE, " + ", SP0, " + ", LV_D, "\n")]
       warning("The coefficients can not be successfully derived for below strata: \n", allstrata_failed$texts)
     }
   }

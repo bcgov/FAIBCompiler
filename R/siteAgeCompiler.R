@@ -36,7 +36,7 @@ setMethod(
                          siteAgeData)
     siteAgeData[, BARK_TEMP := as.numeric(BARK_THK)]
     ## get ic region from bec zone
-    siteAgeData[, REGION_IC := BEC2IC(BGC_ZONE)]
+    siteAgeData[, REGION_IC := BEC2IC(BEC_ZONE)]
 
     siteAgeData[is.na(BARK_THK), BARK_TEMP := BNG_DIAM/20]
     siteAgeData[BARK_THK %>>% 0 & BNG_DIAM %>>% 0, BARK_PCT := 100*((BARK_THK*0.2)/BNG_DIAM)]
@@ -133,7 +133,7 @@ setMethod(
     siteAgeData[, ':='(HT_OLD = NULL)]
     siteAgeData[SUIT_HT == "N" | SUIT_TR == "N", SI_TREE := as.numeric(NA)]
     siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID, PLOT, TREE_NO, SPECIES,
-                                               SUIT_TR, SUIT_HT, SUIT_SI, FIZ, BGC_ZONE, REGION_IC,
+                                               SUIT_TR, SUIT_HT, SUIT_SI, FIZ, BEC_ZONE, REGION_IC,
                                                TH_TREE, TP_TREE, RA_TREE,
                                                AGE_BASE, SP0,
                                                GROW_5YR, GROW_10YR, GROW_20YR, AGE_CORR, TOTAL_AG, PHYS_AGE,

@@ -46,16 +46,16 @@ VRIVolTree<- function(treeData, equation, logMinLength,
                 'MS','PP','SBPS','SBS','SWB','BG','BAFA','CMA','IMA')
   if(equation == "FIZ"){
     treeData[, ':='(ADJ_ID = " ",
-                    VOL_MULT = 1, BEC = BGC_ZONE,
-                    BGC_VAR = gsub(" ", "", BGC_VAR))]
-    treeData[BGC_ZONE %in% c("BAFA", "CMA", "IMA"), BEC := "AT"]
-    treeData[BGC_ZONE %in% c("BG"), BEC := "PP"]
+                    VOL_MULT = 1, BEC = BEC_ZONE,
+                    BEC_VAR = gsub(" ", "", BEC_VAR))]
+    treeData[BEC_ZONE %in% c("BAFA", "CMA", "IMA"), BEC := "AT"]
+    treeData[BEC_ZONE %in% c("BG"), BEC := "PP"]
   } else if (equation == "KBEC") {
-    treeData[BGC_ZONE %in% beczones, ':='(ADJ_ID = " ",
-                                          VOL_MULT = 1, BEC = BGC_ZONE,
-                                          BGC_VAR = gsub(" ", "", BGC_VAR))]
-    treeData[BGC_ZONE %in% c("BAFA", "CMA", "IMA"), BEC := "AT"]
-    treeData[BGC_ZONE %in% c("BG"), BEC := "PP"]
+    treeData[BEC_ZONE %in% beczones, ':='(ADJ_ID = " ",
+                                          VOL_MULT = 1, BEC = BEC_ZONE,
+                                          BEC_VAR = gsub(" ", "", BEC_VAR))]
+    treeData[BEC_ZONE %in% c("BAFA", "CMA", "IMA"), BEC := "AT"]
+    treeData[BEC_ZONE %in% c("BG"), BEC := "PP"]
     ##### please check the adjustment_id_2011 macro
     ### it just simply assign adj_id as empty space
     ADJIDData <- treeData[ADJ_ID == " ",]
@@ -110,8 +110,8 @@ VRIVolTree<- function(treeData, equation, logMinLength,
      treeData[HEIGHT <= "1.4" & is.na(BTOP),
                BTOP := "B"]
     treeData[BTOP %in% c("D", "B"),
-             HT := round(heightEstimate_byHeightModel(beczone = BGC_ZONE,
-                                                      subzone = BGC_SBZN,
+             HT := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+                                                      subzone = BEC_SBZ,
                                                       species = SPECIES,
                                                       DBH = DBH,
                                                       heightModels = bestHeightModels))]

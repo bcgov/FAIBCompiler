@@ -29,8 +29,8 @@
 heightEstimate_byHeightModel<- function(beczone, subzone, species,
                                         DBH, heightModels){
   worktable <- data.table(tempID = 1:length(beczone),
-                          BGC_ZONE = beczone,
-                          BGC_SBZN = subzone,
+                          BEC_ZONE = beczone,
+                          BEC_SBZ = subzone,
                           SPECIES = species,
                           DBH = DBH)
 
@@ -42,7 +42,7 @@ heightEstimate_byHeightModel<- function(beczone, subzone, species,
 
   worktable <- merge(worktable,
                      heightModels,
-                     by = c("BGC_ZONE", "BGC_SBZN", "SPECIES",
+                     by = c("BEC_ZONE", "BEC_SBZ", "SPECIES",
                             "SP0", "SP_TYPE"),
                      all.x = TRUE)
 

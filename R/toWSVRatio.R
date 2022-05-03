@@ -43,12 +43,12 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   all_trees_ratio <- merge(all_trees_ratio, specieslookup,
                            by = "SP0", all.x = TRUE)
 
-  all_trees_ratio <- all_trees_ratio[, c("SAMP_POINT", "CLSTR_ID", "BGC_ZONE", "SP0",
+  all_trees_ratio <- all_trees_ratio[, c("SAMP_POINT", "CLSTR_ID", "BEC_ZONE", "SP0",
                                          "SP_TYPE", "LV_D", volVariables), with = FALSE]
 
   all_trees_ratio[VOL_NET < 0, VOL_NET := 0]
 
-  needCombs <- merge(needCombs[,.(BGC_ZONE, SP0, LV_D)], specieslookup, by = "SP0", all.x = TRUE)
+  needCombs <- merge(needCombs[,.(BEC_ZONE, SP0, LV_D)], specieslookup, by = "SP0", all.x = TRUE)
   allstrata <- needCombs[SP0 != "X",]
   strata_missspecies <- needCombs[SP0 == "X",]
 
@@ -56,49 +56,49 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   ## the first attempt by
   ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                 .SDcols = volVariables,
-                                by = c("BGC_ZONE",  "LV_D",  "SP0")]
+                                by = c("BEC_ZONE",  "LV_D",  "SP0")]
 
   ratiotable[, c(ratioVariables) := lapply(.SD, function(s){s/VOL_WSV}),
              .SDcols = volVariables]
 
-  ratiotable <- ratiotable[N >= minObs,c("BGC_ZONE",  "LV_D",  "SP0", "N",
+  ratiotable <- ratiotable[N >= minObs,c("BEC_ZONE",  "LV_D",  "SP0", "N",
                                          ratioVariables), with = FALSE]
 
   allstrata <- merge(allstrata, ratiotable,
-                     by = c("BGC_ZONE",  "LV_D",  "SP0"),
+                     by = c("BEC_ZONE",  "LV_D",  "SP0"),
                      all.x = TRUE)
   allsuccessed <- allstrata[!is.na(N)]
   allsuccessed[, DATA_SRCE := "BEC+SP0+LV_D"]
 
-  strata_failed <- allstrata[is.na(N),.(BGC_ZONE, SP0, LV_D, SP_TYPE)]
+  strata_failed <- allstrata[is.na(N),.(BEC_ZONE, SP0, LV_D, SP_TYPE)]
   rm(ratiotable, allstrata)
 
   if(nrow(strata_failed) > 0){ # initiate second attempt
     # The second attempt is to group bgc zone into coastal and interior
-    strata_failed[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    strata_failed[is.na(BGC_REG), BGC_REG := "INTERIOR"]
+    strata_failed[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    strata_failed[is.na(BEC_REG), BEC_REG := "INTERIOR"]
 
-    all_trees_ratio[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    all_trees_ratio[is.na(BGC_REG), BGC_REG := "INTERIOR"]
+    all_trees_ratio[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    all_trees_ratio[is.na(BEC_REG), BEC_REG := "INTERIOR"]
 
     ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                   .SDcols = volVariables,
-                                  by = c("BGC_REG", "SP0", "LV_D")]
+                                  by = c("BEC_REG", "SP0", "LV_D")]
 
     ratiotable[, c(ratioVariables) := lapply(.SD, function(s){s/VOL_WSV}),
                .SDcols = volVariables]
 
-    ratiotable <- ratiotable[N >= minObs,c("BGC_REG",  "LV_D",  "SP0", "N",
+    ratiotable <- ratiotable[N >= minObs,c("BEC_REG",  "LV_D",  "SP0", "N",
                                            ratioVariables), with = FALSE]
 
     strata_failed <- merge(strata_failed, ratiotable,
-                           by = c("BGC_REG",  "LV_D",  "SP0"),
+                           by = c("BEC_REG",  "LV_D",  "SP0"),
                            all.x = TRUE)
     successed_add <- strata_failed[!is.na(N)]
     successed_add[, DATA_SRCE := "BEC_GRP+SP0+LV_D"]
     allsuccessed <- rbindlist(list(allsuccessed, successed_add),
                               fill = TRUE)
-    strata_failed <- strata_failed[is.na(N),.(BGC_ZONE, SP0, LV_D, SP_TYPE)]
+    strata_failed <- strata_failed[is.na(N),.(BEC_ZONE, SP0, LV_D, SP_TYPE)]
     rm(ratiotable, successed_add)
 
     if(nrow(strata_failed) > 0){ ## initiate third attempt
@@ -120,7 +120,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
       successed_add[, DATA_SRCE := "SP0+LV_D"]
       allsuccessed <- rbindlist(list(allsuccessed, successed_add),
                                 fill = TRUE)
-      strata_failed <- strata_failed[is.na(N),.(BGC_ZONE, SP0, LV_D, SP_TYPE)]
+      strata_failed <- strata_failed[is.na(N),.(BEC_ZONE, SP0, LV_D, SP_TYPE)]
       rm(ratiotable, successed_add)
 
       if(nrow(strata_failed) > 0){ # initiate the last attempt
@@ -142,7 +142,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
         successed_add[, DATA_SRCE := "SP_TYPE+LV_D"]
         allsuccessed <- rbindlist(list(allsuccessed, successed_add),
                                   fill = TRUE)
-        allstrata_failed <- strata_failed[is.na(N),.(BGC_ZONE, SP0, LV_D, SP_TYPE)]
+        allstrata_failed <- strata_failed[is.na(N),.(BEC_ZONE, SP0, LV_D, SP_TYPE)]
         rm(ratiotable, successed_add)
       } # end of forth attempt
     } # end of third attempt
@@ -151,22 +151,22 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   if(nrow(strata_missspecies) > 0){
     ratiotable <- all_trees_ratio[,c(.N, lapply(.SD, mean, na.rm = TRUE)),
                                   .SDcols = volVariables,
-                                  by = c("BGC_ZONE", "LV_D")]
+                                  by = c("BEC_ZONE", "LV_D")]
 
     ratiotable[, c(ratioVariables) := lapply(.SD, function(s){s/VOL_WSV}),
                .SDcols = volVariables]
 
-    ratiotable <- ratiotable[N >= minObs,c("BGC_ZONE", "LV_D", "N",
+    ratiotable <- ratiotable[N >= minObs,c("BEC_ZONE", "LV_D", "N",
                                            ratioVariables), with = FALSE]
 
     strata_missspecies <- merge(strata_missspecies, ratiotable,
-                                by = c("BGC_ZONE", "LV_D"),
+                                by = c("BEC_ZONE", "LV_D"),
                                 all.x = TRUE)
     successed_add <- strata_missspecies[!is.na(N)]
     successed_add[, DATA_SRCE := "BEC+LV_D"]
     allsuccessed <- rbindlist(list(allsuccessed, successed_add),
                               fill = TRUE)
-    strata_failed_last2 <- strata_missspecies[is.na(N),.(BGC_ZONE, SP0, LV_D, SP_TYPE)]
+    strata_failed_last2 <- strata_missspecies[is.na(N),.(BEC_ZONE, SP0, LV_D, SP_TYPE)]
     if(exists("allstrata_failed")){
       allstrata_failed <- rbind(allstrata_failed, strata_failed_last2)
     } else {
@@ -177,7 +177,7 @@ toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
   if(exists("allstrata_failed")){
     if(nrow(allstrata_failed) > 0){
-      allstrata_failed[, texts := paste0(BGC_ZONE, " + ", SP0, " + ", LV_D, "\n")]
+      allstrata_failed[, texts := paste0(BEC_ZONE, " + ", SP0, " + ", LV_D, "\n")]
       warning("The toWSV ratios can not be derived for the strata below: \n", allstrata_failed$texts)
     }
   }

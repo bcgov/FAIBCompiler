@@ -24,8 +24,8 @@ DBHGrowthRateGenerator<- function(treeData,
   treeData[, uniTreeID := paste0(SITE_IDENTIFIER, "-",
                                  PLOT, "-", TREE_NO)]
   ## remove observations that do not have DBH, and dead trees
-  treeData_valid <- treeData[DBH > 2  & LV_D == "L" & BGC_ZONE != "Unknown",
-                             .(BGC_ZONE, uniTreeID, SPECIES, SP0, measYear, VISIT_NUMBER,
+  treeData_valid <- treeData[DBH > 2  & LV_D == "L" & BEC_ZONE != "Unknown",
+                             .(BEC_ZONE, uniTreeID, SPECIES, SP0, measYear, VISIT_NUMBER,
                                DBH)]
   treeData_valid <- treeData_valid[order(uniTreeID, measYear),]
 
@@ -50,17 +50,17 @@ DBHGrowthRateGenerator<- function(treeData,
                                                   seq(20, 80, by = 20)))]
 
   treeData_valid_smry <- treeData_valid[,.(Nobs = length(DBH)),
-                                        by = c("BGC_ZONE", "SPECIES", "SP0",
+                                        by = c("BEC_ZONE", "SPECIES", "SP0",
                                                "DBHClass", "MLengthClass")]
 
   treeData_valid_smry[Nobs >= minObs,
                       GroupMethod := "bec+sp+dbh_class+length_class"]
   treeData_valid_smry[, Nobs1 := sum(Nobs),
-                      by = c("BGC_ZONE", "SPECIES", "DBHClass")]
+                      by = c("BEC_ZONE", "SPECIES", "DBHClass")]
   treeData_valid_smry[Nobs1 >= minObs & is.na(GroupMethod),
                       GroupMethod := "bec+sp+dbh_class"]
   treeData_valid_smry[, Nobs1 := sum(Nobs),
-                      by = c("BGC_ZONE", "SP0", "DBHClass")]
+                      by = c("BEC_ZONE", "SP0", "DBHClass")]
   treeData_valid_smry[Nobs1 >= minObs & is.na(GroupMethod),
                       GroupMethod := "bec+sp0+dbh_class"]
   treeData_valid_smry[, Nobs1 := sum(Nobs),
@@ -79,18 +79,18 @@ DBHGrowthRateGenerator<- function(treeData,
   ## bec+sp+dbh_class+length_class
   treeData_valid[,':='(quantile5 = quantile(growthRate, 0.05),
                        quantile95 = quantile(growthRate, 0.95)),
-                 by = c("BGC_ZONE", "SPECIES", "SP0",
+                 by = c("BEC_ZONE", "SPECIES", "SP0",
                         "DBHClass", "MLengthClass")]
   treeData_valid_temp <- treeData_valid[growthRate >= quantile5 &
                                           growthRate <= quantile95,]
   treeData_valid_temp <- treeData_valid_temp[,.(GrowthRate_mean_temp = mean(growthRate),
                                                 nobs_temp = length(growthRate)),
-                                             by = c("BGC_ZONE", "SPECIES", "SP0",
+                                             by = c("BEC_ZONE", "SPECIES", "SP0",
                                                     "DBHClass", "MLengthClass")]
 
   treeData_valid_smry <- merge(treeData_valid_smry,
                                treeData_valid_temp,
-                               by = c("BGC_ZONE", "SPECIES", "SP0",
+                               by = c("BEC_ZONE", "SPECIES", "SP0",
                                       "DBHClass", "MLengthClass"),
                                all.x = TRUE)
   treeData_valid_smry[GroupMethod == "bec+sp+dbh_class+length_class",
@@ -105,17 +105,17 @@ DBHGrowthRateGenerator<- function(treeData,
   # bec+sp+dbh_class
   treeData_valid[,':='(quantile5 = quantile(growthRate, 0.05),
                        quantile95 = quantile(growthRate, 0.95)),
-                 by = c("BGC_ZONE", "SPECIES",
+                 by = c("BEC_ZONE", "SPECIES",
                         "DBHClass")]
   treeData_valid_temp <- treeData_valid[growthRate >= quantile5 &
                                           growthRate <= quantile95,]
   treeData_valid_temp <- treeData_valid_temp[,.(GrowthRate_mean_temp = mean(growthRate),
                                                 nobs_temp = length(growthRate)),
-                                             by = c("BGC_ZONE", "SPECIES",
+                                             by = c("BEC_ZONE", "SPECIES",
                                                     "DBHClass")]
   treeData_valid_smry <- merge(treeData_valid_smry,
                                treeData_valid_temp,
-                               by = c("BGC_ZONE", "SPECIES",
+                               by = c("BEC_ZONE", "SPECIES",
                                       "DBHClass"),
                                all.x = TRUE)
   treeData_valid_smry[GroupMethod == "bec+sp+dbh_class",
@@ -129,17 +129,17 @@ DBHGrowthRateGenerator<- function(treeData,
   # bec+sp0+dbh_class
   treeData_valid[,':='(quantile5 = quantile(growthRate, 0.05),
                        quantile95 = quantile(growthRate, 0.95)),
-                 by = c("BGC_ZONE", "SP0",
+                 by = c("BEC_ZONE", "SP0",
                         "DBHClass")]
   treeData_valid_temp <- treeData_valid[growthRate >= quantile5 &
                                           growthRate <= quantile95,]
   treeData_valid_temp <- treeData_valid_temp[,.(GrowthRate_mean_temp = mean(growthRate),
                                                 nobs_temp = length(growthRate)),
-                                             by = c("BGC_ZONE", "SP0",
+                                             by = c("BEC_ZONE", "SP0",
                                                     "DBHClass")]
   treeData_valid_smry <- merge(treeData_valid_smry,
                                treeData_valid_temp,
-                               by = c("BGC_ZONE", "SP0",
+                               by = c("BEC_ZONE", "SP0",
                                       "DBHClass"),
                                all.x = TRUE)
   treeData_valid_smry[GroupMethod == "bec+sp0+dbh_class",

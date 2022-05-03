@@ -278,11 +278,11 @@ GYS_oracle_org1 <- function(oracleSourcePath, outputPath){
                    BEC_SITE_SERIES_CD = NULL,
                    TSA = NULL,
                    TSA_BLK = NULL,
-                   BGC_ZONE = NULL,
-                   BGC_SBZN = NULL,
-                   BGC_VAR = NULL,
-                   BGC_PHASE = NULL,
-                   BGC_TRANSITION_IND = NULL)]
+                   BEC_ZONE = NULL,
+                   BEC_SBZ = NULL,
+                   BEC_VAR = NULL,
+                   BEC_PHASE = NULL,
+                   BEC_TRANSITION_IND = NULL)]
   gys_sample <- merge(gys_sample, loc_bec, by = "SAMP_ID", all.x = TRUE)
   gys_sample <- merge(gys_sample, loc_tsa, by = "SAMP_ID", all.x = TRUE)
 

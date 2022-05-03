@@ -26,8 +26,8 @@ pspHT<- function(treeData,
   }
   if(method == "bestMEM"){
     treeData[!is.na(DBH) & is.na(HEIGHT),
-             Height_est := round(heightEstimate_byHeightModel(beczone = BGC_ZONE,
-                                                              subzone = BGC_SBZN,
+             Height_est := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+                                                              subzone = BEC_SBZ,
                                                               species = SPECIES,
                                                               DBH = DBH,
                                                               heightModels = coeffs))]

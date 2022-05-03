@@ -41,13 +41,13 @@ PSPInit_measuredTree<- function(clusterplotHeader,
   vi_c <- FAIBBase::merge_dupUpdate(vi_c,
                                     clusterplotHeader[,.(clusterPlot, SAMP_TYP,
                                                          PLOT_WT, BLOWUP,
-                                                         BGC_ZONE,	BGC_SBZN)],
+                                                         BEC_ZONE,	BEC_SBZ)],
                                     by = "clusterPlot", all.x = TRUE)
   # correction of species
   vi_c[, SPECIES_ORG := SPECIES]
   vi_c[, SPECIES := speciesCorrection(SPECIES,
-                                      BGC_ZONE,
-                                      BGC_SBZN)]
+                                      BEC_ZONE,
+                                      BEC_SBZ)]
 
   vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
                                              treeWeight = TREE_WT, plotWeight = 1,

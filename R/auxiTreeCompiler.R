@@ -53,7 +53,7 @@
 auxiTreeCompiler <- function(fullMeasuredTrees, auxiTrees, clusterPlotHeader,
                                                    fixedCoeff, randomCoeff, ratios){
   randomCoeff[, SAMP_POINT := as.numeric(SAMP_POINT)]
-  samples <- unique(clusterPlotHeader[,.(CLSTR_ID, BGC_ZONE)], by = "CLSTR_ID")
+  samples <- unique(clusterPlotHeader[,.(CLSTR_ID, BEC_ZONE)], by = "CLSTR_ID")
   tree_vb <- mergeAllVolTrees(treeMS = data.table::copy(fullMeasuredTrees),
                               treeAX = data.table::copy(auxiTrees))
   rm(fullMeasuredTrees, auxiTrees)

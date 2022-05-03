@@ -40,12 +40,12 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   specieslookup <- unique(specieslookup[,.(SP0, SP_TYPE)], by = "SP0")
   all_trees_ratio <- merge(all_trees_ratio, specieslookup, by = "SP0", all.x = TRUE)
 
-  all_trees_ratio <- all_trees_ratio[, c("CLSTR_ID", "BGC_ZONE", "SP0", "DBH",
+  all_trees_ratio <- all_trees_ratio[, c("CLSTR_ID", "BEC_ZONE", "SP0", "DBH",
                                          "SP_TYPE", "LV_D", volVariables), with = FALSE]
 
   all_trees_ratio[VOL_NET < 0, VOL_NET := 0]
 
-  needCombs <- merge(needCombs[,.(BGC_ZONE, SP0, LV_D)], specieslookup, by = "SP0", all.x = TRUE)
+  needCombs <- merge(needCombs[,.(BEC_ZONE, SP0, LV_D)], specieslookup, by = "SP0", all.x = TRUE)
   allstrata <- needCombs[SP0 != "X",]
   strata_missspecies <- needCombs[SP0 == "X",]
 
@@ -58,7 +58,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   all_trees_ratio[, c(ratioVariables) := lapply(.SD, function(s){s/VOL_WSV}),
                   .SDcols = volVariables]
   all_trees_ratio[, DBH_MOD := DBH-10]
-  allcoeffs_mer <- data.table(BGC_ZONE = character(),
+  allcoeffs_mer <- data.table(BEC_ZONE = character(),
                               SP0 = character(),
                               LV_D = character(),
                               a = numeric(),
@@ -66,7 +66,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                               c = numeric(),
                               N_OBS = numeric(),
                               DATA_SOURCE = character())
-  allcoeffs_ntwb <- data.table(BGC_ZONE = character(),
+  allcoeffs_ntwb <- data.table(BEC_ZONE = character(),
                                SP0 = character(),
                                LV_D = character(),
                                a = numeric(),
@@ -75,7 +75,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                N_OBS = numeric(),
                                DATA_SOURCE = character())
   for(i in 1:nrow(needCombs)){
-    indistrata_data <- all_trees_ratio[BGC_ZONE == needCombs$BGC_ZONE[i] &
+    indistrata_data <- all_trees_ratio[BEC_ZONE == needCombs$BEC_ZONE[i] &
                                          SP0 == needCombs$SP0[i] &
                                          LV_D == needCombs$LV_D[i],]
     if(nrow(indistrata_data) > minObs){
@@ -99,11 +99,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
         strata_failed_mer <- rbind(strata_failed_mer, needCombs[i])
       } else {
         indistrata_mer_coef <- data.table(rbind(coef(nlsout_mer)))
-        indistrata_mer_coef[, ':='(BGC_ZONE = needCombs$BGC_ZONE[i],
+        indistrata_mer_coef[, ':='(BEC_ZONE = needCombs$BEC_ZONE[i],
                                    SP0 = needCombs$SP0[i],
                                    LV_D = needCombs$LV_D[i],
                                    N_OBS = nrow(indistrata_data))]
-        indistrata_mer_coef[, DATA_SOURCE := paste0(BGC_ZONE, " + ", SP0, " + ", LV_D)]
+        indistrata_mer_coef[, DATA_SOURCE := paste0(BEC_ZONE, " + ", SP0, " + ", LV_D)]
         allcoeffs_mer <- rbind(allcoeffs_mer, indistrata_mer_coef)
         rm(nlsout_mer, indistrata_mer_coef)
       }
@@ -112,11 +112,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
         strata_failed_ntwb <- rbind(strata_failed_ntwb, needCombs[i])
       } else {
         indistrata_ntwb_coef <- data.table(rbind(coef(nlsout_ntwb)))
-        indistrata_ntwb_coef[, ':='(BGC_ZONE = needCombs$BGC_ZONE[i],
+        indistrata_ntwb_coef[, ':='(BEC_ZONE = needCombs$BEC_ZONE[i],
                                     SP0 = needCombs$SP0[i],
                                     LV_D = needCombs$LV_D[i],
                                     N_OBS = nrow(indistrata_data))]
-        indistrata_ntwb_coef[, DATA_SOURCE := paste0(BGC_ZONE, " + ", SP0, " + ", LV_D)]
+        indistrata_ntwb_coef[, DATA_SOURCE := paste0(BEC_ZONE, " + ", SP0, " + ", LV_D)]
         allcoeffs_ntwb <- rbind(allcoeffs_ntwb, indistrata_ntwb_coef)
         rm(nlsout_ntwb, indistrata_ntwb_coef)
       }
@@ -130,7 +130,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
   strata_failed <- merge(strata_failed_mer[, MER_FAILED := TRUE],
                          strata_failed_ntwb[, NTWB_FAILED := TRUE],
-                         by = c("SP0", "BGC_ZONE", "LV_D", "SP_TYPE"),
+                         by = c("SP0", "BEC_ZONE", "LV_D", "SP_TYPE"),
                          all = TRUE)
   allcoeffs_mer_suc <- allcoeffs_mer
   allcoeffs_ntwb_suc <- allcoeffs_ntwb
@@ -139,18 +139,18 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
   if(nrow(strata_failed) > 0){ # initiate second attempt
     # The second attempt is to group bgc zone into coastal and interior
-    strata_failed[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    strata_failed[is.na(BGC_REG), BGC_REG := "INTERIOR"]
+    strata_failed[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    strata_failed[is.na(BEC_REG), BEC_REG := "INTERIOR"]
 
-    all_trees_ratio[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    all_trees_ratio[is.na(BGC_REG), BGC_REG := "INTERIOR"]
+    all_trees_ratio[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    all_trees_ratio[is.na(BEC_REG), BEC_REG := "INTERIOR"]
 
-    needCombs <- unique(strata_failed[,.(BGC_REG, SP0, LV_D)])
+    needCombs <- unique(strata_failed[,.(BEC_REG, SP0, LV_D)])
 
     strata_failed_mer <- needCombs[0,]
     strata_failed_ntwb <- needCombs[0,]
 
-    allcoeffs_mer <- data.table(BGC_REG = character(),
+    allcoeffs_mer <- data.table(BEC_REG = character(),
                                 SP0 = character(),
                                 LV_D = character(),
                                 a = numeric(),
@@ -158,7 +158,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                 c = numeric(),
                                 N_OBS = numeric(),
                                 DATA_SOURCE = character())
-    allcoeffs_ntwb <- data.table(BGC_REG = character(),
+    allcoeffs_ntwb <- data.table(BEC_REG = character(),
                                  SP0 = character(),
                                  LV_D = character(),
                                  a = numeric(),
@@ -167,7 +167,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                  N_OBS = numeric(),
                                  DATA_SOURCE = character())
     for(i in 1:nrow(needCombs)){
-      indistrata_data <- all_trees_ratio[BGC_REG == needCombs$BGC_REG[i] &
+      indistrata_data <- all_trees_ratio[BEC_REG == needCombs$BEC_REG[i] &
                                            SP0 == needCombs$SP0[i] &
                                            LV_D == needCombs$LV_D[i],]
       if(nrow(indistrata_data) > minObs){
@@ -191,11 +191,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
           strata_failed_mer <- rbind(strata_failed_mer, needCombs[i])
         } else {
           indistrata_mer_coef <- data.table(rbind(coef(nlsout_mer)))
-          indistrata_mer_coef[, ':='(BGC_REG = needCombs$BGC_REG[i],
+          indistrata_mer_coef[, ':='(BEC_REG = needCombs$BEC_REG[i],
                                      SP0 = needCombs$SP0[i],
                                      LV_D = needCombs$LV_D[i],
                                      N_OBS = nrow(indistrata_data))]
-          indistrata_mer_coef[, DATA_SOURCE := paste0(BGC_REG, " + ", SP0, " + ", LV_D)]
+          indistrata_mer_coef[, DATA_SOURCE := paste0(BEC_REG, " + ", SP0, " + ", LV_D)]
           allcoeffs_mer <- rbind(allcoeffs_mer, indistrata_mer_coef)
 
           rm(nlsout_mer, indistrata_mer_coef)
@@ -205,11 +205,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
           strata_failed_ntwb <- rbind(strata_failed_ntwb, needCombs[i])
         } else {
           indistrata_ntwb_coef <- data.table(rbind(coef(nlsout_ntwb)))
-          indistrata_ntwb_coef[, ':='(BGC_REG = needCombs$BGC_REG[i],
+          indistrata_ntwb_coef[, ':='(BEC_REG = needCombs$BEC_REG[i],
                                       SP0 = needCombs$SP0[i],
                                       LV_D = needCombs$LV_D[i],
                                       N_OBS = nrow(indistrata_data))]
-          indistrata_ntwb_coef[, DATA_SOURCE := paste0(BGC_REG, " + ", SP0, " + ", LV_D)]
+          indistrata_ntwb_coef[, DATA_SOURCE := paste0(BEC_REG, " + ", SP0, " + ", LV_D)]
           allcoeffs_ntwb <- rbind(allcoeffs_ntwb, indistrata_ntwb_coef)
           rm(nlsout_ntwb, indistrata_ntwb_coef)
         }
@@ -221,24 +221,24 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
       rm(indistrata_data)
     }
 
-    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BGC_REG, BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BEC_REG, BEC_ZONE, SP0, LV_D, SP_TYPE)],
                         allcoeffs_mer,
-                        by = c("BGC_REG", "SP0", "LV_D"),
+                        by = c("BEC_REG", "SP0", "LV_D"),
                         all.x = TRUE)
-    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BGC_REG, BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BEC_REG, BEC_ZONE, SP0, LV_D, SP_TYPE)],
                          allcoeffs_ntwb,
-                         by = c("BGC_REG", "SP0", "LV_D"),
+                         by = c("BEC_REG", "SP0", "LV_D"),
                          all.x = TRUE)
     strata_mer_suc <- strata_mer[!is.na(N_OBS),]
-    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BGC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
+    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BEC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
     strata_ntwb_suc <- strata_ntwb[!is.na(N_OBS)]
     strata_failed_ntwb <- strata_ntwb[is.na(N_OBS),
-                                      .(BGC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
+                                      .(BEC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
     allcoeffs_mer_suc <- rbindlist(list(allcoeffs_mer_suc, strata_mer_suc), fill = TRUE)
     allcoeffs_ntwb_suc <- rbindlist(list(allcoeffs_ntwb_suc, strata_ntwb_suc), fill = TRUE)
     strata_failed <- merge(strata_failed_mer,
                            strata_failed_ntwb,
-                           by = c("BGC_ZONE", "SP0", "LV_D", "SP_TYPE"),
+                           by = c("BEC_ZONE", "SP0", "LV_D", "SP_TYPE"),
                            all = TRUE)
     rm(i, strata_failed_mer, strata_failed_ntwb, allcoeffs_mer, allcoeffs_ntwb,
        strata_mer_suc, strata_ntwb_suc, needCombs, strata_mer, strata_ntwb)
@@ -318,24 +318,24 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
       rm(indistrata_data)
     }
 
-    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BEC_ZONE, SP0, LV_D, SP_TYPE)],
                         allcoeffs_mer,
                         by = c("SP0", "LV_D"),
                         all.x = TRUE)
-    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BEC_ZONE, SP0, LV_D, SP_TYPE)],
                          allcoeffs_ntwb,
                          by = c("SP0", "LV_D"),
                          all.x = TRUE)
     strata_mer_suc <- strata_mer[!is.na(N_OBS),]
-    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BGC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
+    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BEC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
     strata_ntwb_suc <- strata_ntwb[!is.na(N_OBS)]
     strata_failed_ntwb <- strata_ntwb[is.na(N_OBS),
-                                      .(BGC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
+                                      .(BEC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
     allcoeffs_mer_suc <- rbindlist(list(allcoeffs_mer_suc, strata_mer_suc), fill = TRUE)
     allcoeffs_ntwb_suc <- rbindlist(list(allcoeffs_ntwb_suc, strata_ntwb_suc), fill = TRUE)
     strata_failed <- merge(strata_failed_mer,
                            strata_failed_ntwb,
-                           by = c("BGC_ZONE", "SP0", "LV_D", "SP_TYPE"),
+                           by = c("BEC_ZONE", "SP0", "LV_D", "SP_TYPE"),
                            all = TRUE)
     rm(i, strata_failed_mer, strata_failed_ntwb, allcoeffs_mer, allcoeffs_ntwb,
        strata_mer_suc, strata_ntwb_suc, needCombs, strata_mer, strata_ntwb)
@@ -343,12 +343,12 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
   if(nrow(strata_failed) > 0){ # initiate the last attempt
     # The forth attempt is to use species type and lv_d regardless of bec
-    needCombs <- unique(strata_failed[,.(BGC_ZONE, SP_TYPE, LV_D)])
+    needCombs <- unique(strata_failed[,.(BEC_ZONE, SP_TYPE, LV_D)])
 
     strata_failed_mer <- needCombs[0,]
     strata_failed_ntwb <- needCombs[0,]
 
-    allcoeffs_mer <- data.table(BGC_ZONE = character(),
+    allcoeffs_mer <- data.table(BEC_ZONE = character(),
                                 SP_TYPE = character(),
                                 LV_D = character(),
                                 a = numeric(),
@@ -356,7 +356,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                 c = numeric(),
                                 N_OBS = numeric(),
                                 DATA_SOURCE = character())
-    allcoeffs_ntwb <- data.table(BGC_ZONE = character(),
+    allcoeffs_ntwb <- data.table(BEC_ZONE = character(),
                                  SP_TYPE = character(),
                                  LV_D = character(),
                                  a = numeric(),
@@ -365,7 +365,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                  N_OBS = numeric(),
                                  DATA_SOURCE = character())
     for(i in 1:nrow(needCombs)){
-      indistrata_data <- all_trees_ratio[BGC_ZONE == needCombs$BGC_ZONE[i] &
+      indistrata_data <- all_trees_ratio[BEC_ZONE == needCombs$BEC_ZONE[i] &
                                          SP_TYPE == needCombs$SP_TYPE[i] &
                                            LV_D == needCombs$LV_D[i],]
       if(nrow(indistrata_data) > minObs){
@@ -387,11 +387,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
           strata_failed_mer <- rbind(strata_failed_mer, needCombs[i])
         } else {
           indistrata_mer_coef <- data.table(rbind(coef(nlsout_mer)))
-          indistrata_mer_coef[, ':='(BGC_ZONE = needCombs$BGC_ZONE[i],
+          indistrata_mer_coef[, ':='(BEC_ZONE = needCombs$BEC_ZONE[i],
                                      SP_TYPE = needCombs$SP_TYPE[i],
                                      LV_D = needCombs$LV_D[i],
                                      N_OBS = nrow(indistrata_data))]
-          indistrata_mer_coef[, DATA_SOURCE := paste0(BGC_ZONE, " + ", SP_TYPE, " + ", LV_D)]
+          indistrata_mer_coef[, DATA_SOURCE := paste0(BEC_ZONE, " + ", SP_TYPE, " + ", LV_D)]
           allcoeffs_mer <- rbind(allcoeffs_mer, indistrata_mer_coef)
           rm(nlsout_mer, indistrata_mer_coef)
         }
@@ -400,11 +400,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
           strata_failed_ntwb <- rbind(strata_failed_ntwb, needCombs[i])
         } else {
           indistrata_ntwb_coef <- data.table(rbind(coef(nlsout_ntwb)))
-          indistrata_ntwb_coef[, ':='(BGC_ZONE = needCombs$BGC_ZONE[i],
+          indistrata_ntwb_coef[, ':='(BEC_ZONE = needCombs$BEC_ZONE[i],
                                       SP_TYPE = needCombs$SP_TYPE[i],
                                       LV_D = needCombs$LV_D[i],
                                       N_OBS = nrow(indistrata_data))]
-          indistrata_ntwb_coef[, DATA_SOURCE := paste0(BGC_ZONE, " + ", SP_TYPE, " + ", LV_D)]
+          indistrata_ntwb_coef[, DATA_SOURCE := paste0(BEC_ZONE, " + ", SP_TYPE, " + ", LV_D)]
           allcoeffs_ntwb <- rbind(allcoeffs_ntwb, indistrata_ntwb_coef)
           rm(nlsout_ntwb, indistrata_ntwb_coef)
         }
@@ -416,24 +416,24 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
       rm(indistrata_data)
     }
 
-    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BEC_ZONE, SP0, LV_D, SP_TYPE)],
                         allcoeffs_mer,
-                        by = c("BGC_ZONE", "SP_TYPE", "LV_D"),
+                        by = c("BEC_ZONE", "SP_TYPE", "LV_D"),
                         all.x = TRUE)
-    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BEC_ZONE, SP0, LV_D, SP_TYPE)],
                          allcoeffs_ntwb,
-                         by = c("BGC_ZONE", "SP_TYPE", "LV_D"),
+                         by = c("BEC_ZONE", "SP_TYPE", "LV_D"),
                          all.x = TRUE)
     strata_mer_suc <- strata_mer[!is.na(N_OBS),]
-    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BGC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
+    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BEC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
     strata_ntwb_suc <- strata_ntwb[!is.na(N_OBS)]
     strata_failed_ntwb <- strata_ntwb[is.na(N_OBS),
-                                      .(BGC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
+                                      .(BEC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
     allcoeffs_mer_suc <- rbindlist(list(allcoeffs_mer_suc, strata_mer_suc), fill = TRUE)
     allcoeffs_ntwb_suc <- rbindlist(list(allcoeffs_ntwb_suc, strata_ntwb_suc), fill = TRUE)
     strata_failed <- merge(strata_failed_mer,
                            strata_failed_ntwb,
-                           by = c("BGC_ZONE", "SP0", "LV_D", "SP_TYPE"),
+                           by = c("BEC_ZONE", "SP0", "LV_D", "SP_TYPE"),
                            all = TRUE)
     rm(i, strata_failed_mer, strata_failed_ntwb, allcoeffs_mer, allcoeffs_ntwb,
        strata_mer_suc, strata_ntwb_suc, needCombs, strata_mer, strata_ntwb)
@@ -442,18 +442,18 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
 
   if(nrow(strata_failed) > 0){ # initiate LAST attempt
     # The second attempt is to group bgc zone into coastal and interior
-    strata_failed[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    strata_failed[is.na(BGC_REG), BGC_REG := "INTERIOR"]
+    strata_failed[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    strata_failed[is.na(BEC_REG), BEC_REG := "INTERIOR"]
 
-    all_trees_ratio[BGC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BGC_REG := "COAST"]
-    all_trees_ratio[is.na(BGC_REG), BGC_REG := "INTERIOR"]
+    all_trees_ratio[BEC_ZONE %in% c("CMA", "MH", "CDF", "CWH"), BEC_REG := "COAST"]
+    all_trees_ratio[is.na(BEC_REG), BEC_REG := "INTERIOR"]
 
-    needCombs <- unique(strata_failed[,.(BGC_REG, SP_TYPE, LV_D)])
+    needCombs <- unique(strata_failed[,.(BEC_REG, SP_TYPE, LV_D)])
 
     strata_failed_mer <- needCombs[0,]
     strata_failed_ntwb <- needCombs[0,]
 
-    allcoeffs_mer <- data.table(BGC_REG = character(),
+    allcoeffs_mer <- data.table(BEC_REG = character(),
                                 SP_TYPE = character(),
                                 LV_D = character(),
                                 a = numeric(),
@@ -461,7 +461,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                 c = numeric(),
                                 N_OBS = numeric(),
                                 DATA_SOURCE = character())
-    allcoeffs_ntwb <- data.table(BGC_REG = character(),
+    allcoeffs_ntwb <- data.table(BEC_REG = character(),
                                  SP_TYPE = character(),
                                  LV_D = character(),
                                  a = numeric(),
@@ -470,7 +470,7 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
                                  N_OBS = numeric(),
                                  DATA_SOURCE = character())
     for(i in 1:nrow(needCombs)){
-      indistrata_data <- all_trees_ratio[BGC_REG == needCombs$BGC_REG[i] &
+      indistrata_data <- all_trees_ratio[BEC_REG == needCombs$BEC_REG[i] &
                                            SP_TYPE == needCombs$SP_TYPE[i] &
                                            LV_D == needCombs$LV_D[i],]
       if(nrow(indistrata_data) > minObs){
@@ -494,11 +494,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
           strata_failed_mer <- rbind(strata_failed_mer, needCombs[i])
         } else {
           indistrata_mer_coef <- data.table(rbind(coef(nlsout_mer)))
-          indistrata_mer_coef[, ':='(BGC_REG = needCombs$BGC_REG[i],
+          indistrata_mer_coef[, ':='(BEC_REG = needCombs$BEC_REG[i],
                                      SP_TYPE = needCombs$SP_TYPE[i],
                                      LV_D = needCombs$LV_D[i],
                                      N_OBS = nrow(indistrata_data))]
-          indistrata_mer_coef[, DATA_SOURCE := paste0(BGC_REG, " + ", SP_TYPE, " + ", LV_D)]
+          indistrata_mer_coef[, DATA_SOURCE := paste0(BEC_REG, " + ", SP_TYPE, " + ", LV_D)]
           allcoeffs_mer <- rbind(allcoeffs_mer, indistrata_mer_coef)
           rm(nlsout_mer, indistrata_mer_coef)
         }
@@ -507,11 +507,11 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
           strata_failed_ntwb <- rbind(strata_failed_ntwb, needCombs[i])
         } else {
           indistrata_ntwb_coef <- data.table(rbind(coef(nlsout_ntwb)))
-          indistrata_ntwb_coef[, ':='(BGC_REG = needCombs$BGC_REG[i],
+          indistrata_ntwb_coef[, ':='(BEC_REG = needCombs$BEC_REG[i],
                                       SP_TYPE = needCombs$SP_TYPE[i],
                                       LV_D = needCombs$LV_D[i],
                                       N_OBS = nrow(indistrata_data))]
-          indistrata_ntwb_coef[, DATA_SOURCE := paste0(BGC_REG, " + ", SP_TYPE, " + ", LV_D)]
+          indistrata_ntwb_coef[, DATA_SOURCE := paste0(BEC_REG, " + ", SP_TYPE, " + ", LV_D)]
           allcoeffs_ntwb <- rbind(allcoeffs_ntwb, indistrata_ntwb_coef)
           rm(nlsout_ntwb, indistrata_ntwb_coef)
         }
@@ -523,31 +523,31 @@ toWSVRatio_curve <- function(inputData, needCombs, minDBH = 10, minObs = 30){
       rm(indistrata_data)
     }
 
-    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BGC_REG, BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_mer <- merge(strata_failed[MER_FAILED == TRUE, .(BEC_REG, BEC_ZONE, SP0, LV_D, SP_TYPE)],
                         allcoeffs_mer,
-                        by = c("BGC_REG", "SP_TYPE", "LV_D"),
+                        by = c("BEC_REG", "SP_TYPE", "LV_D"),
                         all.x = TRUE)
-    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BGC_REG, BGC_ZONE, SP0, LV_D, SP_TYPE)],
+    strata_ntwb <- merge(strata_failed[NTWB_FAILED == TRUE, .(BEC_REG, BEC_ZONE, SP0, LV_D, SP_TYPE)],
                          allcoeffs_ntwb,
-                         by = c("BGC_REG", "SP_TYPE", "LV_D"),
+                         by = c("BEC_REG", "SP_TYPE", "LV_D"),
                          all.x = TRUE)
     strata_mer_suc <- strata_mer[!is.na(N_OBS),]
-    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BGC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
+    strata_failed_mer <- strata_mer[is.na(N_OBS),.(BEC_ZONE, SP0, LV_D, SP_TYPE, MER_FAILED = TRUE)]
     strata_ntwb_suc <- strata_ntwb[!is.na(N_OBS)]
     strata_failed_ntwb <- strata_ntwb[is.na(N_OBS),
-                                      .(BGC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
+                                      .(BEC_ZONE, SP0, LV_D, SP_TYPE, NTWB_FAILED = TRUE)]
     allcoeffs_mer_suc <- rbindlist(list(allcoeffs_mer_suc, strata_mer_suc), fill = TRUE)
     allcoeffs_ntwb_suc <- rbindlist(list(allcoeffs_ntwb_suc, strata_ntwb_suc), fill = TRUE)
     strata_failed <- merge(strata_failed_mer,
                            strata_failed_ntwb,
-                           by = c("BGC_ZONE", "SP0", "LV_D", "SP_TYPE"),
+                           by = c("BEC_ZONE", "SP0", "LV_D", "SP_TYPE"),
                            all = TRUE)
     rm(i, strata_failed_mer, strata_failed_ntwb, allcoeffs_mer, allcoeffs_ntwb,
        strata_mer_suc, strata_ntwb_suc, needCombs, strata_mer, strata_ntwb)
   } # end of second attempt
   if(exists("strata_failed")){
     if(nrow(strata_failed) > 0){
-      strata_failed[, texts := paste0(BGC_ZONE, " + ", SP0, " + ", LV_D, "\n")]
+      strata_failed[, texts := paste0(BEC_ZONE, " + ", SP0, " + ", LV_D, "\n")]
       warning("The toWSV ratio curve can not be derived for the strata below: \n", strata_failed$texts)
     }
   }

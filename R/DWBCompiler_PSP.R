@@ -161,9 +161,9 @@ setMethod(
       tree_rsk[SP0 %in% c("C", "Y", "S", "H") &
                  (PROJ_ID == "3432" | TSA == 25),
                ADJ_ID := "QCI"] ## need space or not will be specified
-      tree_rsk[BGC_ZONE == "ICH" & BGC_SBZN %in% c("wk", "vk") & BGC_VAR == "1",
+      tree_rsk[BEC_ZONE == "ICH" & BEC_SBZ %in% c("wk", "vk") & BEC_VAR == "1",
                ADJ_ID := "WET"]
-      tree_rsk[(TSA == 7 | PROJ_ID == "0071") & BGC_ZONE == "ICH" & BGC_SBZN %in% c("mv", "mk"),
+      tree_rsk[(TSA == 7 | PROJ_ID == "0071") & BEC_ZONE == "ICH" & BEC_SBZ %in% c("mv", "mk"),
                ADJ_ID := "GLD_NW"]
       tree_rsk[, RISK_GRP := riskGroupDeriver(species = SP0,
                                               pathIndex = PATH_IND,
@@ -172,7 +172,7 @@ setMethod(
                                      height = tree_rsk$HEIGHT,
                                      species = tree_rsk$SP0,
                                      meanAge = tree_rsk$AGE_DWB,
-                                     BEC = tree_rsk$BGC_ZONE,
+                                     BEC = tree_rsk$BEC_ZONE,
                                      riskGroup = tree_rsk$RISK_GRP,
                                      adjustID = tree_rsk$ADJ_ID)
       tree_rsk[, ':='(PCT_DCY = DWBfactors$decay,
