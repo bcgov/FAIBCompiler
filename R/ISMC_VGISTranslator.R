@@ -63,11 +63,11 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
                                                                      SUIT_SI_temp = "N")]
   suit_si_from_notes <- suit_si_from_notes[!is.na(TREE_NUMBER),.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, SUIT_SI_temp)]
 
-
   vi_a <- SampleSiteVisits[,.(CLSTR_ID = NA,
                               SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
                               SAMP_NO = PROJECT_NUMBER, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
                               VISIT_NUMBER,
+                              SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
                               MEAS_DT = substr(newMD, 1, 10),
                               IP_AZ_PN = NA,
                               IP_DT_PN = NA, IP_AZ_GP = NA, IP_DT_GP = NA, IP_GPSID = NA)]
@@ -77,6 +77,7 @@ ISMC_VGISTranslator <- function(inputPath, outputPath,
   rm(samplesites, SampleSiteVisits)
   vi_a[, TYPE_CD := paste0(TYPE_CD, VISIT_NUMBER)]
   vi_a[,CLSTR_ID := paste(SITE_IDENTIFIER, TYPE_CD, sep = "-")]
+  vi_a <- unique(vi_a)
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
 
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
