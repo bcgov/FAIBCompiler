@@ -33,7 +33,8 @@ VRIInit_lossFactor<- function(fullMeasuredTrees,
     lossfactors[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
     lossfactors <- lossfactors[clusterplottree %in% fullMeasuredTrees$clusterplottree,]
     lossfactors <- merge(lossfactors,
-                         fullMeasuredTrees[,.(clusterplottree, SPECIES, SPECIES_ORG, SP0)])
+                         fullMeasuredTrees[,.(clusterplottree, SPECIES, SPECIES_ORG, SP0)],
+                         by = "clusterplottree")
     lossfactors[, ':='(clusterplottree = NULL)]
     return(lossfactors)
   }
