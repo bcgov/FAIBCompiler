@@ -49,8 +49,8 @@ setMethod(
   definition = function(allVolumeTrees, clusterPlotHeader, utilLevel,
                         weirdUtil, equation, nvafRatio){
     allVolumeTrees <- FAIBBase::merge_dupUpdate(allVolumeTrees,
-                                                unique(clusterPlotHeader[,.(CLSTR_ID, PLOT, PROJ_ID, NO_PLOTS, PLOT_DED,
-                                                                            BGC_ZONE, PLOT_WT, SAMP_TYP, SA_VEGCOMP)],
+                                                unique(clusterPlotHeader[,.(CLSTR_ID, PLOT, NO_PLOTS, PLOT_DED,
+                                                                            BEC_ZONE, PLOT_WT, SAMP_TYP, SA_VEGCOMP)],
                                                        by = c("CLSTR_ID", "PLOT")),
                                                 by = c("CLSTR_ID", "PLOT"))
     if(length(weirdUtil) == 1){
@@ -75,7 +75,7 @@ setMethod(
                        all.x = TRUE)
     volsmy_cs <- merge(volsmy_cs,
                        unique(clusterPlotHeader[,.(CLSTR_ID,
-                                                   BGC_SBZN, SA_VEGCOMP)],
+                                                   BEC_SBZ, SA_VEGCOMP)],
                               by = "CLSTR_ID"),
                        by = "CLSTR_ID",
                        all.x = TRUE)
@@ -159,90 +159,74 @@ setMethod(
 
     set(volsmy_cs, , c(paste0("GVAF_L", 1:3), paste0("NVAF_L", 1:3),
                        paste0("GVAF_D", 1:3), paste0("NVAF_D", 1:3)), NULL)
-    volsmy_cs[, ':='(VHA_WSV_GVAF_LS = VHA_WSV * GVAF_L,
-                     VHA_WSV_GVAF_LF = VHA_WSVLF * GVAF_L,
-                     VHA_WSV_GVAF_DS = VHA_WSVDS * GVAF_D,
-                     VHA_WSV_GVAF_DF = VHA_WSVDF * GVAF_D,
-                     VHA_MER_GVAF_LS = VHA_MER * GVAF_L,
-                     VHA_MER_GVAF_LF = VHA_MERLF * GVAF_L,
-                     VHA_MER_GVAF_DS = VHA_MERDS * GVAF_D,
-                     VHA_MER_GVAF_DF = VHA_MERDF * GVAF_D,
-                     VHA_NTWB_NVAF_LS = VHA_NTWB * NVAF_L,
-                     VHA_NTWB_NVAF_LF = VHA_NTWBLF * NVAF_L,
-                     VHA_NTWB_NVAF_DS = VHA_NTWBDS * NVAF_D,
-                     VHA_NTWB_NVAF_DF = VHA_NTWBDF * NVAF_D)]
+    volsmy_cs[, ':='(VHA_WSV_GVAF_LS = VHA_WSV_LS * GVAF_L,
+                     VHA_WSV_GVAF_DS = VHA_WSV_DS * GVAF_D,
+                     VHA_MER_GVAF_LS = VHA_MER_LS * GVAF_L,
+                     VHA_MER_GVAF_DS = VHA_MER_DS * GVAF_D,
+                     VHA_NTWB_NVAF_LS = VHA_NTWB_LS * NVAF_L,
+                     VHA_NTWB_NVAF_DS = VHA_NTWB_DS * NVAF_D,
+                     NO_PLOTS = NULL,
+                     PLOT_DED = NULL)]
 
 
     ## volume summary by cluster
     volsmy_c <- volSmry_byC(volSmryByCS = volsmy_cs)
-    volsmy_cs[, ':='(VPT_WSV = sum(VHA_WSV, na.rm = TRUE),
-                     VPT_NETM = sum(VHA_NETM, na.rm = TRUE),
-                     VPT_MER = sum(VHA_MER, na.rm = TRUE),
-                     BA_PT = sum(BA_HA, na.rm = TRUE),
-                     VPT_WSVDS = sum(VHA_WSVDS, na.rm = TRUE)),
+    volsmy_cs[, ':='(VPT_WSV = sum(VHA_WSV_LS, na.rm = TRUE),
+                     BA_PT = sum(BA_HA_LS, na.rm = TRUE),
+                     VPT_WSVDS = sum(VHA_WSV_DS, na.rm = TRUE)),
               by = c("CLSTR_ID", "UTIL")]
-    volsmy_cs[VPT_WSV %>>% 0, VPC_WSV := 100*VHA_WSV/VPT_WSV]
-    volsmy_cs[VPT_NETM %>>% 0, VPC_NETM := 100*VHA_NETM/VPT_NETM]
-    volsmy_cs[VPT_MER %>>% 0, VPC_MER := 100*VHA_MER/VPT_MER]
-    volsmy_cs[VPT_WSVDS %>>% 0, VPC_WSVDS := 100*VHA_WSVDS/VPT_WSVDS]
-    volsmy_cs[BA_PT %>>% 0, BA_PC := 100*BA_HA/BA_PT]
-    volsmy_cs[,c("VPT_WSV", "VPT_NETM", "VPT_MER", "VPT_WSVDS", "BA_PT") := NULL]
-    formatcols <- c("VPC_WSV", "VPC_NETM", "VPC_MER", "BA_PC", "VPC_WSVDS")
+    volsmy_cs[VPT_WSV %>>% 0, SP_PCT_WSV_LS := 100*VHA_WSV_LS/VPT_WSV]
+    volsmy_cs[VPT_WSVDS %>>% 0, SP_PCT_WSV_DS := 100*VHA_WSV_DS/VPT_WSVDS]
+    volsmy_cs[BA_PT %>>% 0, SP_PCT_BA_LS := 100*BA_HA_LS/BA_PT]
+    volsmy_cs[,c("VPT_WSV", "VPT_WSVDS", "BA_PT") := NULL]
+    formatcols <- c("SP_PCT_WSV_LS", "SP_PCT_BA_LS", "SP_PCT_WSV_DS")
     volsmy_cs[, c(formatcols) := lapply(.SD, function(s) round(s, 1)),
               .SDcols = formatcols]
 
     ## height summary by cluster
     heightsmry_c <- heightSmry_byC(treeMC = allVolumeTrees)
-    cl_spc <- speciesComp_byC(CSSmryTable = volsmy_cs, basedOn = "BA_HA", speciesMaxNO = 12)
+    cl_spc <- speciesComp_byC(CSSmryTable = volsmy_cs, basedOn = "BA_HA_LS", speciesMaxNO = 12)
 
     allclustersByUtil <- data.table(expand.grid(CLSTR_ID = unique(clusterPlotHeader$CLSTR_ID),
                                                 UTIL = dbhcatlist))
 
-    allclustersByUtil <- merge(allclustersByUtil,
-                               unique(clusterPlotHeader[,.(CLSTR_ID, PRJ_GRP, NO_PLOTS, PLOT_DED, PROJ_ID)],
-                                      by = "CLSTR_ID"),
-                               by = "CLSTR_ID",
-                               all.x = TRUE)
+    summarycols <- c(paste("VHA_",c("WSV", "MER", "NTWB", "DWB"), sep = ""),
+                     "DBH2", "BA_HA", "STEMS_HA")
+    summarycolsLS <- paste(summarycols, "_LS", sep = "")
+    summarycolsLF <- paste(summarycols, "_LF", sep = "")
+    summarycolsDS <- paste(summarycols, "_DS", sep = "")
+    summarycolsDF <- paste(summarycols, "_DF", sep = "")
 
-    summarycolsLS <- c(paste("VHA_",c("WSV", "NET", "MER", "NETM", "NTW2",
-                                      "NTWB", "D", "DW", "DWB"),
-                             sep = ""), "DHA_MER", "DBH2", "BA_HA", "STEMS_HA")
-    summarycolsLF <- paste(summarycolsLS, "LF", sep = "")
-    summarycolsDS <- paste(summarycolsLS, "DS", sep = "")
-    summarycolsDF <- paste(summarycolsLS, "DF", sep = "")
-
-    volsmy_cs[, c("PRJ_GRP", "NO_PLOTS", "PLOT_DED", "PROJ_ID") := NULL]
     volsmy_cs <- merge(allclustersByUtil, volsmy_cs, by = c("CLSTR_ID", "UTIL"),
                        all = TRUE)
-    volsmy_cs[is.na(VHA_WSV), c(summarycolsLS) := 0]
-    volsmy_cs[is.na(VHA_WSVLF), c(summarycolsLF) := 0]
-    volsmy_cs[is.na(VHA_WSVDS), c(summarycolsDS) := 0]
-    volsmy_cs[is.na(VHA_WSVDF), c(summarycolsDF) := 0]
+    volsmy_cs[is.na(VHA_WSV_LS), c(summarycolsLS) := 0]
+    volsmy_cs[is.na(VHA_WSV_LF), c(summarycolsLF) := 0]
+    volsmy_cs[is.na(VHA_WSV_DS), c(summarycolsDS) := 0]
+    volsmy_cs[is.na(VHA_WSV_DF), c(summarycolsDF) := 0]
 
-    volsmy_c[, c("PRJ_GRP", "NO_PLOTS", "PLOT_DED", "PROJ_ID") := NULL]
     volsmy_c <- merge(allclustersByUtil, volsmy_c, by = c("CLSTR_ID", "UTIL"),
                       all = TRUE)
-    volsmy_c[is.na(VHA_WSV),
-             c(summarycolsLS, "NO_TREES", "QMD", "QMDLF", "QMDDS", "QMDDF") := 0]
-    volsmy_c[is.na(VHA_WSVLF), c(summarycolsLF) := 0]
-    volsmy_c[is.na(VHA_WSVDS), c(summarycolsDS) := 0]
-    volsmy_c[is.na(VHA_WSVDF), c(summarycolsDF) := 0]
+    volsmy_c[is.na(VHA_WSV_LS),
+             c(summarycolsLS, "NO_TREES", "QMD_LS", "QMD_LF", "QMD_DS", "QMD_DF") := 0]
+    volsmy_c[is.na(VHA_WSV_LF), c(summarycolsLF) := 0]
+    volsmy_c[is.na(VHA_WSV_DS), c(summarycolsDS) := 0]
+    volsmy_c[is.na(VHA_WSV_DF), c(summarycolsDF) := 0]
     volsmy_c[is.na(VHA_WSV_GVAF_LS), VHA_WSV_GVAF_LS := 0]
-    volsmy_c[is.na(VHA_WSV_GVAF_LF), VHA_WSV_GVAF_LF := 0]
     volsmy_c[is.na(VHA_WSV_GVAF_DS), VHA_WSV_GVAF_DS := 0]
-    volsmy_c[is.na(VHA_WSV_GVAF_DF), VHA_WSV_GVAF_DF := 0]
     volsmy_c[is.na(VHA_MER_GVAF_LS), VHA_MER_GVAF_LS := 0]
-    volsmy_c[is.na(VHA_MER_GVAF_LF), VHA_MER_GVAF_LF := 0]
     volsmy_c[is.na(VHA_MER_GVAF_DS), VHA_MER_GVAF_DS := 0]
-    volsmy_c[is.na(VHA_MER_GVAF_DF), VHA_MER_GVAF_DF := 0]
     volsmy_c[is.na(VHA_NTWB_NVAF_LS), VHA_NTWB_NVAF_LS := 0]
-    volsmy_c[is.na(VHA_NTWB_NVAF_LF), VHA_NTWB_NVAF_LF := 0]
     volsmy_c[is.na(VHA_NTWB_NVAF_DS), VHA_NTWB_NVAF_DS := 0]
-    volsmy_c[is.na(VHA_NTWB_NVAF_DF), VHA_NTWB_NVAF_DF := 0]
     cl_spc <- merge(allclustersByUtil, cl_spc,
                     by = c("CLSTR_ID", "UTIL"),
                     all = TRUE)
-
+    volsmy_cs[, c(paste0("DBH2", c("_LS", "_LF", "_DS", "_DF")),
+                  paste0("QMD", c("_LF", "_DF")),
+                  "MATURITY1", "MATURITY2",
+                  "BEC_ZONE", "BEC_SBZ",
+                  "SP0", "SA_VEGCOMP") := NULL]
+    volsmy_c[, c(paste0("DBH2", c("_LS", "_LF", "_DS", "_DF")),
+                 paste0("QMD", c("_LF", "_DF"))) := NULL]
     return(list(vol_bycs = volsmy_cs, vol_byc = volsmy_c,
                 heightsmry_byc = heightsmry_c,
                 compositionsmry_byc = cl_spc))

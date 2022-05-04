@@ -31,20 +31,20 @@ setMethod(
   "volSmry_byC",
   signature = c(volSmryByCS = "data.table"),
   definition = function(volSmryByCS){
-    summarycolsLS <- c(paste("VHA_",c("WSV", "NET", "MER", "NETM", "NTW2",
-                                      "NTWB", "D", "DW", "DWB"),
-                             sep = ""), "DHA_MER", "DBH2", "BA_HA", "STEMS_HA")
-    summarycolsLF <- paste(summarycolsLS, "LF", sep = "")
-    summarycolsDS <- paste(summarycolsLS, "DS", sep = "")
-    summarycolsDF <- paste(summarycolsLS, "DF", sep = "")
-    summarycolsGVAFNVAF <- c("VHA_WSV_GVAF_LS", "VHA_WSV_GVAF_LF",
-                             "VHA_WSV_GVAF_DS", "VHA_WSV_GVAF_DF",
-                             "VHA_MER_GVAF_LS",  "VHA_MER_GVAF_LF",
-                             "VHA_MER_GVAF_DS", "VHA_MER_GVAF_DF",
-                             "VHA_NTWB_NVAF_LS", "VHA_NTWB_NVAF_LF",
-                             "VHA_NTWB_NVAF_DS", "VHA_NTWB_NVAF_DF")
-    output <- unique(volSmryByCS[,.(CLSTR_ID, UTIL, PRJ_GRP, NO_PLOTS, PLOT_DED,
-                                    PROJ_ID)],
+    summarycols <- c(paste("VHA_",c("WSV", "MER", "NTWB", "DWB"), sep = ""),
+                     "DBH2", "BA_HA", "STEMS_HA")
+
+    summarycolsLS <- paste(summarycols, "_LS", sep = "")
+    summarycolsLF <- paste(summarycols, "_LF", sep = "")
+    summarycolsDS <- paste(summarycols, "_DS", sep = "")
+    summarycolsDF <- paste(summarycols, "_DF", sep = "")
+    summarycolsGVAFNVAF <- c("VHA_WSV_GVAF_LS",
+                             "VHA_WSV_GVAF_DS",
+                             "VHA_MER_GVAF_LS",
+                             "VHA_MER_GVAF_DS",
+                             "VHA_NTWB_NVAF_LS",
+                             "VHA_NTWB_NVAF_DS")
+    output <- unique(volSmryByCS[,.(CLSTR_ID, UTIL)],
                      by = c("CLSTR_ID", "UTIL"))
     smrytable <- volSmryByCS[,lapply(.SD, sum), .SDcols = c(summarycolsLS, summarycolsLF,
                                                             summarycolsDS, summarycolsDF,
@@ -52,18 +52,20 @@ setMethod(
                                                             "NO_TREES"),
                              by = c("CLSTR_ID", "UTIL")]
     output <- FAIBBase::merge_dupUpdate(output, smrytable, by = c("CLSTR_ID", "UTIL"))
-    output[STEMS_HA %>>% 0, QMD := sqrt(DBH2/STEMS_HA)]
-    output[STEMS_HALF %>>% 0, QMDLF := sqrt(DBH2LF/STEMS_HALF)]
-    output[STEMS_HADS %>>% 0, QMDDS := sqrt(DBH2DS/STEMS_HADS)]
-    output[STEMS_HADF %>>% 0, QMDDF := sqrt(DBH2DF/STEMS_HADF)]
-    decimal3cols <- c(summarycolsLS[1:12], summarycolsLF[1:12], summarycolsDS[1:12], summarycolsDF[1:12],
-                      "QMD", "QMDLF", "QMDDS", "QMDDF")
+    output[STEMS_HA_LS %>>% 0, QMD_LS := sqrt(DBH2_LS/STEMS_HA_LS)]
+    output[STEMS_HA_LF %>>% 0, QMD_LF := sqrt(DBH2_LF/STEMS_HA_LF)]
+    output[STEMS_HA_DS %>>% 0, QMD_DS := sqrt(DBH2_DS/STEMS_HA_DS)]
+    output[STEMS_HA_DF %>>% 0, QMD_DF := sqrt(DBH2_DF/STEMS_HA_DF)]
+    decimal3cols <- c(summarycolsLS[1:6], summarycolsLF[1:6],
+                      summarycolsDS[1:6], summarycolsDF[1:6],
+                      summarycolsGVAFNVAF,
+                      "QMD_LS", "QMD_LF", "QMD_DS", "QMD_DF")
     output[, c(decimal3cols) := lapply(.SD, function(s) round(s, 3)), .SDcols = decimal3cols]
-    roundcols <- c(paste("STEMS_HA", c("", "LF", "DS", "DF"), sep = ""), "NO_TREES")
+    roundcols <- c(paste("STEMS_HA", c("_LS", "_LF", "_DS", "_DF"), sep = ""), "NO_TREES")
     output[, c(roundcols) := lapply(.SD, round), .SDcols = roundcols]
-    output[is.na(QMD), QMD := 0]
-    output[is.na(QMDLF), QMDLF := 0]
-    output[is.na(QMDDS), QMDDS := 0]
-    output[is.na(QMDDF), QMDDF := 0]
+    output[is.na(QMD_LS), QMD_LS := 0]
+    output[is.na(QMD_LF), QMD_LF := 0]
+    output[is.na(QMD_DS), QMD_DS := 0]
+    output[is.na(QMD_DF), QMD_DF := 0]
     return(output)
   })
