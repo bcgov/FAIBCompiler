@@ -41,9 +41,6 @@ setMethod(
                      by = c("CLSTR_ID", "SPECIES")]
     bark_sum[BARK_THK %in% c(NaN), BARK_THK := NA]
     bark_sum[BARK_PCT %in% c(NaN), BARK_PCT := NA]
-    ah_ra <- cpldSiteAgeData[RA_TREE == "R",.(CLSTR_ID, AGE_RND = AGE_TOT,
-                                              HT_RND = HEIGHT, SP_RND = SPECIES)]
-    ah_ra <- unique(ah_ra, by = "CLSTR_ID")
 
     ah_ta <- cpldSiteAgeData[TP_TREE == "T" & PLOT == "I", .(CLSTR_ID, AGE_TOP = AGE_TOT,
                                                              HT_TOP = HEIGHT, SP_TOP = SPECIES)]
@@ -114,25 +111,13 @@ setMethod(
                    AGET_TXO = round(AGET_TXO, 1),
                    HT_TXO = round(HT_TXO, 1),
                    SI_M_TXO = round(SI_M_TXO, 1))]
-    ahs_msp[, ':='(SP_SINDEX = siteToolsSpeciesConvertor(SPECIES))]
-    ahs_msp[AGEB_TLS > 0 & HT_TLS > 0,
-            SI_C_TLS := SiteTools_HTBoredAge2SI(boredAge = AGEB_TLS, height = HT_TLS,
-                                                species = SP_SINDEX,
-                                                ICRegion = FIZ, ageType = 1, estType = 1)]
-    ahs_msp[AGEB_TXO > 0 & HT_TXO > 0,
-            SI_C_TXO := SiteTools_HTBoredAge2SI(boredAge = AGEB_TXO, height = HT_TXO,
-                                                species = SP_SINDEX,
-                                                ICRegion = FIZ, ageType = 1, estType = 1)]
-    ahs_msp[,':='(SI_C_TLS = round(SI_C_TLS, 1),
-                  SI_C_TXO = round(SI_C_TXO, 1))]
+
     ahs_msp[is.na(N_HT_TLS), N_HT_TLS := 0]
     ahs_msp[is.na(N_HT_TXO), N_HT_TXO := 0]
     ahs_msp[is.na(N_AG_TLS), N_AG_TLS := 0]
     ahs_msp[is.na(N_AG_TXO), N_AG_TXO := 0]
 
-    cl_ah <- FAIBBase::merge_dupUpdate(ah_ra, ah_ta,
-                             by = "CLSTR_ID", all = TRUE)
-    cl_ah <- FAIBBase::merge_dupUpdate(cl_ah, ahs_txo[is.na(SPECIES)],
+    cl_ah <- FAIBBase::merge_dupUpdate(ah_ta, ahs_txo[is.na(SPECIES)],
                              by = "CLSTR_ID", all = TRUE)
     cl_ah <- FAIBBase::merge_dupUpdate(cl_ah, ahs_tls[is.na(SPECIES)],
                              by = "CLSTR_ID", all = TRUE)
@@ -140,7 +125,9 @@ setMethod(
              c("HT_M_TXO", "AT_M_TXO", "AB_M_TXO"))
     setnames(cl_ah, c("HT_TLS", "AGET_TLS", "AGEB_TLS"),
              c("HT_M_TLS", "AT_M_TLS", "AB_M_TLS"))
+    cl_ah[, c("SPECIES", "FIZ") := NULL]
 
     spc_ah <- FAIBBase::merge_dupUpdate(ahs_msp, bark_sum, by = c("CLSTR_ID", "SPECIES"), all = TRUE)
+    spc_ah[, c("FIZ", "H_TREES") := NULL]
     return(list(cl_ah = cl_ah, spc_ah = spc_ah))
   })
