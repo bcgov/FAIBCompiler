@@ -18,7 +18,7 @@ ISMCCompiler(
   breastHeight = 1.3,
   UTOPDIB = 10,
   utilLevel = 4,
-  weirdUtil = "No"
+  weirdUtil = "4"
 )
 }
 \arguments{

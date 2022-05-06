@@ -30,7 +30,7 @@ volSmry_byCS(treeMC, utilLevel, weirdUtil, equation)
 
 \item{utilLevel}{numeric, Utilization levels. Default is 4.}
 
-\item{weirdUtil}{character, Weird util. Default is \code{No}. Otherwise need to be specified as a number.}
+\item{weirdUtil}{character, Weird util. Default is \code{4}. Otherwise need to be specified as a number.}
 
 \item{equation}{character, Specifies whether the compiler is based on \code{KBEC} or \code{KFIZ}.
 Default is \code{KBEC}.}

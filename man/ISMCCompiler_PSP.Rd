@@ -18,8 +18,8 @@ ISMCCompiler_PSP(
   stumpHeight = 0.3,
   breastHeight = 1.3,
   UTOPDIB = 10,
-  utilLevel = 4,
-  weirdUtil = "No"
+  utilLevel = 3,
+  weirdUtil = c("2", "4")
 )
 }
 \arguments{
