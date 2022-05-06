@@ -43,10 +43,10 @@ setMethod(
     vha_df <- paste(vha, "_DF", sep = "")
     treeMC[, ':='(DBH2 = DBH^2,
                   STEMS_HA = 1)]
-    treeMC[LV_D == "L" & SF_COMPILE == "S", TREE_FACTOR := PHF_TREE/NO_PLOTS]
+    treeMC[LV_D == "L" & S_F == "S", TREE_FACTOR := PHF_TREE/NO_PLOTS]
     ## NO matter a tree is live or dead, as long as it is falling
-    treeMC[SF_COMPILE == "F", TREE_FACTOR := PHF_TREE]
-    treeMC[LV_D == "D" & SF_COMPILE == "S", TREE_FACTOR := PHF_TREE/PLOT_DED]
+    treeMC[S_F == "F", TREE_FACTOR := PHF_TREE]
+    treeMC[LV_D == "D" & S_F == "S", TREE_FACTOR := PHF_TREE/PLOT_DED]
     if(length(weirdUtil) == 1){
       if(toupper(weirdUtil) == "NO"){
         dbhcatlist <- c(0, (1:utilLevel)*5+2.5)
@@ -167,12 +167,12 @@ dbhcatsummary <- function(summarizeddata, dbhcat){
                              by = c("CLSTR_ID", "SPECIES"))
   summarizedoutput1 <- summarizeddata[,c(.N, lapply(.SD, function(s) sum(s, na.rm = TRUE))),
                                       .SDcols = summaryColumns,
-                                      by = c("CLSTR_ID", "SPECIES", "LV_D", "SF_COMPILE")]
+                                      by = c("CLSTR_ID", "SPECIES", "LV_D", "S_F")]
   rm(summarizeddata)
   for(lv in c("L", "D")){
     for(sf in c("S", "F")){
-      subtable <- summarizedoutput1[LV_D == lv & SF_COMPILE == sf, ]
-      set(subtable, , c("LV_D", "SF_COMPILE"), NULL)
+      subtable <- summarizedoutput1[LV_D == lv & S_F == sf, ]
+      set(subtable, , c("LV_D", "S_F"), NULL)
       if(lv == "L" & sf == "S"){
         setnames(subtable, c("N", summaryColumns), c("LIVE_STAND", lssummarycolumns))
       } else if (lv == "L" & sf == "F") {

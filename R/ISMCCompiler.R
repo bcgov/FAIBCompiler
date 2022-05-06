@@ -219,10 +219,15 @@ ISMCCompiler <- function(oracleUserName,
   vi_d_temp[,':='(SPECIES = NULL,
                   SP0 = NULL)]
   vi_d_temp <- merge(vi_d_temp,
-                     vi_d[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SPECIES_ORG, SP0)],
+                     vi_d[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES)],
                      by = c("CLSTR_ID", "PLOT", "TREE_NO"))
+  vi_d_temp[, c(paste0("T_SIGN", 1:10),
+                paste0("F_SIGN", 1:10),
+                paste0("OLD_AGN", LETTERS[1:8])) := NULL]
+  setnames(vi_d_temp, "STEM", "STEM_MAPPED_IND")
   saveRDS(vi_d_temp,
           file.path(compilationPaths$compilation_db, "compiled_vi_d.rds"))
+  rm(vi_d_temp)
   ### 2.4 load vi_i data
   ## vi_i has trees in auxi plots without height information (mostly), however, some of these trees are also in vi_c
   tree_ax1 <- VRIInit_auxTree(data.table::copy(samples),
@@ -290,7 +295,12 @@ ISMCCompiler <- function(oracleUserName,
                                         all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
   tree_ah2[, CR_CL := NULL]
-  saveRDS(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
+  tree_ah2_temp <- data.table::copy(tree_ah2)
+  tree_ah2_temp[,c("FIZ", "BEC_ZONE", "SP0", "AGE_CORR",
+                   "TOTAL_AG", "PHYS_AGE", "TREE_LEN",
+                   "SI_SP", "BARK_PCT") := NULL]
+  saveRDS(tree_ah2_temp, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
+  rm(tree_ah2_temp)
   # write.csv(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.csv"), row.names = FALSE)
 
   siteAgeSummaries <- siteAgeSummary(tree_ah2)
@@ -338,8 +348,23 @@ ISMCCompiler <- function(oracleUserName,
                                HT_BRCH)],
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                     all.x = TRUE)
-  saveRDS(tree_ms7, file.path(compilationPaths$compilation_db,
+tree_ms7_temp <- data.table::copy(tree_ms7)
+tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
+                  "DIAM_BTP", "FIZ", "VOL_MULT",
+                  "BEC", "BEC_ZONE", "BEC_SBZ", "BEC_VAR",
+                  "BTOP", "BTOP_ESTIMATE_TYPE",
+                  "HT_BTOP", "LOGADJUST", "LOG_L_0",
+                  "HT_UTOP", "VOL_PSP_MERCH", "VOL_TOP",
+                  "VOL_BKT", "VOL_NET", "VOL_NETM",
+                  "VAL_NET", "VAL_MER",
+                  paste0("LOG_C_", 1:9),
+                  "PROJ_ID", "AGE_DWB", "AGE_FLG",
+                  "PATH_IND", "RISK_GRP", "ADJ_ID",
+                  "VOL_W2", "VOL_NTW2", "VOL_B", "VOL_D",
+                  "VOL_DW") := NULL]
+  saveRDS(tree_ms7_temp, file.path(compilationPaths$compilation_db,
                               "compiled_vi_c.rds"))
+  rm(tree_ms7_temp)
   # write.csv(tree_ms7, file.path(compilationPaths$compilation_db,
   #                             "compiled_vi_c.csv"), row.names = FALSE)
   rm(vi_d, siteAgeTable, tree_ms6)
@@ -487,7 +512,8 @@ ISMCCompiler <- function(oracleUserName,
                           fill = TRUE)
   }
 
-  prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"), WSV_VOL_SRCE := "Calculated"]
+  prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),
+           WSV_VOL_SRCE := "Calculated"]
   prep_smy[!is.na(VOL_WSV) &
              MEAS_INTENSE == "NON-ENHANCED",
            WSV_VOL_SRCE := "Regression"]
@@ -509,10 +535,12 @@ ISMCCompiler <- function(oracleUserName,
   prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
              VOL_NTWB %>>% VOL_MER,
            VOL_NTWB := VOL_MER]
-
-
-  saveRDS(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
+  prep_smy_temp <- data.table::copy(prep_smy)
+  prep_smy_temp[, c("LOG_G_1", paste0("VOL_", c("NET", "NETM", "NTW2", "D", "DW")),
+                    "VAL_MER", "BEC_ZONE", "SAMP_POINT") := NULL]
+  saveRDS(prep_smy_temp[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
+  rm(prep_smy_temp)
   # write.csv(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
   #         file.path(compilationPaths$compilation_db, "treelist.csv"), row.names = FALSE)
   rm(auxtreecompilation)

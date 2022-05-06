@@ -368,10 +368,9 @@ ISMCCompiler_PSP <- function(oracleUserName,
   #         file.path(compilationPaths$compilation_db, "treelist.csv"), row.names = FALSE)
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
   cat(paste(Sys.time(), ": Summarize volume and age.\n", sep = ""))
-  prep_smy[, ':='(SF_COMPILE = S_F,
-                  VOL_NET = 0,
+  prep_smy[, ':='(VOL_NET = 0,
                   VAL_MER = 0)]
-  prep_smy[is.na(S_F), SF_COMPILE := "S"]
+  prep_smy[is.na(S_F), S_F := "S"]
   nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
     data.table
   vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),

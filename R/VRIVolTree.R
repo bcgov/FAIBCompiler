@@ -74,11 +74,11 @@ VRIVolTree<- function(treeData, equation, logMinLength,
   ## 2. estimate tree height for broken top trees
   treeData[DIAM_BTP > 0 & MEAS_INTENSE != "NON-ENHANCED", BTOP := "D"] # diameter at broken top
   treeData[HT_PROJ > 0& MEAS_INTENSE != "NON-ENHANCED", BTOP := "H"] ## projected height for broken top tree
-  treeData[is.na(BTOP), HT := round(HEIGHT, 1)]
+  treeData[is.na(BTOP), HT_TOTAL := round(HEIGHT, 1)]
   treeData[!is.na(BTOP), HT_BTOP := round(HEIGHT, 1)]
-  treeData[BTOP == "H", HT := round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1)]
+  treeData[BTOP == "H", HT_TOTAL := round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1)]
   ## should add a note here
-  treeData[BTOP == "H" & HT_BTOP > HT, HT_BTOP := round(HT, 1)]
+  treeData[BTOP == "H" & HT_BTOP > HT_TOTAL, HT_BTOP := round(HT_TOTAL, 1)]
   treeData[BTOP == "D", DOB_BTOP := round(DIAM_BTP, 2)]
   treeData[DOB_BTOP %>=% DBH, DOB_BTOP := round(DOB_BTOP*0.9, 2)]
 
@@ -88,7 +88,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
 
   treeData[DIB_BTOP %<<% 1.1 & DIB_BTOP %>>% 0, DIB_BTOP := 1.1]
   if (HTBTOPModel == "taper"){
-    treeData[BTOP == "D", HT := round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
+    treeData[BTOP == "D", HT_TOTAL := round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
                                                                         taperEquationForm = equation,
                                                                         DIBBTOP = DIB_BTOP,
                                                                         DBH = DBH,
@@ -96,8 +96,8 @@ VRIVolTree<- function(treeData, equation, logMinLength,
                                                                         species = SP0,
                                                                         volMultiplier = VOL_MULT),
                                       1)]
-    treeData[BTOP == "D" & is.na(HT), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
-    treeData[BTOP == "D" & !is.na(HT), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
+    treeData[BTOP == "D" & is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
+    treeData[BTOP == "D" & !is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "H" & DIB_BTOP > 0, BTOP_ESTIMATE_TYPE := 2] # h TREES THAT HAVE DIAMETER AT BROKEN HEIGHT INFORMATION
     treeData[BTOP == "H" & HT_BTOP > 0, BTOP_ESTIMATE_TYPE := 3] # H TREES THAT HAVE PROJECTED HEIGHT INFORMATION
   } else if (HTBTOPModel == "height"){
@@ -110,7 +110,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
      treeData[HEIGHT <= "1.4" & is.na(BTOP),
                BTOP := "B"]
     treeData[BTOP %in% c("D", "B"),
-             HT := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+             HT_TOTAL := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
                                                       subzone = BEC_SBZ,
                                                       species = SPECIES,
                                                       DBH = DBH,
@@ -119,13 +119,13 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     treeData[BTOP == "B",
              ':='(BTOP = "H",
                   HT_BTOP = HEIGHT)]
-    treeData[BTOP == "D" & is.na(HT), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
-    treeData[BTOP == "D" & !is.na(HT), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
+    treeData[BTOP == "D" & is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
+    treeData[BTOP == "D" & !is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "H" & DIB_BTOP > 0, BTOP_ESTIMATE_TYPE := 2] # h TREES THAT HAVE DIAMETER AT BROKEN HEIGHT INFORMATION
     treeData[BTOP == "H" & HT_BTOP > 0, BTOP_ESTIMATE_TYPE := 3] # H TREES THAT HAVE PROJECTED HEIGHT INFORMATION
-    treeData[HT < HEIGHT, ':='(HT = HEIGHT,
+    treeData[HT_TOTAL < HEIGHT, ':='(HT_TOTAL = HEIGHT,
                                BTOP_ESTIMATE_TYPE = 1)]
-    treeData[is.na(HT), ':='(HT = HEIGHT,
+    treeData[is.na(HT_TOTAL), ':='(HT_TOTAL = HEIGHT,
                              BTOP_ESTIMATE_TYPE = 1)]
   } else {
     stop("HTBTOPModel is not correctly specified.")
@@ -141,7 +141,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     ## adjust log matrix by tree height, minimum log length and default log length
     ## not sure whether this part can be incorporated into logAjustment function, as they are functionally same
     adjustedLogLength <- suppressWarnings(logMatrixAdjustment(logLengthMatrix = treeData[, paste("LOG_L_", 1:9, sep = ""), with = FALSE],
-                                                              height = treeData$HT,
+                                                              height = treeData$HT_TOTAL,
                                                               logMinLength = logMinLength))
 
     ## replace the original log length matrix with adjusted one
@@ -150,7 +150,7 @@ VRIVolTree<- function(treeData, equation, logMinLength,
   }
   treeVolumes <- FAIBBase::treeVolCalculator(FIZorBEC = treeData$BEC,
                                              species = treeData$SP0,
-                                             height = treeData$HT,
+                                             height = treeData$HT_TOTAL,
                                              DBH = treeData$DBH,
                                              taperEquationForm = equation,
                                              volMultiplier = as.numeric(treeData$VOL_MULT),

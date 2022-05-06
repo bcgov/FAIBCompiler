@@ -54,7 +54,7 @@ WSV_BARegression <- function(masterTable, regressionData, minObs = 3, minR2 = 0.
     }
   }
   output[, ':='(combination = NULL)]
-  output[LV_D %in% c("L", "D"), SF_COMPILE := "S"]
+  output[LV_D %in% c("L", "D"), S_F := "S"]
   return(output[order(PRJ_GRP, LV_D, SP0)])
 }
 

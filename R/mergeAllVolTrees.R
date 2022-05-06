@@ -48,7 +48,7 @@ setMethod(
 
     ## select count trees that have cluster id in the treeMS
     treeMS <- treeMS[,c("CLSTR_ID", "PLOT", "TREE_NO", "MEAS_INTENSE", "SPECIES", "LV_D", "S_F",
-                        "LOG_G_1", "HEIGHT", "BTOP", "H_MERCH", "SP0", "BA_TREE", "PHF_TREE",
+                        "LOG_G_1", "HEIGHT", "HT_TOTAL", "BTOP", "H_MERCH", "SP0", "BA_TREE", "PHF_TREE",
                         "DBH", "TREE_WT", summaryCols), with = FALSE]
     ############on hold for this and confirm with Rene and Bob about the B samples
     # ## full measured tree data treeMS have three scenarios in terms of calculating volumes
@@ -75,7 +75,6 @@ setMethod(
                               treeAX[, unitreeid := NULL]),
                          fill = TRUE)
     rm(treeAX, treeMS)
-    tree_vb[, SF_COMPILE := S_F]
-    tree_vb[is.na(SF_COMPILE), SF_COMPILE := "S"]
+    tree_vb[is.na(S_F), S_F := "S"]
     return(tree_vb)
   })

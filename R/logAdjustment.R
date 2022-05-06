@@ -49,10 +49,10 @@ setMethod(
     treeData[HEIGHT %in% c(NA, 0) | SUM_LOG %==% 0 |
                NO_LOGS %in% c(NA, 0) | NO_LOGS %>>% 8, LOGADJUST := "FAIL"]
 
-    # print(treeData[LOGADJUST == "FAIL",.(BTOP, HEIGHT, HT, SUM_LOG, NO_LOGS,
+    # print(treeData[LOGADJUST == "FAIL",.(BTOP, HEIGHT, HT_TOTAL, SUM_LOG, NO_LOGS,
     #                                      LOG_L_1, LOG_L_2, LOG_S_1, LOG_S_2,
     #                                      DIFF)])
-    #      BTOP HEIGHT   HT SUM_LOG NO_LOGS LOG_L_1 LOG_L_2 LOG_S_1 LOG_S_2
+    #      BTOP HEIGHT   HT_TOTAL SUM_LOG NO_LOGS LOG_L_1 LOG_L_2 LOG_S_1 LOG_S_2
     # 1:   NA     NA   NA    22.0       1    22.0      NA     100      NA
     # 2:   NA     NA   NA    28.3       3     7.0     7.0     100      98
     # 3:   NA    0.0  0.0     0.0       1      NA      NA     100      NA
@@ -83,13 +83,13 @@ setMethod(
     usingSolution <- TRUE
     if(usingSolution){
       ## for condition b, just can adjust for no_logs == 2
-      treeData[LOGADJUST == "FAIL" & !is.na(BTOP) & NO_LOGS == 2 & HEIGHT %>>% 0 & HT %>>% 0,
+      treeData[LOGADJUST == "FAIL" & !is.na(BTOP) & NO_LOGS == 2 & HEIGHT %>>% 0 & HT_TOTAL %>>% 0,
                ':='(LOG_L_1 = HEIGHT, ## USING broken height as lenghth of log 1
                     LOGADJUST = "PASS",
                     DIFF = 0)]
       ## for conditon c, tree height is estimated as total length of log
-      treeData[LOGADJUST == "FAIL" & is.na(HT) & SUM_LOG %>>% 0,
-               ':='(HT = SUM_LOG,
+      treeData[LOGADJUST == "FAIL" & is.na(HT_TOTAL) & SUM_LOG %>>% 0,
+               ':='(HT_TOTAL = SUM_LOG,
                     LOGADJUST = "PASS",
                     DIFF = 0)]
       ## leave condition a as is
@@ -192,7 +192,7 @@ setMethod(
     nologs <- unique(treeDataBTOP$NO_LOGS)
     for(indinolog in nologs){
       treeDataBTOP[NO_LOGS == indinolog,
-                   paste("LOG_L_", indinolog, sep = "") := HT - HEIGHT]
+                   paste("LOG_L_", indinolog, sep = "") := HT_TOTAL - HEIGHT]
     }
     rm(nologs, indinolog)
 
