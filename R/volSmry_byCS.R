@@ -6,7 +6,7 @@
 #'
 #' @param treeMC data.table, Tree-level compiled data for all volume trees.
 #' @param utilLevel numeric, Utilization levels. Default is 4.
-#' @param weirdUtil character, Weird util. Default is \code{No}. Otherwise need to be specified as a number.
+#' @param weirdUtil character, Weird util. Default is \code{4}. Otherwise need to be specified as a number.
 #' @param equation character, Specifies whether the compiler is based on \code{KBEC} or \code{KFIZ}.
 #'                            Default is \code{KBEC}.
 #'
@@ -107,7 +107,7 @@ setMethod(
                 weirdUtil = "missing",
                 equation = "character"),
   definition = function(treeMC, utilLevel, equation){
-    return(volSmry_byCS(treeMC, utilLevel, weirdUtil = "No", equation))
+    return(volSmry_byCS(treeMC, utilLevel, weirdUtil = "4", equation))
   })
 
 #' @export
@@ -144,7 +144,7 @@ setMethod(
                 equation = "missing"),
   definition = function(treeMC){
     return(volSmry_byCS(treeMC, utilLevel = 4,
-                        weirdUtil = "No",
+                        weirdUtil = "4",
                         equation = "KBEC"))
   })
 
