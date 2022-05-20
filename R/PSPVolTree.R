@@ -77,10 +77,11 @@ PSPVolTree<- function(treeData, equation, logMinLength,
            BTOP := "H"] ## projected height for broken top tree
   treeData[BROKEN_TOP_IND == "Y" & is.na(BTOP),
            BTOP := "D"] # diameter at broken top
-  treeData[is.na(BTOP), HT_TOTAL := round(HEIGHT, 1)] ## HT_TOTAL is total height
+  treeData[is.na(BTOP), ':='(HT_TOTAL = round(HEIGHT, 1),
+                             HT_TOTAL_SOURCE = "Field measured")] ## HT_TOTAL is total height
   treeData[BTOP == "H",
            ':='(HT_TOTAL = round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1),
-                HEIGHT_SOURCE = "Projected_in_field")]
+                HT_TOTAL_SOURCE = "Field projected")]
   ## should add a note here
   treeData[BTOP == "H" & HT_BTOP > HT_TOTAL,
            HT_BTOP := round(HT_TOTAL, 1)]
@@ -93,25 +94,27 @@ PSPVolTree<- function(treeData, equation, logMinLength,
 
   treeData[DIB_BTOP %<<% 1.1 & DIB_BTOP %>>% 0, DIB_BTOP := 1.1]
   if (HTEstimateMethod == "taper"){
-    treeData[BTOP == "D", HT_TOTAL := round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
+    treeData[BTOP == "D", ':='(HT_TOTAL = round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
                                                                         taperEquationForm = equation,
                                                                         DIBBTOP = DIB_BTOP,
                                                                         DBH = DBH,
                                                                         FIZorBEC = BEC,
                                                                         species = SP0,
                                                                         volMultiplier = VOL_MULT),
-                                      1)]
+                                      1),
+                               HT_TOTAL_SOURCE = "Estimated based on taper")]
     treeData[BTOP == "D" & is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "D" & !is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "H" & DIB_BTOP > 0, BTOP_ESTIMATE_TYPE := 2] # h TREES THAT HAVE DIAMETER AT BROKEN HEIGHT INFORMATION
     treeData[BTOP == "H" & HT_BTOP > 0, BTOP_ESTIMATE_TYPE := 3] # H TREES THAT HAVE PROJECTED HEIGHT INFORMATION
   } else if (HTEstimateMethod == "bestMEM"){
     treeData[BTOP %in% c("D"),
-             HT_TOTAL := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+             ':='(HT_TOTAL = round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
                                                       subzone = BEC_SBZ,
                                                       species = SPECIES,
                                                       DBH = DBH,
-                                                      heightModels = htDBHCoeff))]
+                                                      heightModels = htDBHCoeff)),
+                  HT_TOTAL_SOURCE = "Estimated based on DBH")]
 
     treeData[BTOP == "D" & is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "D" & !is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
