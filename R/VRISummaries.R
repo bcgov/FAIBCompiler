@@ -186,7 +186,9 @@ setMethod(
     ## height summary by cluster
     heightsmry_c <- heightSmry_byC(treeMC = allVolumeTrees)
     cl_spc <- speciesComp_byC(CSSmryTable = volsmy_cs, basedOn = "BA_HA_LS", speciesMaxNO = 12)
-
+    setnames(cl_spc, "SPB_CPCT", "SPB_CPCT_LS")
+    cl_spc2 <- speciesComp_byC(CSSmryTable = volsmy_cs, basedOn = "BA_HA_DS", speciesMaxNO = 12)
+    setnames(cl_spc2, "SPB_CPCT", "SPB_CPCT_DS")
     allclustersByUtil <- data.table(expand.grid(CLSTR_ID = unique(clusterPlotHeader$CLSTR_ID),
                                                 UTIL = dbhcatlist))
 
@@ -218,6 +220,9 @@ setMethod(
     volsmy_c[is.na(VHA_NTWB_NVAF_LS), VHA_NTWB_NVAF_LS := 0]
     volsmy_c[is.na(VHA_NTWB_NVAF_DS), VHA_NTWB_NVAF_DS := 0]
     cl_spc <- merge(allclustersByUtil, cl_spc,
+                    by = c("CLSTR_ID", "UTIL"),
+                    all = TRUE)
+    cl_spc <- merge(cl_spc, cl_spc2,
                     by = c("CLSTR_ID", "UTIL"),
                     all = TRUE)
     volsmy_cs[, c(paste0("DBH2", c("_LS", "_LF", "_DS", "_DF")),
