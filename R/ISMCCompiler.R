@@ -114,7 +114,7 @@ ISMCCompiler <- function(oracleUserName,
   }
   cat("    Check stand age table from vegcomp:.\n")
   if(!file.exists(file.path(compilationPaths$compilation_coeff,
-                           paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")))){
+                            paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")))){
     stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
   }
 
@@ -148,7 +148,7 @@ ISMCCompiler <- function(oracleUserName,
                     "vi_a.rds"))
   spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                                   IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
-                                                  Longitude, Latitude, BEC, BEC_SBZ, BEC_VAR,
+                                                  Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
                                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
                                                   PROJ_ID, SAMP_NO)],
                                 by = "SAMP_POINT")
@@ -182,6 +182,11 @@ ISMCCompiler <- function(oracleUserName,
   samples_tmp <- data.table::copy(samples)
   samples_tmp[, ':='(PRJ_GRP = NULL,
                      SA_VEGCOMP = NULL)]
+  samples_tmp <- merge(samples_tmp,
+                       spatialLookups_simp[,.(SITE_IDENTIFIER = as.character(SITE_IDENTIFIER),
+                                              TSA_DESC, TFL, OWNER, SCHEDULE)],
+                       by = "SITE_IDENTIFIER",
+                       all.x = TRUE)
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db, "samples.rds"))
   # write.csv(samples, file.path(compilationPaths$compilation_db, "samples.csv"), row.names = FALSE)
@@ -288,8 +293,8 @@ ISMCCompiler <- function(oracleUserName,
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
   tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
                                         unique(samples[,.(CLSTR_ID, PLOT,
-                                                   FIZ = as.character(FIZ),
-                                                   BEC_ZONE)],
+                                                          FIZ = as.character(FIZ),
+                                                          BEC_ZONE)],
                                                by = c("CLSTR_ID", "PLOT")),
                                         by = c("CLSTR_ID", "PLOT"),
                                         all.x = TRUE)
@@ -298,7 +303,8 @@ ISMCCompiler <- function(oracleUserName,
   tree_ah2_temp <- data.table::copy(tree_ah2)
   tree_ah2_temp[,c("FIZ", "BEC_ZONE", "SP0", "AGE_CORR",
                    "TOTAL_AG", "PHYS_AGE", "TREE_LEN",
-                   "SI_SP", "BARK_PCT") := NULL]
+                   "SI_SP", "BARK_PCT",
+                   "AGE_SOURCE", "AGE_ADJUST_TO_BH") := NULL]
   saveRDS(tree_ah2_temp, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
   rm(tree_ah2_temp)
   # write.csv(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.csv"), row.names = FALSE)
@@ -348,22 +354,30 @@ ISMCCompiler <- function(oracleUserName,
                                HT_BRCH)],
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                     all.x = TRUE)
-tree_ms7_temp <- data.table::copy(tree_ms7)
-tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
-                  "DIAM_BTP", "FIZ", "VOL_MULT",
-                  "BEC", "BEC_ZONE", "BEC_SBZ", "BEC_VAR",
-                  "BTOP", "BTOP_ESTIMATE_TYPE",
-                  "HT_BTOP", "LOGADJUST", "LOG_L_0",
-                  "HT_UTOP", "VOL_PSP_MERCH", "VOL_TOP",
-                  "VOL_BKT", "VOL_NET", "VOL_NETM",
-                  "VAL_NET", "VAL_MER",
-                  paste0("LOG_C_", 1:9),
-                  "PROJ_ID", "AGE_DWB", "AGE_FLG",
-                  "PATH_IND", "RISK_GRP", "ADJ_ID",
-                  "VOL_W2", "VOL_NTW2", "VOL_B", "VOL_D",
-                  "VOL_DW") := NULL]
+  tree_ms7_temp <- data.table::copy(tree_ms7)
+  tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
+                    "DIAM_BTP", "FIZ", "VOL_MULT",
+                    "BEC", "BEC_ZONE", "BEC_SBZ", "BEC_VAR",
+                    "BTOP", "BTOP_ESTIMATE_TYPE",
+                    "HT_BTOP", "LOGADJUST", "LOG_L_0",
+                    "HT_UTOP", "VOL_PSP_MERCH", "VOL_TOP",
+                    "VOL_BKT", "VOL_NET", "VOL_NETM",
+                    "VAL_NET", "VAL_MER",
+                    paste0("LOG_C_", 1:9),
+                    paste0("LOG_D_", 1:9),
+                    "LOG_V_0", "LOG_VM_0",
+                    "PROJ_ID", "AGE_DWB", "AGE_FLG",
+                    "PATH_IND", "RISK_GRP", "ADJ_ID",
+                    "VOL_W2", "VOL_NTW2", "VOL_B", "VOL_D",
+                    "VOL_DW", "LOG_BTOP",
+                    "VOL_ABOVE_BTOP", "VOL_ABOVE_UTOP",
+                    "VOL_BELOW_BTOP", "VOL_BELOW_UTOP") := NULL]
+  tree_ms7_temp[DIB_STUMP < DIB_BH,
+                DIB_STUMP := DIB_BH] # see rene's comment on this as per communication on April 19, 2022
+  tree_ms7_temp[(HEIGHT - HT_BRCH) < -0.5,
+                HT_BRCH := NA]
   saveRDS(tree_ms7_temp, file.path(compilationPaths$compilation_db,
-                              "compiled_vi_c.rds"))
+                                   "compiled_vi_c.rds"))
   rm(tree_ms7_temp)
   # write.csv(tree_ms7, file.path(compilationPaths$compilation_db,
   #                             "compiled_vi_c.csv"), row.names = FALSE)
@@ -555,6 +569,12 @@ tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
                                weirdUtil = weirdUtil,
                                equation = equation,
                                nvafRatio = nvafratio)
+  vrisummaries$vol_bycs[,':='(VHA_DWB_LF = NULL,
+                              VHA_DWB_DS = NULL,
+                              VHA_DWB_DF = NULL)]
+  vrisummaries$vol_byc[,':='(VHA_DWB_LF = NULL,
+                             VHA_DWB_DS = NULL,
+                             VHA_DWB_DF = NULL)]
   saveRDS(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.rds"))
   saveRDS(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.rds"))
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
@@ -582,7 +602,7 @@ tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
   vi_e[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
   smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
-                                       smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
+                                    smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
@@ -633,7 +653,6 @@ tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
   # compilationPaths$compilation_report <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_report"
   # compilationPaths$compilation_last <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/Archive_20210415"
   # compilationDate <- "20210421"
-
   lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
                               compilationPaths$compilation_last)
   rmarkdown::render(input = file.path(compilationPaths$compilation_report,
