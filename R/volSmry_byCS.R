@@ -35,8 +35,8 @@ setMethod(
                 weirdUtil = "character",
                 equation = "character"),
   definition = function(treeMC, utilLevel, weirdUtil, equation){
-    vha <- c(paste("VHA_",c("WSV", "MER", "NTWB", "DWB"),
-                      sep = ""), "DHA_MER")
+    vha <- paste("VHA_",c("WSV", "MER", "NTWB", "DWB"),
+                      sep = "")
     vha_ls <- paste(vha, "_LS", sep = "")
     vha_lf <- paste(vha, "_LF", sep = "")
     vha_ds <- paste(vha, "_DS", sep = "")
