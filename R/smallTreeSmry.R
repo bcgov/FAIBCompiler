@@ -115,7 +115,6 @@ setMethod(
     rm(indiname)
     totalnames <- names(clustersummaries)
     totalnames <- gsub("SMTR_CT", "SMTR_TO", totalnames)
-    totalnames <- gsub("_HA", "_HT", totalnames)
     names(clustersummaries) <- totalnames
     return(list(clusterSummaries = clustersummaries, clusterSpeciesSummaries = smtr_cs))
   })
