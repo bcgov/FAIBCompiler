@@ -73,10 +73,12 @@ VRIVolTree<- function(treeData, equation, logMinLength,
 
   ## 2. estimate tree height for broken top trees
   treeData[DIAM_BTP > 0 & MEAS_INTENSE != "NON-ENHANCED", BTOP := "D"] # diameter at broken top
-  treeData[HT_PROJ > 0& MEAS_INTENSE != "NON-ENHANCED", BTOP := "H"] ## projected height for broken top tree
-  treeData[is.na(BTOP), HT_TOTAL := round(HEIGHT, 1)]
+  treeData[HT_PROJ > 0 & MEAS_INTENSE != "NON-ENHANCED", BTOP := "H"] ## projected height for broken top tree
+  treeData[is.na(BTOP), ':='(HT_TOTAL = round(HEIGHT, 1),
+                             HT_TOTAL_SOURCE = "Field measured")]
   treeData[!is.na(BTOP), HT_BTOP := round(HEIGHT, 1)]
-  treeData[BTOP == "H", HT_TOTAL := round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1)]
+  treeData[BTOP == "H", ':='(HT_TOTAL = round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1),
+                             HT_TOTAL_SOURCE = "Field projected")]
   ## should add a note here
   treeData[BTOP == "H" & HT_BTOP > HT_TOTAL, HT_BTOP := round(HT_TOTAL, 1)]
   treeData[BTOP == "D", DOB_BTOP := round(DIAM_BTP, 2)]
@@ -88,14 +90,15 @@ VRIVolTree<- function(treeData, equation, logMinLength,
 
   treeData[DIB_BTOP %<<% 1.1 & DIB_BTOP %>>% 0, DIB_BTOP := 1.1]
   if (HTBTOPModel == "taper"){
-    treeData[BTOP == "D", HT_TOTAL := round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
+    treeData[BTOP == "D", ':='(HT_TOTAL = round(FAIBBase::heightEstimateForBTOP_D(heightBTOP = HT_BTOP,
                                                                         taperEquationForm = equation,
                                                                         DIBBTOP = DIB_BTOP,
                                                                         DBH = DBH,
                                                                         FIZorBEC = BEC,
                                                                         species = SP0,
                                                                         volMultiplier = VOL_MULT),
-                                      1)]
+                                      1),
+                               HT_TOTAL_SOURCE = "Estimated based taper equation")]
     treeData[BTOP == "D" & is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 0] # D TREES THAT FAILED TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "D" & !is.na(HT_TOTAL), BTOP_ESTIMATE_TYPE := 1] # D TREES THAT SUCCESS TO ESTIMATE TREE HEIGHT
     treeData[BTOP == "H" & DIB_BTOP > 0, BTOP_ESTIMATE_TYPE := 2] # h TREES THAT HAVE DIAMETER AT BROKEN HEIGHT INFORMATION
@@ -110,11 +113,12 @@ VRIVolTree<- function(treeData, equation, logMinLength,
      treeData[HEIGHT <= "1.4" & is.na(BTOP),
                BTOP := "B"]
     treeData[BTOP %in% c("D", "B"),
-             HT_TOTAL := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+             ':='(HT_TOTAL = round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
                                                       subzone = BEC_SBZ,
                                                       species = SPECIES,
                                                       DBH = DBH,
-                                                      heightModels = bestHeightModels))]
+                                                      heightModels = bestHeightModels)),
+                  HT_TOTAL_SOURCE = "Estimated based on DBH")]
 
     treeData[BTOP == "B",
              ':='(BTOP = "H",
@@ -163,7 +167,6 @@ VRIVolTree<- function(treeData, equation, logMinLength,
                                              logLengthMatrix = treeData[, paste("LOG_L_", 0:9, sep = ""),
                                                                         with = FALSE],
                                              logMinLength = logMinLength)
-
   treeData <- cbind(treeData, treeVolumes)
   volumenames <- names(treeVolumes)
   rm(treeVolumes)
@@ -225,8 +228,12 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     treeData <- treeData[!(uniobs %in% needadjustdata$uniobs), ]
     for(indilogbtop in unique(needadjustdata$LOG_BTOP)){
       needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_V_", (indilogbtop+1):9, sep = "") := as.numeric(NA)]
-      needadjustdata[LOG_BTOP == indilogbtop, lowerlogs := rowSums(needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_V_", 1:(indilogbtop-1), sep = ""),
+      if(indilogbtop == 1){
+             needadjustdata[LOG_BTOP == indilogbtop, lowerlogs := 0]
+      } else {
+             needadjustdata[LOG_BTOP == indilogbtop, lowerlogs := rowSums(needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_V_", 1:(indilogbtop-1), sep = ""),
                                                                                   with = FALSE], na.rm = TRUE)]
+      }
       needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_V_", indilogbtop, sep = "") := VOL_BELOW_BTOP - lowerlogs]
       needadjustdata[, lowerlogs := NULL]
     }
@@ -241,8 +248,12 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     treeData <- treeData[!(uniobs %in% needadjustdata$uniobs), ]
     for(indilogbtop in unique(needadjustdata$LOG_BTOP)){
       needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_VM_", (indilogbtop+1):9, sep = "") := as.numeric(NA)]
+      if(indilogbtop == 1){
+        needadjustdata[LOG_BTOP == indilogbtop, lowerlogs := 0]
+      } else {
       needadjustdata[LOG_BTOP == indilogbtop, lowerlogs := rowSums(needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_VM_", 0:(indilogbtop-1), sep = ""),
                                                                                   with = FALSE], na.rm = TRUE)]
+      }
       needadjustdata[LOG_BTOP == indilogbtop, paste("LOG_VM_", indilogbtop, sep = "") := VOL_MER - lowerlogs]
       needadjustdata[, lowerlogs := NULL]
     }
@@ -250,7 +261,6 @@ VRIVolTree<- function(treeData, equation, logMinLength,
     treeData[, uniobs := NULL]
     rm(needadjustdata)
   }
-
   netFacteredTree <- treeData[MEAS_INTENSE %in% c("FULL", "ENHANCED"),]
   nonnetFacteredTree <- treeData[MEAS_INTENSE %in% c("H-ENHANCED"),]
   netvols <- netVolumeCalculator(grossVolMatrix = netFacteredTree[, paste("LOG_V_", 0:9, sep = ""), with = FALSE],
