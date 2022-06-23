@@ -63,21 +63,21 @@ setMethod(
     tlsxo[is.na(AGE_BH), N_age_bh := 0]
 
 
-    tls <- tlsxo[TH_TREE %in% c("T", "S", "L"),]
-    ahs_tls <- rbind(tls[,.(SPECIES = as.character(NA),
-                            AGEB_TLS = mean(AGE_BH, na.rm = TRUE),
-                            AGET_TLS = mean(AGE_TOT, na.rm = TRUE),
-                            HT_TLS = mean(HEIGHT, na.rm = TRUE),
-                            SI_M_TLS = mean(SI_TREE, na.rm = TRUE),
-                            N_HT_TLS = sum(N_height),
-                            N_AG_TLS = sum(N_age_bh)),
+    tlso <- tlsxo[TH_TREE %in% c("T", "S", "L", "O"),]
+    ahs_tls <- rbind(tlso[,.(SPECIES = as.character(NA),
+                            AGEB_TLSO = mean(AGE_BH, na.rm = TRUE),
+                            AGET_TLSO = mean(AGE_TOT, na.rm = TRUE),
+                            HT_TLSO = mean(HEIGHT, na.rm = TRUE),
+                            SI_M_TLSO = mean(SI_TREE, na.rm = TRUE),
+                            N_HT_TLSO = sum(N_height),
+                            N_AG_TLSO = sum(N_age_bh)),
                          by = "CLSTR_ID"],
-                     tls[,.(AGEB_TLS = mean(AGE_BH, na.rm = TRUE),
-                            AGET_TLS = mean(AGE_TOT, na.rm = TRUE),
-                            HT_TLS = mean(HEIGHT, na.rm = TRUE),
-                            SI_M_TLS = mean(SI_TREE, na.rm = TRUE),
-                            N_HT_TLS = sum(N_height),
-                            N_AG_TLS = sum(N_age_bh)),
+                     tlso[,.(AGEB_TLSO = mean(AGE_BH, na.rm = TRUE),
+                            AGET_TLSO = mean(AGE_TOT, na.rm = TRUE),
+                            HT_TLSO = mean(HEIGHT, na.rm = TRUE),
+                            SI_M_TLSO = mean(SI_TREE, na.rm = TRUE),
+                            N_HT_TLSO = sum(N_height),
+                            N_AG_TLSO = sum(N_age_bh)),
                          by = c("CLSTR_ID", "SPECIES")])
 
 
@@ -103,18 +103,18 @@ setMethod(
                                all = TRUE,
                                by = c("CLSTR_ID", "SPECIES"))
 
-    ahs_msp[, ':='(AGEB_TLS = round(AGEB_TLS, 1),
-                   AGET_TLS = round(AGET_TLS, 1),
-                   HT_TLS = round(HT_TLS, 1),
-                   SI_M_TLS = round(SI_M_TLS, 1),
+    ahs_msp[, ':='(AGEB_TLSO = round(AGEB_TLSO, 1),
+                   AGET_TLSO = round(AGET_TLSO, 1),
+                   HT_TLSO = round(HT_TLSO, 1),
+                   SI_M_TLSO = round(SI_M_TLSO, 1),
                    AGEB_TXO = round(AGEB_TXO, 1),
                    AGET_TXO = round(AGET_TXO, 1),
                    HT_TXO = round(HT_TXO, 1),
                    SI_M_TXO = round(SI_M_TXO, 1))]
 
-    ahs_msp[is.na(N_HT_TLS), N_HT_TLS := 0]
+    ahs_msp[is.na(N_HT_TLSO), N_HT_TLSO := 0]
     ahs_msp[is.na(N_HT_TXO), N_HT_TXO := 0]
-    ahs_msp[is.na(N_AG_TLS), N_AG_TLS := 0]
+    ahs_msp[is.na(N_AG_TLSO), N_AG_TLSO := 0]
     ahs_msp[is.na(N_AG_TXO), N_AG_TXO := 0]
 
     cl_ah <- FAIBBase::merge_dupUpdate(ah_ta, ahs_txo[is.na(SPECIES)],
@@ -123,8 +123,8 @@ setMethod(
                              by = "CLSTR_ID", all = TRUE)
     setnames(cl_ah, c("HT_TXO", "AGET_TXO", "AGEB_TXO"),
              c("HT_M_TXO", "AT_M_TXO", "AB_M_TXO"))
-    setnames(cl_ah, c("HT_TLS", "AGET_TLS", "AGEB_TLS"),
-             c("HT_M_TLS", "AT_M_TLS", "AB_M_TLS"))
+    setnames(cl_ah, c("HT_TLSO", "AGET_TLSO", "AGEB_TLSO"),
+             c("HT_M_TLSO", "AT_M_TLSO", "AB_M_TLSO"))
     cl_ah[, c("SPECIES", "FIZ") := NULL]
 
     spc_ah <- FAIBBase::merge_dupUpdate(ahs_msp, bark_sum, by = c("CLSTR_ID", "SPECIES"), all = TRUE)
