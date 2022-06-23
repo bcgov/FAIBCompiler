@@ -319,7 +319,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
   ### 5. start the decay, waste and breakage calculation for full/enhanced trees in vi_c
   cat(paste(Sys.time(), ": Compile DWB.\n", sep = ""))
 
-  siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS, AT_M_TXO)],
+  siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
                                             unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
                                                    by = "CLSTR_ID"),
                                             by = "CLSTR_ID",
@@ -330,8 +330,6 @@ ISMCCompiler_PSP <- function(oracleUserName,
                                                by = "CLSTR_ID"),
                                         by = "CLSTR_ID",
                                         all.x = TRUE)
-
-
 
   tree_ms7 <- DWBCompiler_PSP(treeMS = tree_ms6,
                               siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
