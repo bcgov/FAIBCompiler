@@ -181,7 +181,8 @@ ISMCCompiler <- function(oracleUserName,
                  measYear = NULL)]
   samples_tmp <- data.table::copy(samples)
   samples_tmp[, ':='(PRJ_GRP = NULL,
-                     SA_VEGCOMP = NULL)]
+                     SA_VEGCOMP = NULL,
+                     PLOT_DED = NULL)]
   samples_tmp <- merge(samples_tmp,
                        spatialLookups_simp[,.(SITE_IDENTIFIER = as.character(SITE_IDENTIFIER),
                                               TSA_DESC, TFL, OWNER, SCHEDULE)],
@@ -326,7 +327,7 @@ ISMCCompiler <- function(oracleUserName,
   ### 5. start the decay, waste and breakage calculation for full/enhanced trees in vi_c
   cat(paste(Sys.time(), ": Compile DWB.\n", sep = ""))
 
-  siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS, AT_M_TXO)],
+  siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
                                             unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
                                                    by = "CLSTR_ID"),
                                             by = "CLSTR_ID",
@@ -355,6 +356,17 @@ ISMCCompiler <- function(oracleUserName,
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                     all.x = TRUE)
   tree_ms7_temp <- data.table::copy(tree_ms7)
+  for (i in 1:9) {
+    tree_ms7_temp[BROKEN_TOP_IND == "Y" &
+                    LOG_BTOP == i,
+                  c(paste0("LOG_L_", (i+1):9),
+                    paste0("LOG_D_", (i+1):9)) := NA]
+  }
+  rm(i)
+  tree_ms7_temp[BROKEN_TOP_IND == "Y" &
+                  !is.na(LOG_BTOP),
+                NO_LOGS := LOG_BTOP]
+
   tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
                     "DIAM_BTP", "FIZ", "VOL_MULT",
                     "BEC", "BEC_ZONE", "BEC_SBZ", "BEC_VAR",
@@ -364,18 +376,20 @@ ISMCCompiler <- function(oracleUserName,
                     "VOL_BKT", "VOL_NET", "VOL_NETM",
                     "VAL_NET", "VAL_MER",
                     paste0("LOG_C_", 1:9),
-                    paste0("LOG_D_", 1:9),
                     "LOG_V_0", "LOG_VM_0",
                     "PROJ_ID", "AGE_DWB", "AGE_FLG",
                     "PATH_IND", "RISK_GRP", "ADJ_ID",
                     "VOL_W2", "VOL_NTW2", "VOL_B", "VOL_D",
                     "VOL_DW", "LOG_BTOP",
                     "VOL_ABOVE_BTOP", "VOL_ABOVE_UTOP",
-                    "VOL_BELOW_BTOP", "VOL_BELOW_UTOP") := NULL]
+                    "VOL_BELOW_BTOP", "VOL_BELOW_UTOP",
+                    "DIB_BTOP", "LOG_UTOP",
+                    "LOG_L_10", "LOG_D_10", "lastlog") := NULL]
   tree_ms7_temp[DIB_STUMP < DIB_BH,
                 DIB_STUMP := DIB_BH] # see rene's comment on this as per communication on April 19, 2022
-  tree_ms7_temp[(HEIGHT - HT_BRCH) < -0.5,
+  tree_ms7_temp[(HEIGHT - HT_BRCH) < 0,
                 HT_BRCH := NA]
+
   saveRDS(tree_ms7_temp, file.path(compilationPaths$compilation_db,
                                    "compiled_vi_c.rds"))
   rm(tree_ms7_temp)
@@ -549,6 +563,22 @@ ISMCCompiler <- function(oracleUserName,
   prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
              VOL_NTWB %>>% VOL_MER,
            VOL_NTWB := VOL_MER]
+
+  ## some trees might be cut to dead, hence, the vol_mer, vol_ntwb and vol_dwb should
+  ## be zero, see Rene's email on 2022-05-24
+  ## those trees were not marked, and need some criteria to identify
+  ## specifically, those trees have extreme low height/DBH ratio, i.e., 0.25
+  ## with height less than 2.5 and dead.
+  ## the following process is used to deal with this issue
+  prep_smy[HEIGHT/DBH <= 0.25 &
+             HEIGHT <= 2.5 &
+             LV_D == "D",
+           ':='(VOL_MER = 0,
+                VOL_NTWB = 0,
+                VOL_DWB = 0)]
+  ## end of process
+
+
   prep_smy_temp <- data.table::copy(prep_smy)
   prep_smy_temp[, c("LOG_G_1", paste0("VOL_", c("NET", "NETM", "NTW2", "D", "DW")),
                     "VAL_MER", "BEC_ZONE", "SAMP_POINT") := NULL]
@@ -644,29 +674,6 @@ ISMCCompiler <- function(oracleUserName,
     }
   }
 
-  ## generate reports
-  cat(paste(Sys.time(), ": Generate reports and save them to report folder.\n", sep = ""))
-
-  # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler prod env"
-  # compilationPaths <- list()
-  # compilationPaths$compilation_db <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_db"
-  # compilationPaths$compilation_report <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_report"
-  # compilationPaths$compilation_last <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/Archive_20210415"
-  # compilationDate <- "20210421"
-  lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
-                              compilationPaths$compilation_last)
-  rmarkdown::render(input = file.path(compilationPaths$compilation_report,
-                                      "general_report.Rmd"),
-                    params = list(crtPath = compilationPaths$compilation_db,
-                                  lastPath = compilationPaths$compilation_last,
-                                  mapPath = compilationPaths$compilation_map,
-                                  coeffPath = compilationPaths$compilation_coeff,
-                                  compilationDate = compilationDate,
-                                  lastCompilationDate = lastCompilationDate,
-                                  compilationYear = compilationYear,
-                                  sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
-                    quiet = TRUE)
-
   cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
 
   file.copy(from = compilationPaths$compilation_sa,
@@ -687,4 +694,18 @@ ISMCCompiler <- function(oracleUserName,
   file.copy(from = compilationPaths$compilation_report,
             to = compilationPaths$compilation_archive,
             recursive = TRUE)
+  cat(paste(Sys.time(), ": Generate reports and save them to report folder.\n", sep = ""))
+  lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
+                              compilationPaths$compilation_last)
+  rmarkdown::render(input = file.path(compilationPaths$compilation_report,
+                                      "general_report.Rmd"),
+                    params = list(crtPath = compilationPaths$compilation_db,
+                                  lastPath = compilationPaths$compilation_last,
+                                  mapPath = compilationPaths$compilation_map,
+                                  coeffPath = compilationPaths$compilation_coeff,
+                                  compilationDate = compilationDate,
+                                  lastCompilationDate = lastCompilationDate,
+                                  compilationYear = compilationYear,
+                                  sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
+                    quiet = TRUE)
 }
