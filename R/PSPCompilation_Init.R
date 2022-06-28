@@ -177,14 +177,159 @@ PSPCompilation_Init <- function(inputPath, outputPath){
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
-  treemeasurements[, COMMENT_TEXT := NULL]
-  treemeasurements <- treemeasurements[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
-
+  treemeasurements[, TREE_DETAIL_COMMENT := NULL]
+  treemeasurements[,':='(BORING_AGE_org = BORING_AGE,
+                         MICROSCOPE_AGE_org = MICROSCOPE_AGE,
+                         AGE_MEASMT_HEIGHT_org = AGE_MEASMT_HEIGHT)]
   treemeasurements <- merge(treemeasurements,
-                            unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID)],
+                            unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID, MEAS_DT)],
                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                             all.x = TRUE)
+
+  ## this is a temporary fix for new age in ISMC
+  treemeasurements[BORING_AGE >= 0 & NEW_AGE > 0 &
+                     BORING_AGE != NEW_AGE,
+                   ':='(BORING_AGE = NEW_AGE,
+                        new_age_replaced = TRUE)]
+  treemeasurements[is.na(BORING_AGE) & NEW_AGE > 0,
+                   ':='(BORING_AGE = NEW_AGE,
+                        new_age_replaced = TRUE)]
+  treemeasurements[MICROSCOPE_AGE >= 0 & NEW_AGE > 0 &
+                     MICROSCOPE_AGE != NEW_AGE,
+                   ':='(MICROSCOPE_AGE = NEW_AGE,
+                        new_age_replaced = TRUE)]
+  treemeasurements[is.na(MICROSCOPE_AGE) & NEW_AGE > 0,
+                   ':='(MICROSCOPE_AGE = NEW_AGE,
+                        new_age_replaced = TRUE)]
+  treemeasurements[is.na(MICROSCOPE_AGE) & BORING_AGE > 0,
+                   ':='(MICROSCOPE_AGE = BORING_AGE)]
+
+  treemeasurements[, ':='(unitree_id = paste0(SITE_IDENTIFIER, "-",
+                                          PLOT_NUMBER, "-", TREE_NUMBER),
+                          last_grow_year = as.numeric(substr(MEAS_DT, 1, 4)),
+                          cutdate = as.Date(paste0(substr(MEAS_DT, 1, 4), "-06-01")))]
+  treemeasurements[, MEAS_DT :=  as.Date(MEAS_DT)]
+  treemeasurements[MEAS_DT < cutdate,
+                    last_grow_year := last_grow_year - 1]
+  ## the first age adjustment is for microscope age
+  lab_age_meas <- treemeasurements[!is.na(MICROSCOPE_AGE),
+                                   .(unitree_id, MICROSCOPE_AGE,
+                                     last_grow_year)]
+  lab_age_meas[, ref_year_lab := max(last_grow_year),
+               by = "unitree_id"]
+  lab_age_meas <- lab_age_meas[last_grow_year == ref_year_lab,
+                               .(unitree_id, ref_year_lab,
+                                 ref_age_lab = MICROSCOPE_AGE)]
+
+  fld_age_meas <- treemeasurements[!is.na(BORING_AGE),
+                                    .(unitree_id, BORING_AGE, last_grow_year,
+                                      AGE_MEASMT_HEIGHT)]
+  fld_age_meas <- fld_age_meas[,ref_year_fld := max(last_grow_year),
+                                           by = "unitree_id"]
+  fld_age_meas <- fld_age_meas[last_grow_year == ref_year_fld,
+                                 .(unitree_id, ref_year_fld,
+                                   ref_age_fld = BORING_AGE,
+                                   ref_boring_ht = AGE_MEASMT_HEIGHT)]
+
+  treemeasurements <- merge(treemeasurements,
+                            lab_age_meas,
+                            by = "unitree_id",
+                            all.x = TRUE)
+  treemeasurements <- merge(treemeasurements,
+                            fld_age_meas,
+                            by = "unitree_id",
+                            all.x = TRUE)
+
+  treemeasurements[, ':='(adjusted_boring_age = (last_grow_year - ref_year_fld) + ref_age_fld,
+                          adjusted_lab_age = (last_grow_year - ref_year_lab) + ref_age_lab)]
+  # make adjustment for boring age
+  treemeasurements[BORING_AGE > 0 & adjusted_boring_age > 0 &
+                     BORING_AGE != adjusted_boring_age,
+                   ':='(BORING_AGE = adjusted_boring_age,
+                        boring_age_adjusted = TRUE)]
+  # make adjustment for lab age
+  treemeasurements[MICROSCOPE_AGE > 0 & adjusted_lab_age > 0 &
+                     MICROSCOPE_AGE != adjusted_lab_age,
+                   ':='(MICROSCOPE_AGE = adjusted_lab_age,
+                        lab_age_adjusted = TRUE)]
+  # make adjustment boring height
+  treemeasurements[AGE_MEASMT_HEIGHT != ref_boring_ht,
+                   ':='(AGE_MEASMT_HEIGHT = ref_boring_ht,
+                        age_meas_ht_adjusted = TRUE)]
+  age_adjusted_trees <- treemeasurements[new_age_replaced == TRUE |
+                                           boring_age_adjusted == TRUE |
+                                           lab_age_adjusted == TRUE |
+                                           age_meas_ht_adjusted == TRUE,
+                                         .(SITE_IDENTIFIER, VISIT_NUMBER,
+                                            PLOT_NUMBER, TREE_NUMBER,
+                                            BORING_AGE, BORING_AGE_org,
+                                            MICROSCOPE_AGE, MICROSCOPE_AGE_org,
+                                            AGE_MEASMT_HEIGHT, AGE_MEASMT_HEIGHT_org,
+                                            NEW_AGE, new_age_replaced,
+                                           boring_age_adjusted, lab_age_adjusted,
+                                           age_meas_ht_adjusted,
+                                           MEAS_DT,
+                                           ref_year_fld,
+                                           last_grow_year)]
+
+  a <- treemeasurements[SITE_IDENTIFIER == 4000045 & TREE_NUMBER == 10,
+    .(SITE_IDENTIFIER, VISIT_NUMBER,
+      PLOT_NUMBER, TREE_NUMBER,
+      BORING_AGE_adjusted = BORING_AGE, BORING_AGE_org,
+      MICROSCOPE_AGE_adjusted = MICROSCOPE_AGE, MICROSCOPE_AGE_org,
+      AGE_MEASMT_HEIGHT_adjusted = AGE_MEASMT_HEIGHT, AGE_MEASMT_HEIGHT_org,
+      MEAS_DT,
+      ref_year_fld,
+      ref_age_fld,
+      ref_year_lab,
+      ref_age_lab,
+      last_grow_year)
+  ]
+  b <- treemeasurements[SITE_IDENTIFIER == 4000014  & TREE_NUMBER == 2017,
+    .(SITE_IDENTIFIER, VISIT_NUMBER,
+      PLOT_NUMBER, TREE_NUMBER,
+      BORING_AGE_adjusted = BORING_AGE, BORING_AGE_org,
+      MICROSCOPE_AGE_adjusted = MICROSCOPE_AGE, MICROSCOPE_AGE_org,
+      AGE_MEASMT_HEIGHT_adjusted = AGE_MEASMT_HEIGHT, AGE_MEASMT_HEIGHT_org,
+      MEAS_DT,
+      ref_year_fld,
+      ref_age_fld,
+      ref_year_lab,
+      ref_age_lab,
+      last_grow_year)
+  ]
+
+  c <- rbind(a, b)
+
+
+
+  write.xlsx(age_adjusted_trees,
+             file.path(outputPath, "age_adjusted_trees.xlsx"),
+             overwrite = TRUE)
+  treemeasurements[,':='(unitree_id = NULL,
+                         MEAS_DT = NULL,
+                         last_grow_year = NULL,
+                         new_age_replaced = NULL,
+                         cutdate = NULL,
+                         ref_year_lab = NULL,
+                         ref_age_lab = NULL,
+                         ref_year_fld = NULL,
+                         ref_age_fld = NULL,
+                         ref_boring_ht = NULL,
+                         adjusted_lab_age = NULL,
+                         boring_age_adjusted = NULL,
+                         lab_age_adjusted = NULL,
+                         age_meas_ht_adjusted = NULL,
+                         BORING_AGE_org = NULL,
+                         MICROSCOPE_AGE_org = NULL,
+                         AGE_MEASMT_HEIGHT_org = NULL)]
+## end of fix
+
+  treemeasurements <- treemeasurements[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
+
+
+
   # treemeasurements[PLOT_CATEGORY_CODE == "IPC TD", PLOT_CATEGORY_CODE := "I"]
   # treemeasurements[PLOT_CATEGORY_CODE != "I",
   #                  PLOT_CATEGORY_CODE := gsub("AUX ", "", PLOT_CATEGORY_CODE)]
