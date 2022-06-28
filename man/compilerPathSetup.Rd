@@ -5,7 +5,7 @@
 \alias{compilerPathSetup}
 \title{Setup output paths of the compiler}
 \usage{
-compilerPathSetup(compilationPath = ".", compilationDate)
+compilerPathSetup(compilationPath = ".", compilationDate, useExistingRaw)
 }
 \arguments{
 \item{compilationPath}{character, Specifies a path to store whole compilation process.
@@ -13,6 +13,9 @@ If missing, the current work directory will be used.}
 
 \item{compilationDate}{character, Specifies a compilation date. It should be in format of YYYYMMDD
 It will be used for archive the compilation outputs.}
+
+\item{useExistingRaw}{logical, Defines whether we want to use existing data that downloaded
+previously.}
 }
 \value{
 Seven paths will be returned as following:

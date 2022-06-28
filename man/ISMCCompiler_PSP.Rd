@@ -19,7 +19,8 @@ ISMCCompiler_PSP(
   breastHeight = 1.3,
   UTOPDIB = 10,
   utilLevel = 3,
-  weirdUtil = c("2", "4")
+  weirdUtil = c("2", "4"),
+  useExistingRaw = FALSE
 )
 }
 \arguments{
@@ -65,6 +66,10 @@ see \code{\link{logMatrixAdjustment}} for details. If missing 0.1 is used.}
 
 \item{weirdUtil}{character, Specifies weird utilization in summarizing tree volumes at cluster and species level.
 Default is \code{no}, if missing. Otherwise, a number should be provided.}
+
+\item{useExistingRaw}{logical, Defines whether we want to use existing data that downloaded
+previously. Default is FALSE, which means the compiler needs to
+download data from ISMC database.}
 }
 \value{
 This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
