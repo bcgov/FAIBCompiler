@@ -32,7 +32,9 @@
 #' @param utilLevel numeric, Specifies utilization level in summrizing tree volumes at cluster and species level. Default is 4.
 #' @param weirdUtil character, Specifies weird utilization in summarizing tree volumes at cluster and species level.
 #'                             Default is \code{no}, if missing. Otherwise, a number should be provided.
-#'
+#' @param useExistingRaw logical, Defines whether we want to use existing data that downloaded
+#'                              previously. Default is FALSE, which means the compiler needs to
+#'                              download data from ISMC database.
 #' @return This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
 #'
 #' @importFrom data.table ':='
@@ -79,14 +81,16 @@ ISMCCompiler <- function(oracleUserName,
                          breastHeight = 1.3,
                          UTOPDIB = 10,
                          utilLevel = 4,
-                         weirdUtil = "4"){
+                         weirdUtil = "4",
+                         useExistingRaw = FALSE){
 
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
   cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
   compilationDate <- gsub("-", "", Sys.Date())
   compilationPaths <- compilerPathSetup(compilationPath,
-                                        compilationDate)
+                                        compilationDate,
+                                        useExistingRaw = useExistingRaw)
   cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
 
   checkMaps(mapPath = compilationPaths$compilation_map)
@@ -118,22 +122,29 @@ ISMCCompiler <- function(oracleUserName,
     stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
   }
 
-  sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
-                   "O", "F", "E", "C", "B")
+  if(useExistingRaw == FALSE){
 
-  if(!(toupper(oracleEnv) %in% c("INT", "TST", "PROD"))){
-    stop("oracleEnv must be correctly specified from INT, TST and PROD.")
+    sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
+                     "O", "F", "E", "C", "B")
+
+    if(!(toupper(oracleEnv) %in% c("INT", "TST", "PROD"))){
+      stop("oracleEnv must be correctly specified from INT, TST and PROD.")
+    }
+
+    ### 2. load oracle data
+    cat(paste(Sys.time(), ": Load data from ISMC database.\n", sep = ""))
+    FAIBOracle::loadISMC_bySampleType(userName = oracleUserName,
+                                      passWord = oraclePassword,
+                                      env = toupper(oracleEnv),
+                                      sampleType = sampletypes,
+                                      savePath = compilationPaths$raw_from_oracle,
+                                      saveFormat = "rds",
+                                      overWrite = TRUE)
+  } else {
+    downloaddate <- dir(compilationPaths$raw_from_oracle, pattern = "AccessNotes.rds")
+    downloaddate <- gsub("_AccessNotes.rds", "", downloaddate)
+    cat(paste(Sys.time(), paste0(": The compiler uses existing raw data: ", downloaddate, "\n"), sep = ""))
   }
-
-  ### 2. load oracle data
-  cat(paste(Sys.time(), ": Load data from ISMC database.\n", sep = ""))
-  FAIBOracle::loadISMC_bySampleType(userName = oracleUserName,
-                                    passWord = oraclePassword,
-                                    env = toupper(oracleEnv),
-                                    sampleType = sampletypes,
-                                    savePath = compilationPaths$raw_from_oracle,
-                                    saveFormat = "rds",
-                                    overWrite = TRUE)
   cat(paste(Sys.time(), ": Translate ISMC data to compiler.\n", sep = ""))
   ISMC_VGISTranslator(inputPath = compilationPaths$raw_from_oracle,
                       outputPath = compilationPaths$compilation_sa,
@@ -661,9 +672,15 @@ ISMCCompiler <- function(oracleUserName,
   #         file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.csv"), row.names = FALSE)
   #############################
 
-  for (indifolder in c(compilationPaths$compilation_db,
-                       compilationPaths$compilation_sa,
-                       compilationPaths$raw_from_oracle)){
+  if(useExistingRaw == TRUE){
+    allfolders <- c(compilationPaths$compilation_db,
+                    compilationPaths$compilation_sa)
+  } else {
+    allfolders <- c(compilationPaths$compilation_db,
+                    compilationPaths$compilation_sa,
+                    compilationPaths$raw_from_oracle)
+  }
+  for (indifolder in allfolders){
     allfiles_indifolder <- dir(pattern = ".rds", indifolder)
     allfiles_indifolder <- gsub(".rds", "", allfiles_indifolder)
 
