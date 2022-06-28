@@ -7,6 +7,8 @@
 #'                              If missing, the current work directory will be used.
 #' @param compilationDate character, Specifies a compilation date. It should be in format of YYYYMMDD
 #'                              It will be used for archive the compilation outputs.
+#' @param useExistingRaw logical, Defines whether we want to use existing data that downloaded
+#'                              previously.
 #'
 #' @return Seven paths will be returned as following:
 #' \itemize{
@@ -37,7 +39,8 @@
 #' @author Yong Luo
 #'
 compilerPathSetup <- function(compilationPath = ".",
-                              compilationDate){
+                              compilationDate,
+                              useExistingRaw){
   if(!dir.exists(compilationPath)){
     dir.create(compilationPath)
   }
@@ -58,7 +61,7 @@ compilerPathSetup <- function(compilationPath = ".",
   compilation_report <- file.path(compilationPath, "compilation_report")
   ## for raw, sa, db, archive and report,
   ## remove the existing ones and create empty folders
-  if(dir.exists(raw_from_oracle)){
+  if(dir.exists(raw_from_oracle) & useExistingRaw == FALSE){
     unlink(raw_from_oracle, recursive = TRUE)
   }
   if(dir.exists(compilation_sa)){
@@ -70,7 +73,9 @@ compilerPathSetup <- function(compilationPath = ".",
   if(dir.exists(compilation_archive)){
     unlink(compilation_archive, recursive = TRUE)
   }
-  dir.create(raw_from_oracle)
+  if(!dir.exists(raw_from_oracle)){
+    dir.create(raw_from_oracle)
+  }
   dir.create(compilation_sa)
   dir.create(compilation_db)
   dir.create(compilation_archive)
