@@ -27,6 +27,10 @@ sample number as an unique spatial point. It uses site identifier now.
 The change was made on Nov. 24, 2020. The previous versions of
 VRICompiler and ISMCCompiler bave been freezed in VGISCompiler branch.
 
+Since July of 2022, the PSP compiler and VRI compiler will be merged
+into one generic ISMCCompiler. The previous version, i.e., version
+1.0000 has been freezed in oldISMCCompiler branch
+
 ### Installation
 
 ### Usage
