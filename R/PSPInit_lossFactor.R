@@ -35,6 +35,10 @@ PSPInit_lossFactor<- function(fullMeasuredTrees,
                                  paste("LOC", 1:targetnames_max, "_FRO", sep = "")), with = FALSE]
   rm(targetnames, targetnames_max)
   lossfactors <- unique(lossfactors, by = c("CLSTR_ID", "PLOT", "TREE_NO"))
+  lossfactors <- merge(lossfactors,
+                       fullMeasuredTrees[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SPECIES_ORG, SP0)],
+                       by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                       all.x = TRUE)
   # fullMeasuredTrees[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
   # lossfactors[, clusterplottree := paste(CLSTR_ID, "_", PLOT, "_", TREE_NO, sep = "")]
   # lossfactors <- lossfactors[clusterplottree %in% fullMeasuredTrees$clusterplottree,]
