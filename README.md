@@ -10,6 +10,10 @@ If you have bcgovr installed and you use RStudio, click the 'Insert BCDevex Badg
 [![img](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)
 <!-- badges: end -->
 
+This is frozen version (version 1.0000) of ISMC compiler as of July
+2022. In this version, the PSP compilation and nonPSP compilation are
+implemented using two different functions.
+
 FAIBCompiler comtains the functions to run VRI and PSP compilers. The
 compilers
 
