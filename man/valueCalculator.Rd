@@ -34,9 +34,6 @@ they are provided. Furthermore, be aware of the correspondingness among the matr
 In the function, two lookup table are hardcoded (i.e., \code{spv_spc} and \code{sp_cost}).
 This function is part of the \code{log_valu_2017.sas}.
 }
-\note{
-
-}
 \author{
 Yong Luo
 }

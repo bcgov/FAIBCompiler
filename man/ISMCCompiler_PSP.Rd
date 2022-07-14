@@ -20,7 +20,8 @@ ISMCCompiler_PSP(
   UTOPDIB = 10,
   utilLevel = 3,
   weirdUtil = c("2", "4"),
-  useExistingRaw = FALSE
+  recompile = FALSE,
+  archiveDate = as.character(NA)
 )
 }
 \arguments{
@@ -67,9 +68,13 @@ see \code{\link{logMatrixAdjustment}} for details. If missing 0.1 is used.}
 \item{weirdUtil}{character, Specifies weird utilization in summarizing tree volumes at cluster and species level.
 Default is \code{no}, if missing. Otherwise, a number should be provided.}
 
-\item{useExistingRaw}{logical, Defines whether we want to use existing data that downloaded
-previously. Default is FALSE, which means the compiler needs to
-download data from ISMC database.}
+\item{recompile}{logical, Defines whether we want to recompile data using archived
+raw data. Default is FALSE, which means the compiler needs to
+download data from ISMC database. When it is \code{TRUE}, a subfolder will
+be created under current archive folder to save the all the compilation.}
+
+\item{archiveDate}{character, Defines on which archive date the raw data were downloaded.
+These raw data will be used for recompilation. Format is YYYYMMDD.}
 }
 \value{
 This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
