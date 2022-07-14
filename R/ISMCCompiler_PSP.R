@@ -35,9 +35,12 @@
 #' @param utilLevel numeric, Specifies utilization level in summrizing tree volumes at cluster and species level. Default is 4.
 #' @param weirdUtil character, Specifies weird utilization in summarizing tree volumes at cluster and species level.
 #'                             Default is \code{no}, if missing. Otherwise, a number should be provided.
-#' @param useExistingRaw logical, Defines whether we want to use existing data that downloaded
-#'                              previously. Default is FALSE, which means the compiler needs to
-#'                              download data from ISMC database.
+#' @param recompile logical, Defines whether we want to recompile data using archived
+#'                              raw data. Default is FALSE, which means the compiler needs to
+#'                              download data from ISMC database. When it is \code{TRUE}, a subfolder will
+#'                              be created under current archive folder to save the all the compilation.
+#' @param archiveDate character, Defines on which archive date the raw data were downloaded.
+#'                             These raw data will be used for recompilation. Format is YYYYMMDD.
 #' @return This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
 #'
 #' @importFrom data.table ':='
@@ -84,7 +87,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
                              UTOPDIB = 10,
                              utilLevel = 3,
                              weirdUtil = c("2", "4"),
-                             useExistingRaw = FALSE){
+                             recompile = FALSE,
+                             archiveDate = as.character(NA)){
 
   # rm(list = ls())
   # compilationPath <- "D:/ISMC project/ISMC compiler/ismc compiler development"
@@ -92,7 +96,8 @@ ISMCCompiler_PSP <- function(oracleUserName,
   compilationDate <- gsub("-", "", Sys.Date())
   compilationPaths <- compilerPathSetup(compilationPath,
                                         compilationDate,
-                                        useExistingRaw = useExistingRaw)
+                                        recompile = recompile,
+                                        archiveDate = archiveDate)
   cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
 
   checkMaps(mapPath = compilationPaths$compilation_map)
@@ -123,10 +128,10 @@ ISMCCompiler_PSP <- function(oracleUserName,
                             paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")))){
     stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
   }
-  if(useExistingRaw == TRUE){
+  if(recompile == TRUE){
     downloaddate <- dir(compilationPaths$raw_from_oracle, pattern = "AccessNotes.rds")
     downloaddate <- gsub("_AccessNotes.rds", "", downloaddate)
-    cat(paste(Sys.time(), paste0(": The compiler uses existing raw data: ", downloaddate, "\n"), sep = ""))
+    cat(paste(Sys.time(), paste0(": The compiler recompiles existing raw data: ", downloaddate, "\n"), sep = ""))
   } else {
     sampletypes <- c("PSP")
 
@@ -431,7 +436,7 @@ ISMCCompiler_PSP <- function(oracleUserName,
   saveRDS(stumpCompile$stmp_cs,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
   #############################
-  if(useExistingRaw == TRUE){
+  if(recompile == TRUE){
     allfolders <- c(compilationPaths$compilation_db,
                     compilationPaths$compilation_sa)
   } else {
@@ -468,25 +473,41 @@ ISMCCompiler_PSP <- function(oracleUserName,
   #                                 compilationYear = compilationYear,
   #                                 sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
   #                   quiet = TRUE)
+  if(recompile == FALSE){
+    cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
 
-  cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
+    file.copy(from = compilationPaths$compilation_sa,
+              to = compilationPaths$compilation_archive,
+              recursive = TRUE)
+    file.copy(from = compilationPaths$compilation_db,
+              to = compilationPaths$compilation_archive,
+              recursive = TRUE)
+    file.copy(from = compilationPaths$raw_from_oracle,
+              to = compilationPaths$compilation_archive,
+              recursive = TRUE)
+    file.copy(from = compilationPaths$compilation_coeff,
+              to = compilationPaths$compilation_archive,
+              recursive = TRUE)
+    file.copy(from = compilationPaths$compilation_map,
+              to = compilationPaths$compilation_archive,
+              recursive = TRUE)
+    file.copy(from = compilationPaths$compilation_report,
+              to = compilationPaths$compilation_archive,
+              recursive = TRUE)
 
-  file.copy(from = compilationPaths$compilation_sa,
-            to = compilationPaths$compilation_archive,
-            recursive = TRUE)
-  file.copy(from = compilationPaths$compilation_db,
-            to = compilationPaths$compilation_archive,
-            recursive = TRUE)
-  file.copy(from = compilationPaths$raw_from_oracle,
-            to = compilationPaths$compilation_archive,
-            recursive = TRUE)
-  file.copy(from = compilationPaths$compilation_coeff,
-            to = compilationPaths$compilation_archive,
-            recursive = TRUE)
-  file.copy(from = compilationPaths$compilation_map,
-            to = compilationPaths$compilation_archive,
-            recursive = TRUE)
-  file.copy(from = compilationPaths$compilation_report,
-            to = compilationPaths$compilation_archive,
-            recursive = TRUE)
+  } else {
+    cat(paste(Sys.time(), ": All recompiled outputs saved into Archive_", gsub("-", "", Sys.Date()), "//recompile", archiveDate, ".\n", sep = ""))
+
+    # rmarkdown::render(input = file.path(compilationPaths$compilation_report,
+    #                                     "general_report.Rmd"),
+    #                   params = list(crtPath = compilationPaths$compilation_db,
+    #                                 lastPath = compilationPaths$compilation_last,
+    #                                 mapPath = compilationPaths$compilation_map,
+    #                                 coeffPath = compilationPaths$compilation_coeff,
+    #                                 compilationDate = compilationDate,
+    #                                 lastCompilationDate = compilationDate,
+    #                                 compilationYear = compilationYear,
+    #                                 sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
+    #                   quiet = TRUE)
+  }
 }
