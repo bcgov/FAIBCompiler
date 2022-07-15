@@ -28,7 +28,7 @@
 #' \item {compilation_map} {Path to archive all maps for compilation process.}
 #'
 #' \item {compilation_coeff} {Path to archive all coefficients for compilation process.}
-#' }
+#'
 #' \item {compilation_last} {Path to archive last compilation process.}
 #' }
 #'
@@ -181,7 +181,7 @@ compilerPathSetup <- function(compilationPath = ".",
 #' \item {compilation_map} {Path to archive all maps for compilation process.}
 #'
 #' \item {compilation_coeff} {Path to archive all coefficients for compilation process.}
-#' }
+#'
 #' \item {compilation_last} {Path to archive last compilation process.}
 #' }
 #'
