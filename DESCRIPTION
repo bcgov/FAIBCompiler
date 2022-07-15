@@ -1,6 +1,6 @@
 Package: FAIBCompiler
 Title: FAIB compilers
-Version: 1.0000
+Version: 2.0000
 Authors@R: 
     c(person(given = "Yong",
              family = "Luo",
