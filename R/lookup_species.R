@@ -1,5 +1,5 @@
 ## Species lookup table
-
+# this is to ensure consistency with the recommended species site index equation mapping in SiteTools ver 4.2.
 lookup_species <- function(){
   speciesmatrix <- matrix(ncol = 7,
                           byrow = TRUE,
@@ -36,7 +36,7 @@ lookup_species <- function(){
                                    "EA",    "E",  "Alaska Paper Birch",        "AT",      "D",     "D",     "BETUNEO",
                                    "EB",    "E",  "Scrub Birch",               "AT",      "D",     "D",     NA,
                                    "EE",    "E",  "European birch",            "AT",      "D",     "D",     "BETUPEN",
-                                   "EP",    "E",  "Paper Birch",               "AT",      "D",     "D",     "BETUPAP",
+                                   "EP",    "E",  "Paper Birch",               "EP",      "D",     "D",     "BETUPAP",
                                    "ES",    "E",  "Silver birch",              "AT",      "D",     "D",     "BETUPUB",
                                    "EW",    "E",  "Water Birch",               "AT",      "D",     "D",     "BETUOCC",
                                    "EXP",   "E",  "Alaska x paper birch hybr", "AT",      "D",     "D",     "BETUXWI",
@@ -48,7 +48,7 @@ lookup_species <- function(){
                                    "G",     "MB", "Dogwood",                   "DR",      "D",     "D",     "CORNUS",
                                    "GP",    "MB", "Pacific Dogwood",           "DR",      "D",     "D",     "CORNNUT",
                                    "H",     "H",  "Hemlock",                   "HW",      "C",     "H",     "TSUGA",
-                                   "HM",    "H",  "Mountain Hemlock",          "HWC",     "C",     "H",     "TSUGMER",
+                                   "HM",    "H",  "Mountain Hemlock",          "HM",     "C",     "H",     "TSUGMER",
                                    "HW",    "H",  "Western Hemlock",           "HW",      "C",     "H",     "TSUGHET",
                                    "HXM",   "H",  "Mtn * Wstrn Hemlock Hybri", "HWC",     "C",     "H",     "TSUGHEE",
                                    "IG",    "C",  "Giant Sequoia",             "CW",      "C",     "C",     NA,
@@ -101,7 +101,7 @@ lookup_species <- function(){
                                    "S",     "S",  "Spruce",                    "S",       "C",     "S",     "PICEA",
                                    "SA",    "S",  "Norway Spruce",             "SW",      "C",     "S",     NA,
                                    "SB",    "S",  "Black Spruce",              "SB",      "C",     "S",     "PICEMAR",
-                                   "SE",    "S",  "Engelmann Spruce",          "SW",      "C",     "S",     "PICEENG",
+                                   "SE",    "S",  "Engelmann Spruce",          "SE",      "C",     "S",     "PICEENG",
                                    "SN",    "S",  "Norway spruce",             "SW",      "C",     "S",     "PICEABI",
                                    "SS",    "S",  "Sitka Spruce",              "SS",      "C",     "S",     "PICESIT",
                                    "SW",    "S",  "White Spruce",              "SW",      "C",     "S",     "PICEGLA",
