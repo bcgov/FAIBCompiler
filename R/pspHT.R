@@ -21,10 +21,11 @@ pspHT<- function(treeData,
                  method = "bestMEM",
                  coeffs){
 
-  if(nrow(treeData[is.na(DBH) & is.na(HEIGHT)]) > 0){
+  if(nrow(treeData[is.na(DBH)]) > 0){
     warning("There are some observations do not have DBH. Hence, the height will not be produced.")
   }
   if(method == "bestMEM"){
+    browser()
     treeData[!is.na(DBH) & is.na(HEIGHT),
              Height_est := round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
                                                               subzone = BEC_SBZ,

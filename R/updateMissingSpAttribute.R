@@ -51,9 +51,28 @@ updateMissingSpAttribute <- function(spatialtable,
                       BEC_SBZ = BEC_sbz_rcp,
                       BEC_VAR = BEC_var_rcp,
                       BEC_source = updateMethod)]
+    spatialtable_failed <- unique(spatialtable[is.na(BEC)]$SAMPLING_REGION_NUMBER)
+    spatialtable_passed <- unique(spatialtable[SAMPLING_REGION_NUMBER %in% spatialtable_failed &
+                                          !is.na(BEC_rcp),
+                                        .(SAMPLING_REGION_NUMBER, BEC_rcp, BEC_sbz_rcp, BEC_var_rcp)])
+    spatialtable_passed <- spatialtable_passed[, .(becrcp_length = length(BEC_sbz_rcp)),
+                                               by = c("SAMPLING_REGION_NUMBER", "BEC_rcp")]
+    spatialtable_passed <- spatialtable_passed[order(becrcp_length, decreasing = TRUE)]
+    spatialtable_passed <- unique(spatialtable_passed[,.(SAMPLING_REGION_NUMBER, BEC_rcp)],
+                                  by = "SAMPLING_REGION_NUMBER")
     spatialtable[,':='(BEC_rcp = NULL,
                        BEC_sbz_rcp = NULL,
                        BEC_var_rcp = NULL)]
+    spatialtable <- merge(spatialtable,
+                          spatialtable_passed,
+                          by = "SAMPLING_REGION_NUMBER",
+                          all.x = TRUE)
+    spatialtable[is.na(BEC) & !is.na(BEC_rcp),
+                 ':='(BEC = BEC_rcp,
+                      BEC_SBZ = NA,
+                      BEC_VAR = NA,
+                      BEC_source = updateMethod)]
+    spatialtable[,':='(BEC_rcp = NULL)]
     ## for tsa update
     tsamap <- readRDS(dir(mapPath, pattern = "TSA_map", full.names = TRUE))
     spatialAttributes_fromRC <- spAttriFromRegCompt(region = spatialtable$SAMPLING_REGION_NUMBER,

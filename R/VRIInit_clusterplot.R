@@ -27,8 +27,6 @@ VRIInit_clusterplot <- function(dataSourcePath){
   uniqueNrow <- length(unique(vi_a$CLSTR_ID))
 
   vi_a <- vi_a[substr(PROJ_ID, 1, 3) != "DEV",]
-
-
   vi_a <- vi_a[substr(TYPE_CD, 1, 1) != "E", ]
 
 

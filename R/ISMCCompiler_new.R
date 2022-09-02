@@ -3,7 +3,7 @@
 #'
 #' @description This compiler is a general compiler to compile field data from either PSP or other
 #'              programs.
-#' @param projectType character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+#' @param compilationType character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
 #'                               is consistent with original PSP compiler, otherwise, it
 #'                               is consistent with VRI compiler.
 #' @param oracleUserName character, User name to access to ISMC database.
@@ -74,7 +74,7 @@
 #' @author Yong Luo
 #'
 
-ISMCCompiler_new <- function(projectType,
+ISMCCompiler_new <- function(compilationType,
                              oracleUserName,
                              oraclePassword,
                              oracleEnv = "INT",
@@ -89,19 +89,19 @@ ISMCCompiler_new <- function(projectType,
                              weirdUtil = "4",
                              recompile = FALSE,
                              archiveDate = as.character(NA)){
-  if(!(projectType %in% c("PSP", "nonPSP"))){
-    stop("The projectType must be either PSP or nonPSP")
+  if(!(compilationType %in% c("PSP", "nonPSP"))){
+    stop("The compilationType must be either PSP or nonPSP")
   }
 
   cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
   compilationDate <- gsub("-", "", Sys.Date())
   compilationPaths <- compilerPathSetup_new(compilationPath,
                                             compilationDate,
-                                            projectType,
+                                            compilationType,
                                             recompile = recompile,
                                             archiveDate = archiveDate)
-  cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
 
+  cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
   checkMaps(mapPath = compilationPaths$compilation_map)
   todayDate <- as.Date(Sys.time())
   todayYear <- substr(todayDate, 1, 4)
@@ -131,7 +131,7 @@ ISMCCompiler_new <- function(projectType,
     stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
   }
   if(recompile == FALSE){
-    if(projectType == "nonPSP"){
+    if(compilationType == "nonPSP"){
       sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
                        "O", "F", "E", "C", "B")
     } else {
@@ -155,352 +155,220 @@ ISMCCompiler_new <- function(projectType,
     downloaddate <- gsub("_AccessNotes.rds", "", downloaddate)
     cat(paste(Sys.time(), paste0(": The compiler recompiles existing raw data: ", downloaddate, "\n"), sep = ""))
   }
-  cat(paste(Sys.time(), ": Translate ISMC data to compiler.\n", sep = ""))
-  if(projectType == "nonPSP"){
-    ISMC_VGISTranslator(inputPath = compilationPaths$raw_from_oracle,
-                        outputPath = compilationPaths$compilation_sa,
-                        coeffPath = compilationPaths$compilation_coeff)
-  } else {
-    PSPCompilation_Init(inputPath = compilationPaths$raw_from_oracle,
-                        outputPath = compilationPaths$compilation_sa)
-  }
+  cat(paste(Sys.time(), ": Prepare ISMC data for compilation.\n", sep = ""))
 
-  vi_a <- readRDS(file.path(compilationPaths$compilation_sa, "vi_a.rds"))
-  cat(paste(Sys.time(), ": Update spatial attributes.\n", sep = ""))
-  spatialLookups <- updateSpatial(samplesites = vi_a,
-                                  mapPath = compilationPaths$compilation_map)
-  if(projectType == "PSP"){
-    spatialLookups[, ':='(BEC_source = "fromMap",
-                          TSA_source = "fromMap",
-                          FIZ_source = "fromMap",
-                          TFL_source = "fromMap",
-                          OWNER_source = "fromMap")]
-    ## for PSP, some samples do not have good spatial coordinates, hence, causing
-    ## missing spatial attributes
-    spUpdateMethod <- "fromRegionCompartMap"
-    if(spUpdateMethod == "fromOldSAS"){
-      ## for those samples, the compiler takes those variables from SAS outputs
-      spatialLookups <- updateMissingSpAttribute(spatialtable = spatialLookups,
-                                                 coeffPath = compilationPaths$compilation_coeff,
-                                                 updateMethod = spUpdateMethod)
-    } else if (spUpdateMethod == "fromRegionCompartMap"){
-      spatialLookups <- updateMissingSpAttribute(spatialtable = spatialLookups,
-                                                 mapPath = compilationPaths$compilation_map,
-                                                 updateMethod = spUpdateMethod)
-    }
-  }
+  ISMC_DataPrep(compilationType = compilationType,
+                inputPath = compilationPaths$raw_from_oracle,
+                outputPath = compilationPaths$compilation_sa,
+                coeffPath = compilationPaths$compilation_coeff)
 
-  saveRDS(spatialLookups,
-          file.path(compilationPaths$compilation_sa,
-                    "vi_a.rds"))
-  spatialLookups_simp <- unique(spatialLookups[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
-                                                  IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
-                                                  Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
-                                                  TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
-                                                  PROJ_ID, SAMP_NO)],
-                                by = "SAMP_POINT")
-  saveRDS(spatialLookups_simp,
-          file.path(compilationPaths$compilation_db,
-                    "spatiallookup.rds"))
-  cat("    Saved spatial attribute table as spatiallookup \n")
-
-  ### 2.1 load cluster/plot header
-  if(projectType == "nonPSP"){
-
-    clusterplotheader <- VRIInit_clusterplot(dataSourcePath = compilationPaths$compilation_sa)
-    samples <- data.table::copy(clusterplotheader)
-    samples[,':='(SITE_IDENTIFIER = substr(CLSTR_ID, 1, 7),
-                  SAMPLE_SITE_PURPOSE_TYPE_CODE = substr(CLSTR_ID, 9, 9),
-                  VISIT_NUMBER = substr(CLSTR_ID, 10, 10))]
-  } else {
-    clusterplotheader <- PSPInit_clusterplot(dataSourcePath = compilationPaths$compilation_sa)
-    samples <- data.table::copy(clusterplotheader)
-    samples[,':='(SITE_IDENTIFIER = substr(CLSTR_ID, 1, 7),
-                  SAMPLE_SITE_PURPOSE_TYPE_CODE = substr(CLSTR_ID, 9, 11))]
-    samples[nchar(CLSTR_ID) == 12,
-            VISIT_NUMBER := as.numeric(substr(CLSTR_ID, 12, 12))]
-    samples[nchar(CLSTR_ID) == 13,
-            VISIT_NUMBER := as.numeric(substr(CLSTR_ID, 12, 13))]
-    samples[nchar(CLSTR_ID) == 14,
-            VISIT_NUMBER := as.numeric(substr(CLSTR_ID, 12, 14))]
-  }
+  cat(paste(Sys.time(), ": Compile sample and plot information.\n", sep = ""))
   standage_vegcomp <- read.xlsx(file.path(compilationPaths$compilation_coeff,
                                           paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")),
                                 detectDates = TRUE) %>%
     data.table
-  samples <- merge(samples,
-                   standage_vegcomp[,.(SITE_IDENTIFIER = as.character(SITE_IDENTIFIER), PROJ_AGE_1,
-                                       PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
-                   by = "SITE_IDENTIFIER",
-                   all.x = TRUE)
-  samples[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
-
-  samples[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
-  samples[, ':='(PROJ_AGE_1 = NULL,
-                 PROJECTED_Year = NULL,
-                 measYear = NULL)]
-  samples_tmp <- data.table::copy(samples)
-  samples_tmp[, ':='(PRJ_GRP = NULL,
-                     SA_VEGCOMP = NULL,
-                     PLOT_DED = NULL)]
-  samples_tmp <- merge(samples_tmp,
-                       spatialLookups_simp[,.(SITE_IDENTIFIER = as.character(SITE_IDENTIFIER),
-                                              TSA_DESC, TFL, OWNER, SCHEDULE)],
-                       by = "SITE_IDENTIFIER",
-                       all.x = TRUE)
-  plots <- samples_tmp[,.(CLSTR_ID, PLOT, PLOT_WT, BLOWUP)]
-  samples_tmp[,':='(PLOT = NULL,
-                    PLOT_WT = NULL,
-                    BLOWUP = NULL)]
-  samples_tmp <- unique(samples_tmp, by = "CLSTR_ID")
+  samplePlotResults <- samplePlotCompilation(compilationType = compilationType,
+                                             dataSourcePath = compilationPaths$compilation_sa,
+                                             mapPath = compilationPaths$compilation_map,
+                                             coeffPath = compilationPaths$compilation_coeff,
+                                             SAVegComp = standage_vegcomp)
+  saveRDS(samplePlotResults$spatiallookup,
+          file.path(compilationPaths$compilation_db,
+                    "spatiallookup.rds"))
+  if(compilationType == "nonPSP"){
+    saveRDS(samplePlotResults$spatiallookup,
+            file.path(compilationPaths$compilation_map,
+                      "spatiallookup_nonPSP.rds"))
+  } else {
+    saveRDS(samplePlotResults$spatiallookup,
+            file.path(compilationPaths$compilation_map,
+                      "spatiallookup_PSP.rds"))
+  }
+  cat("    Saved spatial attribute table. \n")
+  samples <- data.table::copy(samplePlotResults$samples)
+  samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, MEAS_DT,
+                                   SAMPLE_SITE_PURPOSE_TYPE_CODE = TYPE_CD, SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
+                                   SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO,
+                                   TSA, TSA_DESC, BEC_ZONE, BEC_SBZ, BEC_VAR,
+                                   FIZ, TFL, OWNER, SCHEDULE,
+                                   SAMPLE_SITE_NAME)],
+                        by = "CLSTR_ID")
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db, "samples.rds"))
-  saveRDS(plots,
+  cat("    Saved compiled sample information. \n")
+  saveRDS(samplePlotResults$plots,
           file.path(compilationPaths$compilation_db, "plots.rds"))
-  # write.csv(samples, file.path(compilationPaths$compilation_db, "samples.csv"), row.names = FALSE)
+  cat("    Saved compiled plot information. \n")
 
-  rm(clusterplotheader)
-  ### 2.2 load vi_c data
-  ## vi_c contains the trees of: 1) fully measured trees in IPC (trees have dbh, height and call grading)
+  cat(paste(Sys.time(), ": Correct species at tree level.\n", sep = ""))
+  ## the species correct depends on BEC and BECsubzone, hence should be
+  ## done after the bec zone information updated
+  spCorr(BECInfor = samples[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR)],
+         dataSourcePath = compilationPaths$compilation_sa)
+
+  cat(paste(Sys.time(), ": Compile tree-level WSV_VOL and MER_VOL for volume trees.\n", sep = ""))
+  ## The volume trees are in two files: vi_c and vi_i
+  ##
+  ## the vi_c contains the trees of: 1) fully measured trees in IPC (trees have dbh, height and call grading)
   ##                             2) enhanced trees in auxi plots (trees have dbh, height and call grading)
   ##                             3) H-enhanced trees in auxi plots (trees have dbh, height)
   ##                             4) B-sample trees in fixed area lidar projects (trees have dbh, height)
+  ## the vi_i contains trees in auxi plots without height information,
+  ##
+  samples <- merge(samplePlotResults$plots,
+                   samples,
+                   by = "CLSTR_ID",
+                   all.x = TRUE)
+  tree_ms1 <- vicPrep(compilationType = compilationType,
+                      data.table::copy(samples),
+                      compilationPaths$compilation_sa,
+                      walkThru)
+  tree_nonHT <- viiPrep(compilationType = compilationType,
+                        clusterplotHeader = data.table::copy(samples),
+                        dataSourcePath = compilationPaths$compilation_sa)
 
-  # equation  <- "KBEC"
-  # walkThru <-  TRUE
-  # logMinLength <-  0.1
-  # stumpHeight <-  0.3
-  # breastHeight <-  1.3
-  # UTOPDIB <-  10
-  # utilLevel <-  4
-  # weirdUtil = "No"
-
-  # samples <- readRDS("D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_db/samples.rds")
-  # compilationPaths <- list()
-  # compilationPaths$compilation_sa <- "D:/ISMC project/ISMC compiler/ismc compiler prod env/compilation_sa"
-
-  if(projectType == "nonPSP"){
-    tree_ms1 <- VRIInit_measuredTree(data.table::copy(samples),
-                                     compilationPaths$compilation_sa,
-                                     walkThru)
-  } else {
-    tree_ms1 <- PSPInit_measuredTree(data.table::copy(samples),
-                                     compilationPaths$compilation_sa)
-  }
-  ### 2.3 load vi_d data
   ## vi_d contains call grading data for fully measured trees and enhanced trees
-  if(projectType == "nonPSP"){
-
-    vi_d <- VRIInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SPECIES_ORG, SP0)],
-                               dataSourcePath = compilationPaths$compilation_sa)
-  } else {
-    vi_d <- PSPInit_lossFactor(fullMeasuredTrees = tree_ms1[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SPECIES_ORG, SP0)],
-                               dataSourcePath = compilationPaths$compilation_sa)
-  }
-  vi_d_temp <- readRDS(file.path(compilationPaths$compilation_sa, "vi_d.rds"))
-  vi_d_temp[,':='(SPECIES = NULL,
-                  SP0 = NULL)]
-  # errorhow
-  vi_d_temp <- merge(vi_d_temp,
-                     vi_d[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES)],
-                     by = c("CLSTR_ID", "PLOT", "TREE_NO"))
-  vi_d_temp[, c(paste0("T_SIGN", 1:10),
-                paste0("F_SIGN", 1:10),
-                paste0("OLD_AGN", LETTERS[1:8])) := NULL]
-  setnames(vi_d_temp, "STEM", "STEM_MAPPED_IND")
-  saveRDS(vi_d_temp,
+  tree_callGrading <- vidPrep(dataSourcePath = compilationPaths$compilation_sa)
+  saveRDS(tree_callGrading$lossfactors_full,
           file.path(compilationPaths$compilation_db, "compiled_vi_d.rds"))
-  rm(vi_d_temp)
-
-  ### 2.4 load vi_i data, the trees without height information
-  if(projectType == "nonPSP"){
-    ## vi_i has trees in auxi plots without height information (mostly), however, some of these trees are also in vi_c
-
-    tree_ax1 <- VRIInit_auxTree(data.table::copy(samples),
-                                compilationPaths$compilation_sa)
-
-    tree_ax1 <- merge(tree_ax1, unique(lookup_species()[,.(SPECIES, SP0)], by = "SPECIES"),
-                      by = "SPECIES")
-  } else {
-    tree_nonHT <- PSPInit_nonHTTree(data.table::copy(samples),
-                                    compilationPaths$compilation_sa)
-
-    tree_nonHT <- merge(tree_nonHT, unique(lookup_species()[,.(SPECIES, SP0)], by = "SPECIES"),
-                        by = "SPECIES")
-    tree_ms1[BROKEN_TOP_IND != "Y",
-             MEAS_INTENSE := "H-ENHANCED"] # for the non-broken top trees, tree height is tree length
-    tree_ms1[BROKEN_TOP_IND == "Y",
-             MEAS_INTENSE := "NON-ENHANCED"] # for the broken top trees,
-    tree_nonHT[, MEAS_INTENSE := "NON-ENHANCED"]
-    tree_all <- rbindlist(list(tree_ms1, tree_nonHT),
-                          fill = TRUE)
-    tree_all <- merge(tree_all,
-                      unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER,
-                                        VISIT_NUMBER,
-                                        MEAS_DT,
-                                        BEC_ZONE,
-                                        BEC_SBZ)],
-                             by = "CLSTR_ID"),
-                      by = "CLSTR_ID",
-                      all.x = TRUE)
-    tree_all <- merge(tree_all, vi_d[,.(CLSTR_ID, TREE_NO, full = TRUE)],
-                      by = c("CLSTR_ID", "TREE_NO"),
-                      all.x = TRUE)
-    tree_all[MEAS_INTENSE == "NON-ENHANCED" & full == TRUE]
-    tree_all[MEAS_INTENSE == "H-ENHANCED" & full == TRUE,
-             MEAS_INTENSE := "FULL"]
-    HTEstimateMethod <-  "bestMEM"
-    if(HTEstimateMethod == "bestMEM"){
-      height_dbh_coeff <- read.csv(file.path(compilationPaths$compilation_coeff,
-                                             "best_height_models.csv")) %>%
-        data.table
-    }
-
-    ## fit height for nonHT trees
-    nonHtrees <- pspHT(treeData = tree_all[MEAS_INTENSE == "NON-ENHANCED",],
-                       method = HTEstimateMethod,
-                       coeffs = height_dbh_coeff)
-
-    tree_ms1 <- rbindlist(list(nonHtrees, tree_all[MEAS_INTENSE != "NON-ENHANCED",]),
-                          fill = TRUE)
-    tree_ms1[is.na(HEIGHT_SOURCE),
-             HEIGHT_SOURCE := "Measured"]
-    rm(tree_all, nonHtrees, tree_nonHT)
-  }
-  ### 2.5 load vi_h data
-  ## vi_h data is the site age trees
-  if(projectType == "nonPSP"){
-
-    tree_ah1 <- VRIInit_siteTree(data.table::copy(samples),
-                                 compilationPaths$compilation_sa)
-  } else {
-    tree_ah1 <- PSPInit_siteTree(data.table::copy(samples),
-                                 compilationPaths$compilation_sa)
-  }
-
-
-  ### 3. vi_c compilation
-  cat(paste(Sys.time(), ": Compile full/enhanced and h-enhanced volume trees.\n", sep = ""))
-  if(projectType == "nonPSP"){
-    tree_ms1[LOG_G_1 == "*",
-             MEAS_INTENSE := "H-ENHANCED"]
-    ## B sample trees are H-enhnced trees
-    tree_ms1[substr(CLSTR_ID, 9, 9) == "B",
-             MEAS_INTENSE := "H-ENHANCED"]
-    tree_ms1[is.na(MEAS_INTENSE) & PLOT == "I",
-             MEAS_INTENSE := "FULL"]
-    tree_ms1[is.na(MEAS_INTENSE),
-             MEAS_INTENSE := "ENHANCED"]
-    ## for the full/enhanced trees, if the length of first log is missing, assign
-    ## them with tree height
-    tree_ms1[MEAS_INTENSE %in% c("FULL", "ENHANCED") & LOG_L_1 %in% c(NA, 0),
-             LOG_L_1 := HEIGHT]
-    ## for the zero tree height trees, force them as non-enhanced trees, which means
-    ## they only have DBH information
-    tree_ms1[HEIGHT %in% c(NA, 0), MEAS_INTENSE := "NON-ENHANCED"]
-    nonenhancedtreedata <- tree_ms1[MEAS_INTENSE == "NON-ENHANCED",]
-    voltrees <- data.table::copy(tree_ms1)[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),]
-    voltrees <- merge(voltrees, unique(samples[,.(CLSTR_ID, FIZ, BEC_ZONE, BEC_SBZ, BEC_VAR)],
-                                       by = "CLSTR_ID"),
-                      by = "CLSTR_ID",
-                      all.x = TRUE)
-
-    voltrees[is.na(SP0), ':='(SPECIES = "X", SP0 = "F")]
+  tree_callGrading <- tree_callGrading$lossfactors_simp
+  # assign measurement intensity
+  alltrees <- assignMeasInt(compilationType = compilationType,
+                            vic = tree_ms1,
+                            vii = tree_nonHT,
+                            vid = tree_callGrading)
+  # treat broken top trees
+  fullDimTrees <- alltrees$fullDimTrees
+  HTEstimateMethod <-  "bestMEM"
+  if(HTEstimateMethod == "bestMEM"){
     best_height_models <- read.csv(file.path(compilationPaths$compilation_coeff,
-                                             "best_height_models.csv"),
-                                   stringsAsFactors = FALSE) %>%
+                                             "best_height_models.csv")) %>%
       data.table
-    tree_ms6 <- VRIVolTree(treeData = data.table::copy(voltrees),
-                           equation = equation,
-                           logMinLength = logMinLength,
-                           stumpHeight = stumpHeight,
-                           breastHeight = breastHeight,
-                           UTOPDIB = UTOPDIB,
-                           bestHeightModels = best_height_models,
-                           HTBTOPModel = "height")
-    tree_ms6 <- rbindlist(list(tree_ms6, nonenhancedtreedata), fill = TRUE)
-    rm(tree_ms1, voltrees, nonenhancedtreedata)
+    ## as suggested by Rene, as the quality of projected height is bad for PSPs,
+    ## even though we have projected height for broken top trees,
+    ## we should not use it
+    if(compilationType == "PSP"){
+      fullDimTrees[, HT_PROJ := NA] ## force projected height as NA for PSP
+    }
+    # for full dim trees, if field projected height is available,
+    ## use this as HT_TOTAL
+    fullDimTrees[BROKEN_TOP_IND == "Y" &
+                   !is.na(HT_PROJ),
+                 ':='(HT_TOTAL = round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1),
+                      HT_TOTAL_SOURCE = "Field projected")]
+    # this is the best height-dbh model in the mixed effect model forms
+    fullDimTrees[BROKEN_TOP_IND == "Y" &
+                   is.na(HT_PROJ),
+                 ':='(HT_TOTAL = round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+                                                                    subzone = BEC_SBZ,
+                                                                    species = SPECIES,
+                                                                    DBH = DBH,
+                                                                    heightModels = best_height_models)),
+                      HT_TOTAL_SOURCE = "Estimated based on DBH")]
+    fullDimTrees[BROKEN_TOP_IND == "Y" & HT_BTOP %==% 1.3, HT_BTOP := 1.4]
+    fullDimTrees[BROKEN_TOP_IND == "Y" & (HT_TOTAL < HEIGHT | is.na(HT_TOTAL)),
+                 HT_TOTAL := HEIGHT]
   } else {
-    tree_ms6 <- PSPVolTree(treeData = data.table::copy(tree_ms1),
-                           equation = equation,
-                           logMinLength = logMinLength,
-                           stumpHeight = stumpHeight,
-                           breastHeight = breastHeight,
-                           UTOPDIB = UTOPDIB,
-                           HTEstimateMethod = HTEstimateMethod,
-                           htDBHCoeff = height_dbh_coeff)
+    # to allow using SAS routine to calculate Height based on DBH
+  }
+  fullDimTrees[is.na(HT_TOTAL),
+               ':='(HT_TOTAL = HEIGHT,
+                    HT_TOTAL_SOURCE = "Field measured")]
+
+  # treat nonHT trees
+  ## only PSP needs to calculate height for the volume calculation
+  ## while nonPSP is used regression method for whole stem volumen estimate based on BA
+  if(compilationType == "PSP"){
+    nonHTTrees <- alltrees$nonHTTrees
+    if(HTEstimateMethod == "bestMEM"){
+      # this is the best height-dbh model in the mixed effect model forms
+      nonHTTrees[,
+                 ':='(HT_TOTAL = round(heightEstimate_byHeightModel(beczone = BEC_ZONE,
+                                                                    subzone = BEC_SBZ,
+                                                                    species = SPECIES,
+                                                                    DBH = DBH,
+                                                                    heightModels = best_height_models)),
+                      HT_TOTAL_SOURCE = "Estimated based on DBH")]
+    } else {
+      # to allow using SAS routine to calculate Height based on DBH
+    }
+    voltrees <- rbindlist(list(fullDimTrees, nonHTTrees),
+                          fill = TRUE)
+  } else {
+    voltrees <- fullDimTrees
+  }
+  # calculate whole stem volume and merchantable volume
+  tree_ms6 <- grossVolCal_kozak(compilationType = compilationType,
+                                fullDimTreeData = data.table::copy(voltrees),
+                                logMinLength = logMinLength,
+                                stumpHeight = stumpHeight,
+                                breastHeight = breastHeight,
+                                UTOPDIB = UTOPDIB)
+  tree_ms6[, WSV_VOL_SRCE := "Calculated"]
+  if(compilationType == "nonPSP"){
+    tree_ms6 <- rbindlist(list(tree_ms6, alltrees$nonHTTrees), fill = TRUE)
   }
 
-
-  ######################
-  ###################### start the site age compilation
-  ### 4. vi_h site age compilation
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
-  tree_ah1 <- FAIBBase::merge_dupUpdate(tree_ah1,
-                                        unique(samples[,.(CLSTR_ID, PLOT,
-                                                          FIZ = as.character(FIZ),
-                                                          BEC_ZONE)],
-                                               by = c("CLSTR_ID", "PLOT")),
-                                        by = c("CLSTR_ID", "PLOT"),
-                                        all.x = TRUE)
+  ## vi_h data is the site age trees
+  tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
+  tree_ah1 <- merge(tree_ah1,
+                    unique(samples[,.(CLSTR_ID,
+                                      FIZ = as.character(FIZ))],
+                           by = c("CLSTR_ID")),
+                    by = c("CLSTR_ID"),
+                    all.x = TRUE)
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
-  tree_ah2[, CR_CL := NULL]
   tree_ah2_temp <- data.table::copy(tree_ah2)
   tree_ah2_temp[,c("FIZ", "BEC_ZONE", "SP0", "AGE_CORR",
                    "TOTAL_AG", "PHYS_AGE", "TREE_LEN",
                    "SI_SP", "BARK_PCT",
-                   "AGE_SOURCE", "AGE_ADJUST_TO_BH") := NULL]
+                   "AGE_SOURCE", "AGE_ADJUST_TO_BH",
+                   "CR_CL") := NULL]
   saveRDS(tree_ah2_temp, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
   rm(tree_ah2_temp)
-  # write.csv(tree_ah2, file.path(compilationPaths$compilation_db, "compiled_vi_h.csv"), row.names = FALSE)
-
   siteAgeSummaries <- siteAgeSummary(tree_ah2)
   cl_ah <- siteAgeSummaries$cl_ah
   saveRDS(cl_ah, file.path(compilationPaths$compilation_db,
                            "Smries_siteAge_byCL.rds"))
-  # write.csv(cl_ah, file.path(compilationPaths$compilation_db,
-  #                          "Smries_siteAge_byCL.csv"), row.names = FALSE)
   saveRDS(siteAgeSummaries$spc_ah,
           file.path(compilationPaths$compilation_db, "Smries_siteAge_byCLSP.rds"))
-  # write.csv(siteAgeSummaries$spc_ah,
-  #         file.path(compilationPaths$compilation_db, "Smries_siteAge_byCLSP.csv"), row.names = FALSE)
   rm(siteAgeSummaries, tree_ah1, tree_ah2)
 
   ######################
   ######################
   ### 5. start the decay, waste and breakage calculation for full/enhanced trees in vi_c
   cat(paste(Sys.time(), ": Compile DWB.\n", sep = ""))
-
   siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
                                             unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
                                                    by = "CLSTR_ID"),
                                             by = "CLSTR_ID",
                                             all.x = TRUE)
   tree_ms6 <- FAIBBase::merge_dupUpdate(tree_ms6,
-                                        unique(samples[,.(CLSTR_ID, PROJ_ID, BEC_ZONE, BEC_SBZ, BEC_VAR,
-                                                          TSA, TYPE_CD)],
+                                        unique(samples[,.(CLSTR_ID, PROJ_ID,
+                                                          TSA)],
                                                by = "CLSTR_ID"),
                                         by = "CLSTR_ID",
                                         all.x = TRUE)
-
-  if(projectType == "nonPSP"){
-
-    tree_ms7 <- DWBCompiler(treeMS = tree_ms6[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
+  if(compilationType == "nonPSP"){
+    tree_ms7 <- DWBCompiler(compilationType = compilationType,
+                            treeMS = tree_ms6[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
                             siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
-                            treeLossFactors = vi_d, equation = "KBEC")
-
+                            treeLossFactors = tree_callGrading)
+    tree_ms7[, NET_FCT_METHOD := "JF_reg"]
     tree_ms7 <- rbindlist(list(tree_ms7,
                                tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
                           fill = TRUE)
   } else {
-    tree_ms7 <- DWBCompiler_PSP(treeMS = tree_ms6,
-                                siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
-                                treeLossFactors = vi_d,
-                                equation = "KBEC")
+    tree_ms7 <- DWBCompiler(compilationType = compilationType,
+                            treeMS = tree_ms6,
+                            siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
+                            treeLossFactors = tree_callGrading)
     tree_ms7[,':='(TSA = NULL,
-                   BEC_VAR = NULL,
-                   TYPE_CD = NULL)]
+                   TYPE_CD = NULL,
+                   NET_FCT_METHOD = "JF_reg")]
   }
+
   vi_c_sa <- readRDS(file.path(compilationPaths$compilation_sa,
                                "vi_c.rds"))
   tree_ms7[, ADJ_ID := NULL]
@@ -511,58 +379,58 @@ ISMCCompiler_new <- function(projectType,
                                HT_BRCH)],
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                     all.x = TRUE)
-  if(projectType == "PSP"){
+  tree_ms7[DIB_STUMP < DIB_BH,
+           DIB_STUMP := DIB_BH] # see rene's comment on this as per communication on April 19, 2022
+  tree_ms7[(HEIGHT - HT_BRCH) < 0,
+           HT_BRCH := NA]
+  if(compilationType == "PSP"){
     prep_smy <- data.table::copy(tree_ms7)
-  }
-  tree_ms7_temp <- data.table::copy(tree_ms7)
-  for (i in 1:9) {
+  } else { # for nonPSP, save compiled vi_c
+
+    tree_ms7_temp <- data.table::copy(tree_ms7)
+    for (i in 1:9) {
+      tree_ms7_temp[BROKEN_TOP_IND == "Y" &
+                      LOG_BTOP == i,
+                    c(paste0("LOG_L_", (i+1):9),
+                      paste0("LOG_D_", (i+1):9)) := NA]
+    }
+    rm(i)
     tree_ms7_temp[BROKEN_TOP_IND == "Y" &
-                    LOG_BTOP == i,
-                  c(paste0("LOG_L_", (i+1):9),
-                    paste0("LOG_D_", (i+1):9)) := NA]
+                    !is.na(LOG_BTOP),
+                  NO_LOGS := LOG_BTOP]
+    tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
+                      "DIAM_BTP", "FIZ",
+                      "BEC", "BEC_ZONE", "BEC_SBZ", "BEC_VAR",
+                      "BTOP",
+                      "HT_BTOP", "LOGADJUST", "LOG_L_0",
+                      "HT_UTOP", "VOL_PSP_MERCH", "VOL_TOP",
+                      "VOL_BKT", "VOL_NET", "VOL_NETM",
+                      "VAL_NET", "VAL_MER",
+                      paste0("LOG_C_", 1:9),
+                      "LOG_V_0", "LOG_VM_0",
+                      "PROJ_ID", "AGE_DWB", "AGE_FLG",
+                      "PATH_IND", "RISK_GRP",
+                      "VOL_W2", "VOL_NTW2", "VOL_B", "VOL_D",
+                      "VOL_DW", "LOG_BTOP",
+                      "VOL_ABOVE_BTOP", "VOL_ABOVE_UTOP",
+                      "VOL_BELOW_BTOP", "VOL_BELOW_UTOP",
+                      "LOG_UTOP",
+                      "LOG_L_10", "LOG_D_10",
+                      "MEASUREMENT_ANOMALY_CODE") := NULL]
+    saveRDS(tree_ms7_temp, file.path(compilationPaths$compilation_db,
+                                     "compiled_vi_c.rds"))
+    rm(tree_ms7_temp)
   }
-  rm(i)
-  tree_ms7_temp[BROKEN_TOP_IND == "Y" &
-                  !is.na(LOG_BTOP),
-                NO_LOGS := LOG_BTOP]
 
-  tree_ms7_temp[, c("SPECIES_ORG", "SP0", "HT_PROJ",
-                    "DIAM_BTP", "FIZ", "VOL_MULT",
-                    "BEC", "BEC_ZONE", "BEC_SBZ", "BEC_VAR",
-                    "BTOP", "BTOP_ESTIMATE_TYPE",
-                    "HT_BTOP", "LOGADJUST", "LOG_L_0",
-                    "HT_UTOP", "VOL_PSP_MERCH", "VOL_TOP",
-                    "VOL_BKT", "VOL_NET", "VOL_NETM",
-                    "VAL_NET", "VAL_MER",
-                    paste0("LOG_C_", 1:9),
-                    "LOG_V_0", "LOG_VM_0",
-                    "PROJ_ID", "AGE_DWB", "AGE_FLG",
-                    "PATH_IND", "RISK_GRP", "ADJ_ID",
-                    "VOL_W2", "VOL_NTW2", "VOL_B", "VOL_D",
-                    "VOL_DW", "LOG_BTOP",
-                    "VOL_ABOVE_BTOP", "VOL_ABOVE_UTOP",
-                    "VOL_BELOW_BTOP", "VOL_BELOW_UTOP",
-                    "DIB_BTOP", "LOG_UTOP",
-                    "LOG_L_10", "LOG_D_10") := NULL]
-  tree_ms7_temp[DIB_STUMP < DIB_BH,
-                DIB_STUMP := DIB_BH] # see rene's comment on this as per communication on April 19, 2022
-  tree_ms7_temp[(HEIGHT - HT_BRCH) < 0,
-                HT_BRCH := NA]
 
-  saveRDS(tree_ms7_temp, file.path(compilationPaths$compilation_db,
-                                   "compiled_vi_c.rds"))
-  rm(tree_ms7_temp)
-  # write.csv(tree_ms7, file.path(compilationPaths$compilation_db,
-  #                             "compiled_vi_c.csv"), row.names = FALSE)
-  rm(vi_d, siteAgeTable, tree_ms6)
+  rm(siteAgeTable, tree_ms6)
 
   #######
   ### 6. start to calculate tree volume components for H-enhanced and non-enhanced trees in auxi plots
   ### this is specific to nonPSP compilation
-  if(projectType == "nonPSP"){
-    cat(paste(Sys.time(), ": Compile NON- and H-enhanced trees.\n", sep = ""))
+  if(compilationType == "nonPSP"){
+    cat(paste(Sys.time(), ": Compile NON-/H-enhanced trees for nonPSP using regression and ratio approach.\n", sep = ""))
     # derive ratio and regression routine
-
     if(needNewCoffs){
       cat(paste0("    Start to derive coefficients and ratios for year ", compilationYear, "\n"))
       alltreelist <- mergeAllVolTrees(treeMS = data.table::copy(tree_ms7),
@@ -662,45 +530,43 @@ ISMCCompiler_new <- function(projectType,
 
     randomcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
                                       paste0("randomCoefs", compilationYear, ".rds")))
+    randomcoeffs[, SAMP_POINT := as.numeric(SAMP_POINT)]
     ratios <- readRDS(file.path(compilationPaths$compilation_coeff,
                                 paste0("ratios", compilationYear, ".rds")))
-    auxtreecompilation <- auxiTreeCompiler(fullMeasuredTrees = data.table::copy(tree_ms7),
-                                           auxiTrees = data.table::copy(tree_ax1),
-                                           clusterPlotHeader = samples,
-                                           fixedCoeff = fixedcoeffs,
-                                           randomCoeff = randomcoeffs,
-                                           ratios = ratios)
+    ## tree with H-enhanced and non-enhanced
+    auxTrees_compiled <- treeVolEst_RegRatio(tree_ms7[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),],
+                                             fixedcoeffs,
+                                             randomcoeffs,
+                                             ratios)
     useRatioCurve <- TRUE
     if(useRatioCurve){
       merRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
                                         "mer_ratio_curve.rds"))
       ntwbRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
                                          "ntwb_ratio_curve.rds"))
-      HnonenhancedTrees <- merge(auxtreecompilation$HnonenhancedTrees,
+      auxTrees_compiled <- merge(auxTrees_compiled,
                                  merRatioCoef[,.(BEC_ZONE, SP0, LV_D, a, b, c)],
                                  by = c("BEC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
-      HnonenhancedTrees[, MER_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-      HnonenhancedTrees[MEAS_INTENSE == "NON-ENHANCED", VOL_MER := MER_RATIO * VOL_WSV]
-      HnonenhancedTrees[, c("a", "b", "c", "MER_RATIO") := NULL]
-
-      HnonenhancedTrees <- merge(HnonenhancedTrees,
+      auxTrees_compiled[, MER_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
+      auxTrees_compiled[MEAS_INTENSE == "NON-ENHANCED", VOL_MER := MER_RATIO * VOL_WSV]
+      auxTrees_compiled[, c("a", "b", "c", "MER_RATIO") := NULL]
+      auxTrees_compiled <- merge(auxTrees_compiled,
                                  ntwbRatioCoef[,.(BEC_ZONE, SP0, LV_D, a, b, c)],
                                  by = c("BEC_ZONE", "SP0", "LV_D"),
                                  all.x = TRUE)
 
-      HnonenhancedTrees[, NTWB_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-      HnonenhancedTrees[!is.na(a), VOL_NTWB := NTWB_RATIO * VOL_WSV]
-      HnonenhancedTrees[, c("a", "b", "c", "NTWB_RATIO") := NULL]
-      prep_smy <- rbindlist(list(auxtreecompilation$fullenhancedtrees,
-                                 HnonenhancedTrees),
+      auxTrees_compiled[, NTWB_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
+      auxTrees_compiled[!is.na(a), VOL_NTWB := NTWB_RATIO * VOL_WSV]
+      auxTrees_compiled[, c("a", "b", "c", "NTWB_RATIO") := NULL]
+      prep_smy <- rbindlist(list(tree_ms7[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
+                                 auxTrees_compiled),
                             fill = TRUE)
     } else {
-      prep_smy <- rbindlist(list(auxtreecompilation$fullenhancedtrees,
-                                 auxtreecompilation$HnonenhancedTrees),
+      prep_smy <- rbindlist(list(tree_ms7[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
+                                 auxTrees_compiled),
                             fill = TRUE)
     }
-
     prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),
              WSV_VOL_SRCE := "Calculated"]
     prep_smy[!is.na(VOL_WSV) &
@@ -708,8 +574,7 @@ ISMCCompiler_new <- function(projectType,
              WSV_VOL_SRCE := "Regression"]
     prep_smy[is.na(VOL_WSV),
              WSV_VOL_SRCE := "Not applicable"]
-    rm(auxtreecompilation)
-
+    rm(auxTrees_compiled)
   }
 
   prep_smy <- merge(prep_smy, unique(lookup_species()[,.(SPECIES, SP_TYPE)], by = "SPECIES"),
@@ -740,28 +605,39 @@ ISMCCompiler_new <- function(projectType,
            ':='(VOL_MER = 0,
                 VOL_NTWB = 0,
                 VOL_DWB = 0)]
+  prep_smy[is.na(S_F), S_F := "S"]
   ## end of process
 
+  if(compilationType == "nonPSP"){
 
-  prep_smy_temp <- data.table::copy(prep_smy)
-  prep_smy_temp[, c("LOG_G_1", paste0("VOL_", c("NET", "NETM", "NTW2", "D", "DW")),
-                    "VAL_MER", "BEC_ZONE", "SAMP_POINT") := NULL]
+    prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
+                                 S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
+                                 PHF_TREE, DBH, TREE_WT, VOL_WSV, VOL_MER, VOL_NTWB,
+                                 VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE)]
+  } else {
+    prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
+                                 S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
+                                 PHF_TREE, DBH, TREE_WT, VOL_WSV, VOL_MER, VOL_NTWB,
+                                 VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
+                                 CR_CL, DIB_BH, DIB_STUMP, DIB_UTOP, HT_BH, HT_BRCH,
+                                 HT_STUMP, PCT_BRK, PCT_DCY, PCT_WST, RESIDUAL, SECTOR,
+                                 VOL_STUMP)]
+  }
+
   saveRDS(prep_smy_temp[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
   rm(prep_smy_temp)
-  # write.csv(prep_smy[order(CLSTR_ID, PLOT, TREE_NO),],
-  #         file.path(compilationPaths$compilation_db, "treelist.csv"), row.names = FALSE)
 
 
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
-  cat(paste(Sys.time(), ": Summarize volume and age.\n", sep = ""))
+  cat(paste(Sys.time(), ": Summarize volume at sample level.\n", sep = ""))
   nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
     data.table
   vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
                                clusterPlotHeader = samples,
                                utilLevel = utilLevel,
                                weirdUtil = weirdUtil,
-                               equation = equation,
+                               equation = "KBEC",
                                nvafRatio = nvafratio)
   vrisummaries$vol_bycs[,':='(VHA_DWB_LF = NULL,
                               VHA_DWB_DS = NULL,
@@ -774,22 +650,15 @@ ISMCCompiler_new <- function(projectType,
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
   saveRDS(vrisummaries$compositionsmry_byc, file.path(compilationPaths$compilation_db, "Smries_speciesComposition_byCL.rds"))
 
-  # write.csv(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.csv"), row.names = FALSE)
-  # write.csv(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.csv"), row.names = FALSE)
-  # write.csv(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.csv"), row.names = FALSE)
-  # write.csv(vrisummaries$compositionsmry_byc, file.path(compilationPaths$compilation_db, "Smries_speciesComposition_byCL.csv"), row.names = FALSE)
-
 
   ## 8. small tree and stump compilation
   ## stump data
   cat(paste(Sys.time(), ": Small tree and stump compilation.\n", sep = ""))
   vi_e <- readRDS(file.path(compilationPaths$compilation_sa, "vi_e.rds")) %>% data.table
-  names(vi_e) <- toupper(names(vi_e))
   vi_e <- vi_e[CLSTR_ID %in% unique(samples$CLSTR_ID),]
 
   ## small tree data
   vi_f <- readRDS(file.path(compilationPaths$compilation_sa, "vi_f.rds")) %>% data.table
-  names(vi_f) <- toupper(names(vi_f))
   vi_f[, obslength := length(TOTAL2), by = c("CLSTR_ID", "PLOT", "SPECIES")]
   vi_f <- unique(vi_f, by = c("CLSTR_ID", "PLOT", "SPECIES"))
   vi_f[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
@@ -801,14 +670,8 @@ ISMCCompiler_new <- function(projectType,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCLSP.rds"))
-  # write.csv(smalltreecompile$clusterSummaries,
-  #         file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.csv"), row.names = FALSE)
-  # write.csv(smalltreecompile$clusterSpeciesSummaries,
-  # file.path(compilationPaths$compilation_db, "Smries_smallTree_byCLSP.csv"), row.names = FALSE)
   rm(smalltreecompile)
   vi_g <- readRDS(file.path(compilationPaths$compilation_sa, "vi_g.rds")) %>% data.table
-  names(vi_g) <- toupper(names(vi_g))
-
   vi_g[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_g <- vi_g[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
 
@@ -819,21 +682,13 @@ ISMCCompiler_new <- function(projectType,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCL.rds"))
   saveRDS(stumpCompile$stmp_cs,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
-  # write.csv(stumpCompile$stmp_c,
-  #         file.path(compilationPaths$compilation_db, "Smries_stump_byCL.csv"), row.names = FALSE)
-  # write.csv(stumpCompile$stmp_cs,
-  #         file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.csv"), row.names = FALSE)
   #############################
 
   cat(paste(Sys.time(), ": Convert RDS to xlsx.\n", sep = ""))
-  if(recompile == TRUE){
-    allfolders <- c(compilationPaths$compilation_db,
-                    compilationPaths$compilation_sa)
-  } else {
-    allfolders <- c(compilationPaths$compilation_db,
-                    compilationPaths$compilation_sa,
-                    compilationPaths$raw_from_oracle)
-  }
+
+  allfolders <- c(compilationPaths$compilation_db,
+                  compilationPaths$compilation_sa)
+
   for (indifolder in allfolders){
     allfiles_indifolder <- dir(pattern = ".rds", indifolder)
     allfiles_indifolder <- gsub(".rds", "", allfiles_indifolder)
@@ -851,7 +706,7 @@ ISMCCompiler_new <- function(projectType,
                                 compilationPaths$compilation_last)
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
                                         "general_report.Rmd"),
-                      params = list(projectType = projectType,
+                      params = list(projectType = compilationType,
                                     crtPath = compilationPaths$compilation_db,
                                     lastPath = compilationPaths$compilation_last,
                                     mapPath = compilationPaths$compilation_map,
@@ -888,10 +743,9 @@ ISMCCompiler_new <- function(projectType,
   } else {
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
     cat(paste(Sys.time(), ": All recompiled outputs saved into Archive_", archiveDate, "_recomp", gsub("-", "", Sys.Date()), ".\n", sep = ""))
-
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
                                         "general_report.Rmd"),
-                      params = list(projectType = projectType,
+                      params = list(projectType = compilationType,
                                     crtPath = compilationPaths$compilation_db,
                                     lastPath = compilationPaths$compilation_last,
                                     mapPath = compilationPaths$compilation_map,

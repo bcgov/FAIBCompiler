@@ -41,9 +41,6 @@ VRIInit_measuredTree<- function(clusterplotHeader,
     clusterplotHeader[, clusterPlot := paste(CLSTR_ID, PLOT, sep = "_")]
 
     vi_c <- vi_c[clusterPlot %in% unique(clusterplotHeader$clusterPlot), ]
-    setnames(vi_c, paste("LOG", 1:8, "_GRD", sep = ""), paste("LOG_G_", 1:8, sep = ""))
-    setnames(vi_c, paste("LOG", 1:8, "_LEN", sep = ""), paste("LOG_L_", 1:8, sep = ""))
-    setnames(vi_c, paste("LOG", 1:8, "_SND", sep = ""), paste("LOG_S_", 1:8, sep = ""))
 
     vi_c[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
 
@@ -57,7 +54,8 @@ VRIInit_measuredTree<- function(clusterplotHeader,
     vi_c <- FAIBBase::merge_dupUpdate(vi_c,
                                       unique(clusterplotHeader[,.(clusterPlot, SAMP_TYP,
                                                            PLOT_WT, BLOWUP,
-                                                           BEC_ZONE,	BEC_SBZ)],
+                                                           BEC_ZONE, BEC_SBZ, BEC_VAR,
+                                                           TYPE_CD)],
                                              by = "clusterPlot"),
                             by = "clusterPlot", all.x = TRUE)
     # correction of species
@@ -73,9 +71,11 @@ VRIInit_measuredTree<- function(clusterplotHeader,
 
     # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
     # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
-    vi_c[substr(CLSTR_ID, 9, 9) %in% c("F", "M", "Y", "L") & DBH < 9,
+    vi_c[TYPE_CD %in% c("F", "M", "Y", "L") & DBH < 9,
          PHF_TREE := PHF_TREE*4]
-    vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT, TREE_NO,
+    vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT,
+                                                  BEC_ZONE, BEC_SBZ, BEC_VAR,
+                                                  TYPE_CD, TREE_NO,
                                                   SPECIES, SPECIES_ORG,
                                                   LV_D, S_F, NO_LOGS,
                                                   TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,

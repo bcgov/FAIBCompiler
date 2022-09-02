@@ -1,9 +1,11 @@
-#' Compile decay, waste and breakage for standard tables-VRI specific
+#' Compile decay, waste and breakage for standard tables
 #'
 #'
 #' @description This function compiles decay, waste and breakage for standard tables in VRI compiler. The function
 #'              is equivalent to \code{dwb_vri_2017.sas}.
-#'
+#' @param compilationType character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+#'                               is consistent with original PSP compiler, otherwise, it
+#'                               is consistent with VRI compiler.
 #' @param treeMS data.table, Tree-level data that has been compiled whole stem volume and gross merchantable volume for full and enhanced trees.
 #'
 #' @param siteAge data.table, Cluster-level summaries of age and height. This table is an output from
@@ -26,48 +28,36 @@
 #' @author Yong Luo
 #'
 setGeneric("DWBCompiler",
-           function(treeMS, siteAge, treeLossFactors, equation) {
+           function(compilationType, treeMS, siteAge, treeLossFactors, equation) {
              standardGeneric("DWBCompiler")
            })
 
 #' @rdname DWBCompiler
 setMethod(
   "DWBCompiler",
-  signature = c(treeMS = "data.table",
+  signature = c(compilationType = "character",
+                treeMS = "data.table",
                 siteAge = "data.table",
                 treeLossFactors = "data.table",
                 equation = "character"),
-  definition = function(treeMS, siteAge, treeLossFactors, equation){
-    # treeMS <- data.table::copy(tree_ms6)
-    # siteAge <- data.table::copy(siteAgeTable)
-    # treeLossFactors <- data.table::copy(treelossfactors)
-    loss_fct <- FAIBBase::merge_dupUpdate(treeMS[, uniobs := 1:nrow(treeMS)],
-                                treeLossFactors,
-                                by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-                                all.x = TRUE)
+  definition = function(compilationType, treeMS, siteAge, treeLossFactors, equation){
+    loss_fct <- merge(treeMS[, uniobs := 1:nrow(treeMS)],
+                      treeLossFactors,
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                      all.x = TRUE)
     rm(treeLossFactors)
 
-    ## REMOVE THE OBSERVATIONS THAT LOSS INDICATORS WITH NO MATCHING TREES
-    ##
-    loss_fct[MEAS_INTENSE == "H-ENHANCED",
-             ':='(PATH_IND = as.character(NA))]
-    loss_fct[substr(CLSTR_ID, 9, 9) == "B",
-             ':='(MEAS_INTENSE = "B-SAMPLE", # trees are measured dbh and height, without net factoring
-                                    PATH_IND = as.character(NA))]
-    loss_fct_output <- loss_fct[MEAS_INTENSE %in% c("H-ENHANCED", "B-SAMPLE"),.(uniobs, PCT_DCY = as.numeric(NA),
-                                                               PCT_WST = as.numeric(NA),
-                                                               PCT_BRK = as.numeric(NA),
-                                                               AGE_DWB = as.numeric(NA),
-                                                               AGE_FLG = as.character(NA),
-                                                               PATH_IND,
-                                                               RISK_GRP = as.numeric(NA),
-                                                               ADJ_ID = as.character(NA))]
-    loss_fct <- loss_fct[MEAS_INTENSE %in% c("FULL", "ENHANCED"),]
-
-    loss_fct$PATH_IND <- pathIndicatorGenerator(lossIndicatorMatix = loss_fct[,paste0("LOSS", 1:8, "_IN"), with = FALSE],
-                                                lossIndicatorLocMatrix = loss_fct[,paste0("LOC", 1:8, "_FRO"), with = FALSE],
-                                                merchantableHeight = loss_fct$H_MERCH,
-                                                compiler = "VRI")
+    if(compilationType == "PSP"){
+      set(loss_fct, , c(paste0("LOC", 6:8, "_FRO"),
+                        paste0("LOSS", 6:8, "_IN")), NA)
+      loss_fct$PATH_IND <- pathIndicatorGenerator(lossIndicatorMatix = loss_fct[,paste0("LOSS", 1:8, "_IN"), with = FALSE],
+                                                  compiler = "PSP")
+    } else {
+      loss_fct$PATH_IND <- pathIndicatorGenerator(lossIndicatorMatix = loss_fct[,paste0("LOSS", 1:8, "_IN"), with = FALSE],
+                                                  lossIndicatorLocMatrix = loss_fct[,paste0("LOC", 1:8, "_FRO"), with = FALSE],
+                                                  merchantableHeight = loss_fct$H_MERCH,
+                                                  compiler = "VRI")
+    }
     siteAge[, ':='(AGE_DWB = AT_M_TLS,
                    AGE_FLG = "NONE")]
     siteAge[!is.na(AT_M_TLS), AGE_FLG := "TLS"]
@@ -82,122 +72,55 @@ setMethod(
                       by = c("CLSTR_ID"), all.x = TRUE)
     rm(loss_fct, siteAge)
     tree_rsk[, ':='(ADJ_ID = as.character(NA))]
-    if(equation == "FIZ"){
-      tree_rsk[LV_D == "L" & PATH_IND == "00000000", TR_CLASS := "1"]
-      tree_rsk[LV_D == "L" & PATH_IND != "00000000", TR_CLASS := "2"]
-      tree_rsk[LV_D == "D", TR_CLASS := "3"]
-      # call functions in risk_grp macro in orginal codes
-      ## instead of using one function, the following uses several function that inside of risk_grp macro
-      ## select data that is valid for process
-      tree_rsk[,  SP_N := as.numeric(factor(SP0,
-                                            levels = c("F", "C", "H", "B", "S", "Y", "PW",
-                                                       "PL", "PY", "L", "AC", "D", "MB", "E", "AT", "PA"),
-                                            labels = 1:16))]
-      processdata <- tree_rsk[SP_N > 0 & ("A" <= FIZ & FIZ <= "L") &
-                                DBH > 0 & AGE_DWB > 0 & HEIGHT > 0 & nchar(PATH_IND) == 8, ]
-      unprocessdata <- tree_rsk[!(uniObs %in% processdata$uniObs),] # the data that is not able to be
-      # derived a risk group
-      processdata[PSYU_BLK == "", PSYU_BLK := "0"]
-      processdata[, PSYUB := paste(PSYU, PSYU_BLK, sep = "")]
-      # call ageRangeClassifier function, equivalent to age_rng macro
-      processdata[, AGE_RNG := ageRangeClassifier(age = AGE_DWB, species = SP0, FIZ = FIZ)]
-      # call getDWBSeries function, equivalent to dwb_fct.sas macro
-      # get series number from local first baded on species, ageRangeClass and PSYUB
-      processdata[, PSY_SER := getDWBSeries(species = SP0,
-                                            ageRangeClass = AGE_RNG,
-                                            PSYUB = PSYUB,
-                                            source = "local")]
-      processdata[!is.na(PSY_SER), ':='(SERIES = PSY_SER,
-                                        DWB_SRC = "L")]
 
-      ## try series number from zonal for the rest
-      processdata[is.na(SERIES), FIZ_SER := getDWBSeries(species = SP0,
-                                                         ageRangeClass = AGE_RNG,
-                                                         FIZ = FIZ,
-                                                         source = "zonal")]
-      processdata[is.na(SERIES) & !is.na(FIZ_SER), ':='(SERIES = FIZ_SER,
-                                                        DWB_SRC = "Z")]
-
-      ## try reversing zonal method for the rest
-      processdata[is.na(SERIES), FIZ_SER_rev := getDWBSeries(species = SP0,
-                                                             ageRangeClass = AGE_RNG,
-                                                             FIZ = FIZ,
-                                                             source = "reversingZonal")]
-      processdata[is.na(SERIES) & !is.na(FIZ_SER_rev), ':='(SERIES = FIZ_SER_rev,
-                                                            DWB_SRC = "R")]
-      processdata[,c("PSY_SER", "FIZ_SER", "FIZ_SER_rev") := NULL]
-
-      ## assign tab_no
-      processdata[nchar(as.character(SP_N)) == 1, TAB_NO := paste("0", SP_N, SERIES, sep = "")]
-      processdata[nchar(as.character(SP_N)) == 2, TAB_NO := paste(SP_N, SERIES, sep = "")]
-
-      ## assign risk group based on sp0, series, path index and height
-      processdata[, RISK_GRP := riskGroupDeriver(species = SP0,
-                                                 series = SERIES,
-                                                 pathIndex = PATH_IND,
-                                                 height = HEIGHT,
-                                                 method = "FIZ")]
-      processdata[, RG_MAX := as.character(max(as.numeric(RISK_GRP), na.rm = TRUE)),
-                  by = c("SP0", "SERIES")]
-      processdata[TR_CLASS == "3", RISK_GRP := RG_MAX]
-      processdata[, RG_MAX := NULL]
-      processdata[, DBH_CL := DBHClassifier(DBH = DBH)]
-      DWBfactors <- DWBGenerator_FIZ(DBHClass = processdata$DBH_CL,
-                                     tabNumber = processdata$TAB_NO,
-                                     riskGroup = processdata$RISK_GRP)
-      processdata[, ':='(DECAY = DWBfactors$decay,
-                         WASTE = DWBfactors$waste,
-                         BREAK = DWBfactors$breakage)]
-      rm(DWBfactors)
-      set(unprocessdata, , c("PSYUB", "AGE_RNG", "SERIES", "DWB_SRC",
-                             "TAB_NO", "RISK_GRP", "DBH_CL", "DECAY", "WASTE", "BREAK"),
-          NA)
-      tree_rsk <- rbind(processdata, unprocessdata)
-      tree_rsk <- tree_rsk[order(uniObs)]
-      rm(processdata, unprocessdata)
-    } else if (equation == "KBEC"){
-      # certain areas of the province use specialized loss adjustment factors
-      # they are determined by the following code
-      tree_rsk[SP0 %in% c("C", "Y", "S", "H") &
-                 (PROJ_ID == "3432" | TSA == 25),
-               ADJ_ID := "QCI"] ## need space or not will be specified
-      tree_rsk[BEC_ZONE == "ICH" & BEC_SBZ %in% c("wk", "vk") & BEC_VAR == "1",
-               ADJ_ID := "WET"]
-      tree_rsk[(TSA == 7 | PROJ_ID == "0071") & BEC_ZONE == "ICH" & BEC_SBZ %in% c("mv", "mk"),
-               ADJ_ID := "GLD_NW"]
-      tree_rsk[, RISK_GRP := riskGroupDeriver(species = SP0,
-                                              pathIndex = PATH_IND,
-                                              method = equation)]
-      DWBfactors <- DWBGenerator_BEC(DBH = tree_rsk$DBH,
-                                     height = tree_rsk$HEIGHT,
-                                     species = tree_rsk$SP0,
-                                     meanAge = tree_rsk$AGE_DWB,
-                                     BEC = tree_rsk$BEC_ZONE,
-                                     riskGroup = tree_rsk$RISK_GRP,
-                                     adjustID = tree_rsk$ADJ_ID)
-      tree_rsk[, ':='(PCT_DCY = DWBfactors$decay,
-                      PCT_WST = DWBfactors$waste,
-                      PCT_BRK = DWBfactors$breakage)]
-      rm(DWBfactors)
-    }
+    # certain areas of the province use specialized loss adjustment factors
+    # they are determined by the following code
+    tree_rsk[SP0 %in% c("C", "Y", "S", "H") &
+               (PROJ_ID == "3432" | TSA == 25),
+             ADJ_ID := "QCI"] ## need space or not will be specified
+    tree_rsk[BEC_ZONE == "ICH" & BEC_SBZ %in% c("wk", "vk") & BEC_VAR == "1",
+             ADJ_ID := "WET"]
+    tree_rsk[(TSA == 7 | PROJ_ID == "0071") & BEC_ZONE == "ICH" & BEC_SBZ %in% c("mv", "mk"),
+             ADJ_ID := "GLD_NW"]
+    tree_rsk[, RISK_GRP := riskGroupDeriver(species = SP0,
+                                            pathIndex = PATH_IND,
+                                            method = equation)]
+    DWBfactors <- DWBGenerator_BEC(DBH = tree_rsk$DBH,
+                                   height = tree_rsk$HEIGHT,
+                                   species = tree_rsk$SP0,
+                                   meanAge = tree_rsk$AGE_DWB,
+                                   BEC = tree_rsk$BEC_ZONE,
+                                   riskGroup = tree_rsk$RISK_GRP,
+                                   adjustID = tree_rsk$ADJ_ID)
+    tree_rsk[, ':='(PCT_DCY = DWBfactors$decay,
+                    PCT_WST = DWBfactors$waste,
+                    PCT_BRK = DWBfactors$breakage)]
+    rm(DWBfactors)
     tree_rsk[PROJ_ID == "3472" &
-               substr(CLSTR_ID, 9, 9) == "M" &
+               TYPE_CD == "M" &
                (AGE_DWB %<<% 121 | is.na(AGE_DWB)),
              ':='(PCT_BRK = 2, PCT_ADJ = "Y")]
     tree_rsk[PROJ_ID == "3472" &
-               substr(CLSTR_ID, 9, 9) == "M" &
+               TYPE_CD == "M" &
                (AGE_DWB %>=% 121),
              ':='(PCT_BRK = 4, PCT_ADJ = "Y")]
-    tree_rsk <- rbindlist(list(tree_rsk[,.(uniobs, PCT_DCY, PCT_WST, PCT_BRK,
-                                           AGE_DWB, AGE_FLG, PATH_IND, RISK_GRP,
-                                           ADJ_ID)],
-                               loss_fct_output))
+    tree_rsk <- tree_rsk[,.(uniobs, PCT_DCY, PCT_WST, PCT_BRK,
+                            AGE_DWB, AGE_FLG, PATH_IND, RISK_GRP,
+                            ADJ_ID)]
     tree_rsk <- tree_rsk[order(uniobs),]
     tree_rsk[, uniobs:=NULL]
     treeMS <- cbind(treeMS[order(uniobs),],
                     tree_rsk)
     treeMS[, uniobs := NULL]
     rm(tree_rsk)
+    if(compilationType == "PSP"){
+      treeMS[, VOL_NETM := VOL_MER]
+      set(treeMS, , c(paste0("LOG_S_", 1:9),
+                      paste0("LOG_VM_", 1:9)),
+          as.numeric(NA))
+      treeMS[,':='(LOG_VM_1 = VOL_MER,
+                   LOG_S_1 = 100)]
+    }
     treeMS <- applyDWB(treeMS)
     return(treeMS)
   })
@@ -207,10 +130,11 @@ setMethod(
 #' @rdname DWBCompiler
 setMethod(
   "DWBCompiler",
-  signature = c(treeMS = "data.table",
+  signature = c(compilationType = "character",
+                treeMS = "data.table",
                 siteAge = "data.table",
                 treeLossFactors = "data.table",
                 equation = "missing"),
-  definition = function(treeMS, siteAge, treeLossFactors){
-    return(DWBCompiler(treeMS, siteAge, treeLossFactors, equation = "KBEC"))
+  definition = function(compilationType, treeMS, siteAge, treeLossFactors){
+    return(DWBCompiler(compilationType, treeMS, siteAge, treeLossFactors, equation = "KBEC"))
   })

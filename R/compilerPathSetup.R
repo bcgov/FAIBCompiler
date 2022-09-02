@@ -157,7 +157,7 @@ compilerPathSetup <- function(compilationPath = ".",
 #'                              If missing, the current work directory will be used.
 #' @param compilationDate character, Specifies a compilation date. It should be in format of YYYYMMDD
 #'                              It will be used for archive the compilation outputs.
-#' @param projectType character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+#' @param compilationType character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
 #'                               is consistent with original PSP compiler, otherwise, it
 #'                               is consistent with VRI compiler.
 #' @param recompile logical, Defines whether we want to use existing data that downloaded
@@ -195,38 +195,38 @@ compilerPathSetup <- function(compilationPath = ".",
 #'
 compilerPathSetup_new <- function(compilationPath = ".",
                               compilationDate,
-                              projectType,
+                              compilationType,
                               recompile,
                               archiveDate){
   if(!dir.exists(compilationPath)){
     dir.create(compilationPath)
   }
-  allarchives <- dir(compilationPath, pattern = paste0("Archive_", projectType))
-  containDB <- unlist(lapply(allarchives, function(x){dir.exists(file.path(compilationPath, x, paste0("compilation_", projectType,"_db")))}))
+  allarchives <- dir(compilationPath, pattern = paste0("Archive_", compilationType))
+  containDB <- unlist(lapply(allarchives, function(x){dir.exists(file.path(compilationPath, x, paste0("compilation_", compilationType,"_db")))}))
   emptyarchives <- allarchives[!containDB]
   allarchives <- allarchives[containDB]
   lapply(emptyarchives,
          function(x){unlink(file.path(compilationPath, x),
                             recursive = TRUE)})
-  archivedates <- gsub(paste0("Archive_", projectType, "_"), "", allarchives)
+  archivedates <- gsub(paste0("Archive_", compilationType, "_"), "", allarchives)
   archivedates <- archivedates[nchar(archivedates) == 8]
-  lastarchive <- paste0("Archive_", projectType, "_",
+  lastarchive <- paste0("Archive_", compilationType, "_",
                         max(as.numeric(archivedates)))
   last_compilation <- file.path(compilationPath, lastarchive)
 
   if(recompile == FALSE){
     compilation_archive <- file.path(compilationPath,
                                      paste("Archive_",
-                                           projectType, "_",
+                                           compilationType, "_",
                                            compilationDate,
                                            sep = ""))
 
-    raw_from_oracle <- file.path(compilationPath, paste0("compilation_", projectType, "_raw"))
-    compilation_sa <- file.path(compilationPath, paste0("compilation_", projectType, "_sa"))
-    compilation_db <- file.path(compilationPath, paste0("compilation_", projectType, "_db"))
+    raw_from_oracle <- file.path(compilationPath, paste0("compilation_", compilationType, "_raw"))
+    compilation_sa <- file.path(compilationPath, paste0("compilation_", compilationType, "_sa"))
+    compilation_db <- file.path(compilationPath, paste0("compilation_", compilationType, "_db"))
     compilation_map <- file.path(compilationPath, "compilation_map") # this will be same for both psp and vri compiler
     compilation_coeff <- file.path(compilationPath, "compilation_coeff")  # this will be same for both psp and vri compiler
-    compilation_report <- file.path(compilationPath, paste0("compilation_", projectType, "_report"))
+    compilation_report <- file.path(compilationPath, paste0("compilation_", compilationType, "_report"))
     ## for raw, sa, db, archive and report,
     ## remove the existing ones and create empty folders
 
@@ -258,12 +258,12 @@ compilerPathSetup_new <- function(compilationPath = ".",
   } else {
     # create a folder under current archivement
     recompile_folder <- file.path(compilationPath,
-                                  paste0("Archive_", projectType, "_", archiveDate, "_recomp", compilationDate))
+                                  paste0("Archive_", compilationType, "_", archiveDate, "_recomp", compilationDate))
     last_compilation <- recompile_folder
     dir.create(recompile_folder)
     # copy raw, map, coeff, and report into subfolder
-    archivefolder <- file.path(compilationPath, paste0("Archive_", projectType, "_", archiveDate))
-    file.copy(from = file.path(archivefolder, paste0("compilation_", projectType, "_raw")),
+    archivefolder <- file.path(compilationPath, paste0("Archive_", compilationType, "_", archiveDate))
+    file.copy(from = file.path(archivefolder, paste0("compilation_", compilationType, "_raw")),
               to = recompile_folder,
               recursive = TRUE)
     file.copy(from = file.path(archivefolder, "compilation_map"),
@@ -272,15 +272,15 @@ compilerPathSetup_new <- function(compilationPath = ".",
     file.copy(from = file.path(archivefolder, "compilation_coeff"),
               to = recompile_folder,
               recursive = TRUE)
-    file.copy(from = file.path(archivefolder, paste0("compilation_", projectType, "_report")),
+    file.copy(from = file.path(archivefolder, paste0("compilation_", compilationType, "_report")),
               to = recompile_folder,
               recursive = TRUE)
-    raw_from_oracle <- file.path(recompile_folder, paste0("compilation_", projectType, "_raw"))
-    compilation_sa <- file.path(recompile_folder, paste0("compilation_", projectType, "_sa"))
-    compilation_db <- file.path(recompile_folder, paste0("compilation_", projectType, "_db"))
+    raw_from_oracle <- file.path(recompile_folder, paste0("compilation_", compilationType, "_raw"))
+    compilation_sa <- file.path(recompile_folder, paste0("compilation_", compilationType, "_sa"))
+    compilation_db <- file.path(recompile_folder, paste0("compilation_", compilationType, "_db"))
     compilation_map <- file.path(recompile_folder, "compilation_map")
     compilation_coeff <- file.path(recompile_folder, "compilation_coeff")
-    compilation_report <- file.path(recompile_folder, paste0("compilation_", projectType, "_report"))
+    compilation_report <- file.path(recompile_folder, paste0("compilation_", compilationType, "_report"))
     if(dir.exists(compilation_sa)){
       unlink(compilation_sa, recursive = TRUE)
     }
