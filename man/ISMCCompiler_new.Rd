@@ -6,7 +6,7 @@
 \title{ISMC compiler}
 \usage{
 ISMCCompiler_new(
-  projectType,
+  compilationType,
   oracleUserName,
   oraclePassword,
   oracleEnv = "INT",
@@ -25,7 +25,7 @@ ISMCCompiler_new(
 )
 }
 \arguments{
-\item{projectType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+\item{compilationType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
 is consistent with original PSP compiler, otherwise, it
 is consistent with VRI compiler.}
 

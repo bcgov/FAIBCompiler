@@ -8,7 +8,7 @@
 compilerPathSetup_new(
   compilationPath = ".",
   compilationDate,
-  projectType,
+  compilationType,
   recompile,
   archiveDate
 )
@@ -20,7 +20,7 @@ If missing, the current work directory will be used.}
 \item{compilationDate}{character, Specifies a compilation date. It should be in format of YYYYMMDD
 It will be used for archive the compilation outputs.}
 
-\item{projectType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+\item{compilationType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
 is consistent with original PSP compiler, otherwise, it
 is consistent with VRI compiler.}
 

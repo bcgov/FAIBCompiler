@@ -4,9 +4,13 @@
 \alias{updateSpatial}
 \title{Used for updating spatial attributes based on locations}
 \usage{
-updateSpatial(samplesites, mapPath)
+updateSpatial(compilationType, samplesites, mapPath)
 }
 \arguments{
+\item{compilationType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+is consistent with original PSP compiler, otherwise, it
+is consistent with VRI compiler.}
+
 \item{samplesites}{data.table A table that contains spatial loctions. Currently it is
 designed for accepting UTM coordinates. Therefore, zone, northing
 and easting must be provided.}
