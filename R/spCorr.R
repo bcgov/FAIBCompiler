@@ -33,7 +33,8 @@ spCorr<- function(BECInfor,
                                            BEC_ZONE,
                                            BEC_SBZ)]
     thefile <- merge(thefile, specieslookup,
-                     by = "SPECIES")
+                     by = "SPECIES",
+                     all.x = TRUE)
     thefile[is.na(SP0), ':='(SPECIES = "X", SP0 = "F")]
     saveRDS(thefile, file.path(dataSourcePath,
                                paste0("vi_", indiext, ".rds")))
