@@ -250,6 +250,9 @@ ISMCCompiler_new <- function(compilationType,
     if(compilationType == "PSP"){
       fullDimTrees[, HT_PROJ := NA] ## force projected height as NA for PSP
     }
+    # ## force trees that have length of 1.4 or less as broken top trees
+    fullDimTrees[HEIGHT %<=% 1.4 & BROKEN_TOP_IND == "N",
+                 BROKEN_TOP_IND := "Y"]
     # for full dim trees, if field projected height is available,
     ## use this as HT_TOTAL
     fullDimTrees[BROKEN_TOP_IND == "Y" &
@@ -303,7 +306,7 @@ ISMCCompiler_new <- function(compilationType,
                                 logMinLength = logMinLength,
                                 stumpHeight = stumpHeight,
                                 breastHeight = breastHeight,
-                                UTOPDIB = UTOPDIB)
+                                UTOPDIB = 10)
   tree_ms6[, WSV_VOL_SRCE := "Calculated"]
   if(compilationType == "nonPSP"){
     tree_ms6 <- rbindlist(list(tree_ms6, alltrees$nonHTTrees), fill = TRUE)
