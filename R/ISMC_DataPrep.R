@@ -251,6 +251,13 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
+  # JD = common juniper
+  # My guess is we consider Juniper spp as shrubs, not trees.
+  # And as a shrub, we would ignore in our compilation.
+  # Rene's email on 2022-09-09
+
+  treemeasurements <- treemeasurements[TREE_SPECIES_CODE != "JD",]
+
   treemeasurements <- merge(treemeasurements,
                             unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                            CLSTR_ID, MEAS_DT)],
