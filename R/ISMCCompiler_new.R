@@ -689,8 +689,14 @@ ISMCCompiler_new <- function(compilationType,
 
   cat(paste(Sys.time(), ": Convert RDS to xlsx.\n", sep = ""))
 
+if(recompile == TRUE){
   allfolders <- c(compilationPaths$compilation_db,
                   compilationPaths$compilation_sa)
+} else {
+  allfolders <- c(compilationPaths$compilation_db,
+                  compilationPaths$compilation_sa,
+                  compilationPaths$raw_from_oracle)
+}
 
   for (indifolder in allfolders){
     allfiles_indifolder <- dir(pattern = ".rds", indifolder)
