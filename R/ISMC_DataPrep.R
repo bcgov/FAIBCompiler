@@ -24,12 +24,47 @@ ISMC_DataPrep <- function(compilationType,
                           inputPath,
                           outputPath,
                           coeffPath){
+
+
+  sitenavigation <- readRDS(dir(inputPath, pattern = "SiteNavigation.rds", full.names = TRUE)) %>%
+    data.table
+  sitenavigation[, lastvisit := max(VISIT_NUMBER),
+              by = "SITE_IDENTIFIER"]
+  actualcoord <- sitenavigation[VISIT_NUMBER == lastvisit,
+                             .(SITE_IDENTIFIER,
+                               UTM_ZONE_act = UTM_ZONE,
+                               UTM_EASTING_act = UTM_EASTING,
+                               UTM_NORTHING_act = UTM_NORTHING,
+                               ELEVATION_act = ELEVATION,
+                               source_act = POINT_LOCATION_TYPE_CODE)]
+
+
   samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
     data.table
+
   samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                 IP_UTM, IP_EAST, IP_NRTH, IP_ELEV,
+                                CORRDINATE_SOURCE = POINT_LOCATION_TYPE_CODE,
                                 SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
                                 FOREST_INVENTORY_ZONE_CD)]
+  samplesites <- merge(samplesites,
+                       actualcoord,
+                       by = "SITE_IDENTIFIER",
+                       all.x = TRUE)
+  samplesites[!is.na(UTM_ZONE_act) &
+                !is.na(UTM_EASTING_act) &
+                !is.na(UTM_NORTHING_act),
+              ':='(IP_UTM = UTM_ZONE_act,
+              IP_EAST = UTM_EASTING_act,
+              IP_NRTH = UTM_NORTHING_act,
+              IP_ELEV = ELEVATION_act,
+              CORRDINATE_SOURCE = source_act)]
+  samplesites[,':='(UTM_ZONE_act = NULL,
+              UTM_EASTING_act = NULL,
+              UTM_NORTHING_act = NULL,
+              ELEVATION_act = NULL,
+              source_act = NULL)]
+
   # for PSP, the I samples should be removed from compilation
   if(compilationType == "PSP"){
     samplesites[, namelength := nchar(SAMPLE_SITE_NAME)]
