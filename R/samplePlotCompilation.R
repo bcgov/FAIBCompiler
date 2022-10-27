@@ -33,7 +33,7 @@ samplePlotCompilation <- function(compilationType,
   # that has one or more plots, however, the plot identity is not unique
   # remove these plot from further compilation
   vi_a <- vi_a[substr(TYPE_CD, 1, 1) != "W",] # double check with Bob and Rene
-  vi_a <- vi_a[!(PROJ_ID == "CAR1" & TYPE_CD == "N"),]
+  # vi_a <- vi_a[!(PROJ_ID == "CAR1" & TYPE_CD == "N"),]
 
   vi_a <- updateSpatial(compilationType = compilationType,
                         samplesites = vi_a,
@@ -44,8 +44,8 @@ samplePlotCompilation <- function(compilationType,
     names(previousSamples) <- paste0(names(previousSamples), "_prev")
     setnames(previousSamples, "SITE_IDENTIFIER_prev", "SITE_IDENTIFIER")
     samplesites_Loc <- unique(vi_a[,
-                                          .(SITE_IDENTIFIER,
-                                            IP_UTM, IP_NRTH, IP_EAST)],
+                                   .(SITE_IDENTIFIER,
+                                     IP_UTM, IP_NRTH, IP_EAST)],
                               by = "SITE_IDENTIFIER")
 
     allsamples <- merge(previousSamples[, inprev := TRUE],
@@ -64,11 +64,11 @@ samplePlotCompilation <- function(compilationType,
     samples_skip <- vi_a[SITE_IDENTIFIER %in% samples_skip$SITE_IDENTIFIER,]
     samples_proc <- vi_a[!(SITE_IDENTIFIER %in% samples_skip$SITE_IDENTIFIER),]
     if(nrow(samples_proc) > 0){
-    ## for PSP, some samples do not have good spatial coordinates, hence, causing
-    ## missing spatial attributes
+      ## for PSP, some samples do not have good spatial coordinates, hence, causing
+      ## missing spatial attributes
       samples_proc <- updateMissingSpAttribute(spatialtable = samples_proc,
-                                     mapPath = mapPath,
-                                     updateMethod = "fromRegionCompartMap")
+                                               mapPath = mapPath,
+                                               updateMethod = "fromRegionCompartMap")
     }
     vi_a <- rbindlist(list(samples_skip, samples_proc),
                       fill = TRUE)
@@ -101,10 +101,14 @@ samplePlotCompilation <- function(compilationType,
               PROJECTED_Year = NULL,
               measYear = NULL)]
 
-
   vi_b <- readRDS(file.path(dataSourcePath, "vi_b.rds")) %>% data.table
-
   vi_b <- vi_b[CLSTR_ID %in% vi_a$CLSTR_ID,]
+  vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, PROJ_ID)],
+                by = "CLSTR_ID",
+                all.x = TRUE)
+  # remove I from N samples in CAR1 project, as these N samples do not have
+  # IPC, see communications with Rene and Chris on July 29, 2022
+  vi_b <- vi_b[!(PROJ_ID == "CAR1" & TYPE_CD == "N" & PLOT == "I"),]
 
   vi_b <- unique(vi_b, by = c("CLSTR_ID", "PLOT"))
   # for variable area plot
@@ -136,7 +140,7 @@ samplePlotCompilation <- function(compilationType,
 
   vi_b[, NO_PLOTS := length(PLOT), by = CLSTR_ID]
   vi_b[, PLOT_DED := 1L]
-  vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, MEAS_DT, PROJ_ID)],
+  vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, MEAS_DT)],
                 by = "CLSTR_ID",
                 all.x = TRUE)
 
