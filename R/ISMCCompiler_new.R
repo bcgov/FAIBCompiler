@@ -133,7 +133,7 @@ ISMCCompiler_new <- function(compilationType,
   if(recompile == FALSE){
     if(compilationType == "nonPSP"){
       sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
-                       "O", "F", "E", "C", "B")
+                       "O", "F", "E", "C", "B", "A")
     } else {
       sampletypes <- "PSP"
     }
@@ -191,7 +191,7 @@ ISMCCompiler_new <- function(compilationType,
                                    SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO,
                                    TSA, TSA_DESC, BEC_ZONE, BEC_SBZ, BEC_VAR,
                                    FIZ, TFL, OWNER, SCHEDULE,
-                                   SAMPLE_SITE_NAME)],
+                                   SAMPLE_SITE_NAME, SAMPLE_ESTABLISHMENT_TYPE)],
                         by = "CLSTR_ID")
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db, "samples.rds"))
@@ -708,10 +708,9 @@ if(recompile == TRUE){
                  file.path(indifolder, paste0(indifile, ".xlsx")))
     }
   }
-
   if(recompile == FALSE){
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
-    lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_"), "",
+    lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_", compilationType, "_"), "",
                                 compilationPaths$compilation_last)
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
                                         "general_report.Rmd"),
@@ -750,6 +749,7 @@ if(recompile == TRUE){
               to = compilationPaths$compilation_archive,
               recursive = TRUE)
   } else {
+
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
     cat(paste(Sys.time(), ": All recompiled outputs saved into Archive_", archiveDate, "_recomp", gsub("-", "", Sys.Date()), ".\n", sep = ""))
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
