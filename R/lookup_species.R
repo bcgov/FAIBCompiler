@@ -5,7 +5,7 @@ lookup_species <- function(){
                           byrow = TRUE,
                           ## SPECIES SP   DESCRIPTION                  SP_SINDEX SP_TYPE SP_COST
                           data = c("A",     "AC", "Cottonwood",                "AT",      "D",     "AC",    "POPULUS",
-                                   "AC",    "AC", "Poplar",                    "ACB",     "D",     "AC",    "POPUBAL",
+                                   "AC",    "AC", "Poplar",                    "ACT",     "D",     "AC",    "POPUBAL",
                                    "ACB",   "AC", "Balsam Poplar",             "ACB",     "D",     "AC",    "POPUBAL1",
                                    "ACT",   "AC", "Black Cottonwood",          "ACT",     "D",     "AC",    "POPUBAL2",
                                    "ACT",   "AC", "Black Cottonwood",          "ACT",     "D",     "AC",    "POPUTRI",
