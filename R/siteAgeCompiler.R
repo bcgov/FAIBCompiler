@@ -140,7 +140,7 @@ setMethod(
                                                CR_CL, TREE_LEN, HEIGHT, BNG_DIAM, BARK_THK, PRO_LEN,
                                                PRO_RING, BORE_AGE, BORED_HT, SI_SP, AGE_BH, AGE_TOT, SI_TREE,
                                                BARK_PCT, RATE_5, RATE_10, RATE_20, SP_SINDEX,
-                                               AGE_SOURCE, AGE_ADJUST_TO_BH)]
+                                               AGE_SOURCE, AGE_ADJUST_TO_BH, MEAS_COD)]
     return(siteAgeData)
   })
 
