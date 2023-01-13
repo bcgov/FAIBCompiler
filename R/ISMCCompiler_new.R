@@ -156,7 +156,6 @@ ISMCCompiler_new <- function(compilationType,
     cat(paste(Sys.time(), paste0(": The compiler recompiles existing raw data: ", downloaddate, "\n"), sep = ""))
   }
   cat(paste(Sys.time(), ": Prepare ISMC data for compilation.\n", sep = ""))
-
   ISMC_DataPrep(compilationType = compilationType,
                 inputPath = compilationPaths$raw_from_oracle,
                 outputPath = compilationPaths$compilation_sa,
@@ -704,8 +703,14 @@ if(recompile == TRUE){
 
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
+      if(compilationType == "PSP" & indifile == "treelist"){
+      write.csv(thedata,
+                 file.path(indifolder, paste0(indifile, ".csv")),
+                row.names = FALSE)
+      } else {
       write.xlsx(thedata,
                  file.path(indifolder, paste0(indifile, ".xlsx")))
+      }
     }
   }
   if(recompile == FALSE){
