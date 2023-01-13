@@ -100,7 +100,6 @@ samplePlotCompilation <- function(compilationType,
   vi_a[, ':='(PROJ_AGE_1 = NULL,
               PROJECTED_Year = NULL,
               measYear = NULL)]
-
   vi_b <- readRDS(file.path(dataSourcePath, "vi_b.rds")) %>% data.table
   vi_b <- vi_b[CLSTR_ID %in% vi_a$CLSTR_ID,]
   vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, PROJ_ID)],
@@ -175,7 +174,6 @@ samplePlotCompilation <- function(compilationType,
     data.table
   sample_est_3 <- sample_est_3[,.(TYPE_CD = sample_site_purpose_type_code,
                                   SAMPLE_ESTABLISHMENT_TYPE3 = SAMPLE_ESTABLISHMENT_TYPE)]
-
   site_visit1 <- vi_a[TYPE_CD != "N",]
   site_visit1 <- site_visit1[!(TYPE_CD == "B" &
                                PROJ_ID == "KOL1"),]
@@ -218,6 +216,8 @@ samplePlotCompilation <- function(compilationType,
                 all.x = TRUE)
   return(list(spatiallookup = spatialLookups,
               samples = vi_a,
-              plots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, BLOWUP)]))
+              plots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, BLOWUP, PLOT_SHAPE_CODE, F_RAD,
+                              PLOT_WIDTH, PLOT_LENGTH, V_BAF, PLOT_AREA,
+                              PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION)]))
 }
 
