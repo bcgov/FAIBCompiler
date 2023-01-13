@@ -206,6 +206,8 @@ samplePlotCompilation <- function(compilationType,
        SAMPLE_ESTABLISHMENT_TYPE := SAMPLE_ESTABLISHMENT_TYPE3]
   site_visit1[, SAMPLE_ESTABLISHMENT_TYPE3 := NULL]
   site_visit1 <- site_visit1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
+  site_visit1[SITE_IDENTIFIER == "2104138",
+              SAMPLE_ESTABLISHMENT_TYPE := "YNS"]
   vi_a <- merge(vi_a,
                 site_visit1,
                 by = "SITE_IDENTIFIER",
