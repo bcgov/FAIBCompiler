@@ -314,20 +314,19 @@ ISMC_DataPrep <- function(compilationType,
     ## the same as the previous ones. the crosswalk table is prepared
     ## by Dan
     crosswalk <- read.csv(file.path(coeffPath,
-                                    "bc_gp_ltp_tree_num_track.csv")) %>%
+                                    "NFI_TREE_CORRECTION.csv")) %>%
       data.table
     treemeasurements <- merge(treemeasurements,
-                              crosswalk[,.(SITE_IDENTIFIER = NFI_PLOT,
-                                           VISIT_NUMBER,
-                                           TREE_NUMBER = TREE_NUM,
-                                           TREE_NUM_PREV)],
+                              crosswalk,
                               by = c("SITE_IDENTIFIER",
                                      "VISIT_NUMBER",
                                      "TREE_NUMBER"),
                               all.x = TRUE)
-    treemeasurements[!is.na(TREE_NUM_PREV),
-                     TREE_NUMBER := TREE_NUM_PREV]
-    treemeasurements[, TREE_NUM_PREV := NULL]
+    treemeasurements[!is.na(TREE_NUMBER_future),
+                     TREE_NUMBER_org := TREE_NUMBER]
+    treemeasurements[!is.na(TREE_NUMBER_future),
+                     TREE_NUMBER := TREE_NUMBER_future]
+    treemeasurements[, TREE_NUMBER_future := NULL]
     treemeasurements[PLOT_CATEGORY_CODE == "IPC TD", PLOT := "I"]
     treemeasurements[PLOT_CATEGORY_CODE != "IPC TD",
                      PLOT := gsub("AUX ", "", PLOT_CATEGORY_CODE)]
@@ -476,7 +475,8 @@ ISMC_DataPrep <- function(compilationType,
                              WL_BARK = BARK_RETENTION_CODE,
                              WL_WOOD = WOOD_CONDITION_CODE,
                              WL_LICHE = LICHEN_LOADING_RATING_CODE,
-                             MEASUREMENT_ANOMALY_CODE)]
+                             MEASUREMENT_ANOMALY_CODE,
+                             TREE_NUMBER_org)]
   # only nonPSP has log information
   if(compilationType == "nonPSP"){
     treelog <- readRDS(dir(inputPath, "TreeLogAssessments.rds",
