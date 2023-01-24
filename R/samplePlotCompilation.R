@@ -72,13 +72,38 @@ samplePlotCompilation <- function(compilationType,
     }
     vi_a <- rbindlist(list(samples_skip, samples_proc),
                       fill = TRUE)
+    spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
+                                     IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
+                                     Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
+                                     TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
+                                     PROJ_ID, SAMP_NO,
+                                     SAMPLE_ESTABLISHMENT_TYPE = paste0("PSP_", PSP_TYPE), SAMPLE_SITE_NAME,
+                                     SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
+                                     STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND)],
+                             by = "SAMP_POINT")
+  } else {
+    spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
+                                     IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
+                                     Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
+                                     TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
+                                     PROJ_ID, SAMP_NO,
+                                     SAMPLE_SITE_NAME,
+                                     SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
+                                     STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND)],
+                             by = "SAMP_POINT")
   }
-  spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
-                                   IP_UTM, IP_NRTH, IP_EAST, BC_ALBERS_X, BC_ALBERS_Y,
-                                   Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
-                                   TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
-                                   PROJ_ID, SAMP_NO)],
-                           by = "SAMP_POINT")
+  vi_a <- vi_a[,.(CLSTR_ID,
+                  SITE_IDENTIFIER,
+                  VISIT_NUMBER,
+                  BEC, FIZ,
+                  MEAS_DT,
+                  TYPE_CD,
+                  SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
+                  PROJ_ID,
+                  SAMP_NO,
+                  SAMPLE_BREAK_POINT,
+                  SAMPLE_BREAK_POINT_TYPE,
+                  DBH_LIMIT_TAG = DBH_TAGGING_LIMIT)]
   mapsource <- data.table(mapFile = dir(mapPath, pattern = "_map"))
   spatialLookups <- list(spatiallookup = spatialLookups,
                          mapsource = mapsource)
@@ -105,6 +130,21 @@ samplePlotCompilation <- function(compilationType,
   vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, PROJ_ID)],
                 by = "CLSTR_ID",
                 all.x = TRUE)
+  sitetopography <- vi_b[,.(SITE_IDENTIFIER, VISIT_NUMBER,
+                            ELEVATION = PLOT_ELEVATION,
+                            ASPECT = PLOT_ASPECT,
+                            SLOPE = PLOT_SLOPE)]
+  sitetopography[, lastvisit := max(VISIT_NUMBER),
+                 by = SITE_IDENTIFIER]
+  sitetopography <- unique(sitetopography[VISIT_NUMBER == lastvisit,
+                                   .(SITE_IDENTIFIER, ELEVATION,
+                                     ASPECT, SLOPE)],
+                           by = "SITE_IDENTIFIER")
+  spatialLookups$spatiallookup <- merge(spatialLookups$spatiallookup,
+                                        sitetopography,
+                                        by = "SITE_IDENTIFIER",
+                                        all.x = TRUE)
+
   # remove I from N samples in CAR1 project, as these N samples do not have
   # IPC, see communications with Rene and Chris on July 29, 2022
   vi_b <- vi_b[!(PROJ_ID == "CAR1" & TYPE_CD == "N" & PLOT == "I"),]
@@ -151,69 +191,69 @@ samplePlotCompilation <- function(compilationType,
                        by = "CLSTR_ID"),
                 by = "CLSTR_ID")
   setnames(vi_a, "BEC", "BEC_ZONE")
-  allsample_ests <- dir(coeffPath, pattern = "sample_establishment_type")
-  allsample_ests <- gsub("sample_establishment_type_", "", allsample_ests)
-  allsample_ests <- gsub(".xlsx", "", allsample_ests)
-  allsample_est_last <- max(as.numeric(allsample_ests))
-  sample_est_1 <- openxlsx::read.xlsx(file.path(coeffPath,
-                                                      paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
-                                            sheet = "1_non_standard_site_identifier") %>%
-    data.table
-  sample_est_1 <- sample_est_1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
+  if(compilationType == "nonPSP"){
+    allsample_ests <- dir(coeffPath, pattern = "sample_establishment_type")
+    allsample_ests <- gsub("sample_establishment_type_", "", allsample_ests)
+    allsample_ests <- gsub(".xlsx", "", allsample_ests)
+    allsample_est_last <- max(as.numeric(allsample_ests))
+    sample_est_1 <- openxlsx::read.xlsx(file.path(coeffPath,
+                                                  paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
+                                        sheet = "1_non_standard_site_identifier") %>%
+      data.table
+    sample_est_1 <- sample_est_1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
 
-  sample_est_2 <- openxlsx::read.xlsx(file.path(coeffPath,
-                                                      paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
-                                            sheet = "2_non_standard_project") %>%
-    data.table
-  sample_est_2 <- sample_est_2[,.(PROJECT_NAME, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
-                                  SAMPLE_ESTABLISHMENT_TYPE2 = SAMPLE_ESTABLISHMENT_TYPE)]
+    sample_est_2 <- openxlsx::read.xlsx(file.path(coeffPath,
+                                                  paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
+                                        sheet = "2_non_standard_project") %>%
+      data.table
+    sample_est_2 <- sample_est_2[,.(PROJECT_NAME, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                    SAMPLE_ESTABLISHMENT_TYPE2 = SAMPLE_ESTABLISHMENT_TYPE)]
 
-  sample_est_3 <- openxlsx::read.xlsx(file.path(coeffPath,
-                                                      paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
-                                            sheet = "3_standard") %>%
-    data.table
-  sample_est_3 <- sample_est_3[,.(TYPE_CD = sample_site_purpose_type_code,
-                                  SAMPLE_ESTABLISHMENT_TYPE3 = SAMPLE_ESTABLISHMENT_TYPE)]
-  site_visit1 <- vi_a[TYPE_CD != "N",]
-  site_visit1 <- site_visit1[!(TYPE_CD == "B" &
-                               PROJ_ID == "KOL1"),]
-  site_visit1 <- site_visit1[substr(PROJ_ID, 1, 4) != "2019",]
+    sample_est_3 <- openxlsx::read.xlsx(file.path(coeffPath,
+                                                  paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
+                                        sheet = "3_standard") %>%
+      data.table
+    sample_est_3 <- sample_est_3[,.(TYPE_CD = sample_site_purpose_type_code,
+                                    SAMPLE_ESTABLISHMENT_TYPE3 = SAMPLE_ESTABLISHMENT_TYPE)]
+    site_visit1 <- vi_a[TYPE_CD != "N",]
+    site_visit1 <- site_visit1[!(TYPE_CD == "B" &
+                                   PROJ_ID == "KOL1"),]
+    site_visit1 <- site_visit1[substr(PROJ_ID, 1, 4) != "2019",]
 
-  site_visit1[, VISIT_NUMBER_first := min(VISIT_NUMBER),
-              by = "SITE_IDENTIFIER"]
-  site_visit1 <- site_visit1[VISIT_NUMBER == VISIT_NUMBER_first,]
-  site_visit1 <- merge(site_visit1,
-                sample_est_1,
-                by = "SITE_IDENTIFIER",
-                all.x = TRUE)
+    site_visit1[, VISIT_NUMBER_first := min(VISIT_NUMBER),
+                by = "SITE_IDENTIFIER"]
+    site_visit1 <- site_visit1[VISIT_NUMBER == VISIT_NUMBER_first,]
+    site_visit1 <- merge(site_visit1,
+                         sample_est_1,
+                         by = "SITE_IDENTIFIER",
+                         all.x = TRUE)
 
-  site_visit1[, PROJECT_NAME := PROJ_ID]
-  site_visit1 <- merge(site_visit1,
-                sample_est_2,
-                by = c("PROJECT_NAME", "TYPE_CD"),
-                all.x = TRUE)
-  site_visit1[is.na(SAMPLE_ESTABLISHMENT_TYPE) &
-         !is.na(SAMPLE_ESTABLISHMENT_TYPE2),
-       SAMPLE_ESTABLISHMENT_TYPE := SAMPLE_ESTABLISHMENT_TYPE2]
-  site_visit1[, SAMPLE_ESTABLISHMENT_TYPE2 := NULL]
-  site_visit1 <- merge(site_visit1,
-                sample_est_3,
-                by = c("TYPE_CD"),
-                all.x = TRUE)
-  site_visit1[is.na(SAMPLE_ESTABLISHMENT_TYPE),
-       SAMPLE_ESTABLISHMENT_TYPE := SAMPLE_ESTABLISHMENT_TYPE3]
-  site_visit1[, SAMPLE_ESTABLISHMENT_TYPE3 := NULL]
-  site_visit1 <- site_visit1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
-  site_visit1[SITE_IDENTIFIER == "2104138",
-              SAMPLE_ESTABLISHMENT_TYPE := "YNS"]
-  spatialLookups$spatiallookup <- merge(spatialLookups$spatiallookup,
-                site_visit1,
-                by = "SITE_IDENTIFIER",
-                all.x = TRUE)
-  vi_a <- merge(vi_a,
-                site_visit1,
-                by = "SITE_IDENTIFIER",
-                all.x = TRUE)
+    site_visit1[, PROJECT_NAME := PROJ_ID]
+    site_visit1 <- merge(site_visit1,
+                         sample_est_2,
+                         by = c("PROJECT_NAME", "TYPE_CD"),
+                         all.x = TRUE)
+    site_visit1[is.na(SAMPLE_ESTABLISHMENT_TYPE) &
+                  !is.na(SAMPLE_ESTABLISHMENT_TYPE2),
+                SAMPLE_ESTABLISHMENT_TYPE := SAMPLE_ESTABLISHMENT_TYPE2]
+    site_visit1[, SAMPLE_ESTABLISHMENT_TYPE2 := NULL]
+    site_visit1 <- merge(site_visit1,
+                         sample_est_3,
+                         by = c("TYPE_CD"),
+                         all.x = TRUE)
+    site_visit1[is.na(SAMPLE_ESTABLISHMENT_TYPE),
+                SAMPLE_ESTABLISHMENT_TYPE := SAMPLE_ESTABLISHMENT_TYPE3]
+    site_visit1[, SAMPLE_ESTABLISHMENT_TYPE3 := NULL]
+    site_visit1 <- site_visit1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
+    site_visit1[SITE_IDENTIFIER == "2104138",
+                SAMPLE_ESTABLISHMENT_TYPE := "YNS"]
+    spatialLookups$spatiallookup <- merge(spatialLookups$spatiallookup,
+                                          site_visit1,
+                                          by = "SITE_IDENTIFIER",
+                                          all.x = TRUE)
+  }
+  vi_a[,':='(BEC_ZONE = NULL,
+             FIZ = NULL)]
   return(list(spatiallookup = spatialLookups,
               samples = vi_a,
               plots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, BLOWUP, PLOT_SHAPE_CODE, F_RAD,
