@@ -72,8 +72,6 @@
 #' @importFrom SIndexR SIndexR_VersionNumber
 #'
 #' @author Yong Luo
-#'
-
 ISMCCompiler_new <- function(compilationType,
                              oracleUserName,
                              oraclePassword,
@@ -174,6 +172,9 @@ ISMCCompiler_new <- function(compilationType,
   saveRDS(samplePlotResults$spatiallookup,
           file.path(compilationPaths$compilation_db,
                     "spatiallookup.rds"))
+  saveRDS(samplePlotResults$spatiallookup$spatiallookup,
+          file.path(compilationPaths$compilation_db,
+                    "sample_site_header.rds"))
   if(compilationType == "nonPSP"){
     saveRDS(samplePlotResults$spatiallookup,
             file.path(compilationPaths$compilation_map,
@@ -187,24 +188,27 @@ ISMCCompiler_new <- function(compilationType,
   samples <- data.table::copy(samplePlotResults$samples)
   samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, MEAS_DT,
                                    SAMPLE_SITE_PURPOSE_TYPE_CODE = TYPE_CD, SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
-                                   SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO,
-                                   TSA, TSA_DESC, BEC_ZONE, BEC_SBZ, BEC_VAR,
-                                   FIZ, TFL, OWNER, SCHEDULE,
-                                   SAMPLE_SITE_NAME, SAMPLE_ESTABLISHMENT_TYPE)],
+                                   SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO, SAMPLE_BREAK_POINT,
+                                   SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = NA, DBH_LIMIT_TAG)],
                         by = "CLSTR_ID")
   saveRDS(samples_tmp,
-          file.path(compilationPaths$compilation_db, "samples.rds"))
+          file.path(compilationPaths$compilation_db, "sample_msmt_header.rds"))
   cat("    Saved compiled sample information. \n")
   saveRDS(samplePlotResults$plots,
-          file.path(compilationPaths$compilation_db, "plots.rds"))
+          file.path(compilationPaths$compilation_db, "sample_plot_header.rds"))
   cat("    Saved compiled plot information. \n")
 
   cat(paste(Sys.time(), ": Correct species at tree level.\n", sep = ""))
   ## the species correct depends on BEC and BECsubzone, hence should be
   ## done after the bec zone information updated
+  samples <- merge(samples,
+                    samplePlotResults$spatiallookup$spatiallookup[,.(SITE_IDENTIFIER,
+                                                                     BEC_ZONE, BEC_SBZ, BEC_VAR,
+                                                                     FIZ, TSA)],
+                    by = "SITE_IDENTIFIER",
+                    all.x = TRUE)
   spCorr(BECInfor = samples[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR)],
          dataSourcePath = compilationPaths$compilation_sa)
-
   cat(paste(Sys.time(), ": Compile tree-level WSV_VOL and MER_VOL for volume trees.\n", sep = ""))
   ## The volume trees are in two files: vi_c and vi_i
   ##
@@ -754,7 +758,6 @@ if(recompile == TRUE){
               to = compilationPaths$compilation_archive,
               recursive = TRUE)
   } else {
-
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
     cat(paste(Sys.time(), ": All recompiled outputs saved into Archive_", archiveDate, "_recomp", gsub("-", "", Sys.Date()), ".\n", sep = ""))
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
