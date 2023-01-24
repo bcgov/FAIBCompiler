@@ -24,29 +24,33 @@ ISMC_DataPrep <- function(compilationType,
                           inputPath,
                           outputPath,
                           coeffPath){
-
-
   sitenavigation <- readRDS(dir(inputPath, pattern = "SiteNavigation.rds", full.names = TRUE)) %>%
     data.table
+  sitenavigation <- sitenavigation[!is.na(UTM_ZONE) &
+                                     !is.na( UTM_EASTING) &
+                                     !is.na(UTM_NORTHING),]
   sitenavigation[, lastvisit := max(VISIT_NUMBER),
-              by = "SITE_IDENTIFIER"]
+                 by = "SITE_IDENTIFIER"]
   actualcoord <- sitenavigation[VISIT_NUMBER == lastvisit,
-                             .(SITE_IDENTIFIER,
-                               UTM_ZONE_act = UTM_ZONE,
-                               UTM_EASTING_act = UTM_EASTING,
-                               UTM_NORTHING_act = UTM_NORTHING,
-                               ELEVATION_act = ELEVATION,
-                               source_act = POINT_LOCATION_TYPE_CODE)]
-
+                                .(SITE_IDENTIFIER,
+                                  UTM_ZONE_act = UTM_ZONE,
+                                  UTM_EASTING_act = UTM_EASTING,
+                                  UTM_NORTHING_act = UTM_NORTHING,
+                                  ELEVATION_act = ELEVATION,
+                                  source_act = POINT_LOCATION_TYPE_CODE)]
 
   samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
     data.table
 
   samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
-                                IP_UTM, IP_EAST, IP_NRTH, IP_ELEV,
+                                IP_UTM, IP_EAST, IP_NRTH,
+                                UTM_SOURCE = COORDINATE_SOURCE_CODE,
                                 CORRDINATE_SOURCE = POINT_LOCATION_TYPE_CODE,
+                                IP_ELEV,
                                 SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
-                                FOREST_INVENTORY_ZONE_CD)]
+                                FOREST_INVENTORY_ZONE_CD, STAND_ORIGIN_CODE,
+                                SITE_STATUS_CODE, SITE_CONDITION_CODE,
+                                PSP_TYPE = PSP_SAMPLE_SITE_TYPE_CODE)]
   samplesites <- merge(samplesites,
                        actualcoord,
                        by = "SITE_IDENTIFIER",
@@ -55,22 +59,20 @@ ISMC_DataPrep <- function(compilationType,
                 !is.na(UTM_EASTING_act) &
                 !is.na(UTM_NORTHING_act),
               ':='(IP_UTM = UTM_ZONE_act,
-              IP_EAST = UTM_EASTING_act,
-              IP_NRTH = UTM_NORTHING_act,
-              IP_ELEV = ELEVATION_act,
-              CORRDINATE_SOURCE = source_act)]
+                   IP_EAST = UTM_EASTING_act,
+                   IP_NRTH = UTM_NORTHING_act,
+                   IP_ELEV = ELEVATION_act,
+                   CORRDINATE_SOURCE = source_act)]
   samplesites[,':='(UTM_ZONE_act = NULL,
-              UTM_EASTING_act = NULL,
-              UTM_NORTHING_act = NULL,
-              ELEVATION_act = NULL,
-              source_act = NULL)]
+                    UTM_EASTING_act = NULL,
+                    UTM_NORTHING_act = NULL,
+                    ELEVATION_act = NULL,
+                    source_act = NULL)]
 
   # for PSP, the I samples should be removed from compilation
   if(compilationType == "PSP"){
-    samplesites[, namelength := nchar(SAMPLE_SITE_NAME)]
-    samplesites[, PSP_TYPE := substr(SAMPLE_SITE_NAME, namelength, namelength)]
-    samplesites[, namelength := NULL]
-    samplesites <- samplesites[PSP_TYPE != "I",]
+    samplesites <- samplesites[!(PSP_TYPE %in% c("I", "T")),] #
+    ## see Rene's email on Nov. 22, 2022
   }
 
   if(nrow(samplesites) != length(unique(samplesites$SITE_IDENTIFIER))){
@@ -112,18 +114,20 @@ ISMC_DataPrep <- function(compilationType,
                                                                        SUIT_SI_temp = "N")]
     suit_si_from_notes <- suit_si_from_notes[!is.na(TREE_NUMBER),.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, SUIT_SI_temp)]
   }
+  vi_a <- unique(SampleSiteVisits[,.(CLSTR_ID = NA,
+                                     SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
+                                     STAND_DISTURBANCE_CODE, STAND_STRUCTURE_CODE,
+                                     SAMPLE_BREAK_POINT, SAMPLE_BREAK_POINT_TYPE,
+                                     STEM_MAP_REQD_IND,
+                                     SELECTIVELY_LOGGED_IND,
+                                     SAMP_NO = PROJECT_NUMBER, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                     VISIT_NUMBER,
+                                     SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
+                                     MEAS_DT = substr(newMD, 1, 10),
+                                     IP_AZ_PN = NA,
+                                     IP_DT_PN = NA, IP_AZ_GP = NA, IP_DT_GP = NA, IP_GPSID = NA)],
+                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
 
-  vi_a <- SampleSiteVisits[,.(CLSTR_ID = NA,
-                              SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
-                              STAND_DISTURBANCE_CODE, STAND_STRUCTURE_CODE,
-                              SAMPLE_BREAK_POINT, SAMPLE_BREAK_POINT_TYPE,
-                              STEM_MAP_REQD_IND,
-                              SAMP_NO = PROJECT_NUMBER, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
-                              VISIT_NUMBER,
-                              SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
-                              MEAS_DT = substr(newMD, 1, 10),
-                              IP_AZ_PN = NA,
-                              IP_DT_PN = NA, IP_AZ_GP = NA, IP_DT_GP = NA, IP_GPSID = NA)]
   # manually correct measurement date
   ### for the sample site 4016893 and visit 3,
   ### the sample date is 2008-04-01 based on Chris
@@ -135,12 +139,48 @@ ISMC_DataPrep <- function(compilationType,
   vi_a <- merge(vi_a, samplesites,
                 by = "SITE_IDENTIFIER",
                 all.x = TRUE)
-  rm(samplesites, SampleSiteVisits)
+  ### for some sites, there are two sample site access codes (see emails on 2023-01-11)
+  ### we need to combine access codes into one
+  siteaccess <- SampleSiteVisits[!is.na(SITE_ACCESS_CODE),.(SITE_IDENTIFIER,
+                                                            SITE_ACCESS_CODE, DESCRIPTION)]
+  siteaccess_new <- siteaccess[, .(SITE_ACCESS_CODE = paste0(SITE_ACCESS_CODE, collapse = ", "),
+                                   DESCRIPTION = paste0(DESCRIPTION, collapse = ", ")),
+                               by = "SITE_IDENTIFIER"]
+  vi_a <- merge(vi_a, siteaccess_new,
+                by = "SITE_IDENTIFIER",
+                all.x = TRUE)
+  rm(samplesites, SampleSiteVisits, siteaccess_new, siteaccess)
   gc()
   vi_a[,CLSTR_ID := paste(SITE_IDENTIFIER, paste0(TYPE_CD, VISIT_NUMBER), sep = "-")]
   vi_a <- unique(vi_a)
-  saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
 
+  ## collect dbh_tagging_limit from sample measurement table
+  samplemeasurement <- readRDS(dir(inputPath, pattern = "SampleMeasurements.rds",
+                             full.names = TRUE))
+  samplemeasurement <- unique(samplemeasurement[!is.na(DBH_TAGGING_LIMIT), .(SITE_IDENTIFIER,
+                                                                      VISIT_NUMBER,
+                                                                      DBH_TAGGING_LIMIT)],
+                              by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
+  vi_a <- merge(vi_a,
+                samplemeasurement,
+                by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
+                all.x = TRUE)
+  ## assign dbh_tagging_limit for NAs
+  ## 1) 9.1cm for measurement year < 1980
+  ## 2) 7.5cm for measurement 1980<=year<=1990
+  ## 2) 4cm for measurement 1990 < year
+  ## based on Rene's previous compiler
+  vi_a[is.na(DBH_TAGGING_LIMIT) &
+         as.numeric(substr(MEAS_DT, 1, 4)) < 1980,
+       DBH_TAGGING_LIMIT := 9.1]
+  vi_a[is.na(DBH_TAGGING_LIMIT) &
+         as.numeric(substr(MEAS_DT, 1, 4)) >= 1980 &
+         as.numeric(substr(MEAS_DT, 1, 4)) <= 1990,
+       DBH_TAGGING_LIMIT := 7.5]
+  vi_a[is.na(DBH_TAGGING_LIMIT) &
+         as.numeric(substr(MEAS_DT, 1, 4)) > 1990,
+       DBH_TAGGING_LIMIT := 4]
+  saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
                              full.names = TRUE))
 
@@ -160,7 +200,9 @@ ISMC_DataPrep <- function(compilationType,
                           PLOT = PLOT_CATEGORY_CODE,
                           V_BAF = VARIABLE_BAF, F_RAD = PLOT_RADIUS,
                           PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
-                          PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE)]
+                          PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
+                          PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
+                          PLOT_SHAPE_CODE)]
     vi_b[PLOT == "IPC TD", PLOT := "I"]
     vi_b[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
   } else {
@@ -170,12 +212,16 @@ ISMC_DataPrep <- function(compilationType,
                           PLOT = PLOT_NUMBER,
                           V_BAF = VARIABLE_BAF, F_RAD = PLOT_RADIUS,
                           PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
-                          PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE)]
+                          PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
+                          PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
+                          PLOT_SHAPE_CODE)]
   }
 
   vi_b_master <- unique(vi_b[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                 PLOT, V_BAF, F_RAD,
-                                PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH)],
+                                PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
+                                PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
+                                PLOT_SHAPE_CODE)],
                         by = c("CLSTR_ID", "PLOT"))
   fixplots <- vi_b[!is.na(F_RAD),]
 
@@ -299,6 +345,7 @@ ISMC_DataPrep <- function(compilationType,
                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                             all.x = TRUE)
+  treemeasurements <- treemeasurements[!is.na(CLSTR_ID),]
   # for nonPSP
   if(compilationType == "nonPSP"){
     # merge suit_si_from_notes to all tree measurements
@@ -475,8 +522,7 @@ ISMC_DataPrep <- function(compilationType,
                              WL_BARK = BARK_RETENTION_CODE,
                              WL_WOOD = WOOD_CONDITION_CODE,
                              WL_LICHE = LICHEN_LOADING_RATING_CODE,
-                             MEASUREMENT_ANOMALY_CODE,
-                             TREE_NUMBER_org)]
+                             MEASUREMENT_ANOMALY_CODE)]
   # only nonPSP has log information
   if(compilationType == "nonPSP"){
     treelog <- readRDS(dir(inputPath, "TreeLogAssessments.rds",
@@ -684,12 +730,12 @@ ISMC_DataPrep <- function(compilationType,
   gc()
 
   if(compilationType == "nonPSP"){
-  vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
-                           .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
-                             SPECIES = TREE_SPECIES_CODE,
-                             DBH = DIAMETER,
-                             LV_D = TREE_EXTANT_CODE,
-                             S_F = TREE_STANCE_CODE)]
+    vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
+                             .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
+                               SPECIES = TREE_SPECIES_CODE,
+                               DBH = DIAMETER,
+                               LV_D = TREE_EXTANT_CODE,
+                               S_F = TREE_STANCE_CODE)]
   } else {
     vi_i <- treemeasurements[!is.na(DIAMETER) & is.na(LENGTH),
                              .(CLSTR_ID, PLOT,
@@ -709,13 +755,13 @@ ISMC_DataPrep <- function(compilationType,
                           full.names = TRUE)) %>%
     data.table
   treeloss <- treeloss[SITE_IDENTIFIER %in% vi_a$SITE_IDENTIFIER,]
-if(compilationType == "nonPSP"){
-  treeloss[PLOT_CATEGORY_CODE == "IPC TD", PLOT := "I"]
-  treeloss[PLOT_CATEGORY_CODE != "IPC TD",
-                   PLOT := gsub("AUX ", "", PLOT_CATEGORY_CODE)]
-} else {
-  treeloss[, PLOT := PLOT_NUMBER]
-}
+  if(compilationType == "nonPSP"){
+    treeloss[PLOT_CATEGORY_CODE == "IPC TD", PLOT := "I"]
+    treeloss[PLOT_CATEGORY_CODE != "IPC TD",
+             PLOT := gsub("AUX ", "", PLOT_CATEGORY_CODE)]
+  } else {
+    treeloss[, PLOT := PLOT_NUMBER]
+  }
   treeloss <- treeloss[order(SITE_IDENTIFIER, VISIT_NUMBER,
                              PLOT_CATEGORY_CODE, TREE_NUMBER, LOCATION_FROM),
                        .(SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NUMBER,
@@ -777,7 +823,7 @@ if(compilationType == "nonPSP"){
   if(compilationType == "nonPSP"){
     treedamage[PLOT_CATEGORY_CODE == "IPC TD", PLOT := "I"]
     treedamage[PLOT_CATEGORY_CODE != "IPC TD",
-             PLOT := gsub("AUX ", "", PLOT_CATEGORY_CODE)]
+               PLOT := gsub("AUX ", "", PLOT_CATEGORY_CODE)]
   } else {
     treedamage[, PLOT := PLOT_NUMBER]
   }
@@ -786,9 +832,9 @@ if(compilationType == "nonPSP"){
   treedamage <- treedamage[order(SITE_IDENTIFIER, VISIT_NUMBER,
                                  PLOT, TREE_NUMBER),
                            .(SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NUMBER,
-                              DAMG_NEW = DAMAGE_AGENT_CODE,
-                              DAMG_OLD  = NA, # not sure
-                              SEVERITY = SEVERITY_RATING_VALUE)]
+                             DAMG_NEW = DAMAGE_AGENT_CODE,
+                             DAMG_OLD  = NA, # not sure
+                             SEVERITY = SEVERITY_RATING_VALUE)]
 
   treedamage[, neworder := 1:length(DAMG_OLD),
              by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT", "TREE_NUMBER")]
@@ -818,6 +864,7 @@ if(compilationType == "nonPSP"){
                                     OUT_OF_PLOT_IND, MEASUREMENT_ANOMALY_CODE)],
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT", "TREE_NUMBER"),
                 all = TRUE)
+  vi_d <- vi_d[!is.na(CLSTR_ID),]
   vi_d <- vi_d[OUT_OF_PLOT_IND == "N",]
   vi_d <- vi_d[MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N"),]
   vi_d[, ':='(OUT_OF_PLOT_IND = NULL,
@@ -838,6 +885,7 @@ if(compilationType == "nonPSP"){
                                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                                 all.x = TRUE)
+  SmallLiveTreeTallies <- SmallLiveTreeTallies[!is.na(CLSTR_ID),]
   SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE)]
   vi_f <- SmallLiveTreeTallies[,.(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
                                   low_bnd, TOTAL = NUMBER_OF_TREES)]
@@ -870,6 +918,7 @@ if(compilationType == "nonPSP"){
                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                         by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                         all.x = TRUE)
+  stumptallies <- stumptallies[!is.na(CLSTR_ID),]
   vi_g <- stumptallies[,.(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
                           FREQ = STUMP_OCCURRENCE_FREQUENCY, DIB = DIAMETER_INSIDE_BARK,
                           HEIGHT = STUMP_HEIGHT, PCT_SND = SOUND_WOOD_PERCENT,
