@@ -3,14 +3,15 @@
 \docType{methods}
 \name{ISMCCompiler}
 \alias{ISMCCompiler}
-\title{ISMC compiler - Adapted from VRI compiler to compile data converted from VGIS database}
+\title{ISMC compiler}
 \usage{
 ISMCCompiler(
+  compilationType,
   oracleUserName,
   oraclePassword,
   oracleEnv = "INT",
- 
-    compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
+  compilationPath =
+    "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
   equation = "KBEC",
   walkThru = TRUE,
   logMinLength = 0.1,
@@ -24,6 +25,10 @@ ISMCCompiler(
 )
 }
 \arguments{
+\item{compilationType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
+is consistent with original PSP compiler, otherwise, it
+is consistent with VRI compiler.}
+
 \item{oracleUserName}{character, User name to access to ISMC database.}
 
 \item{oraclePassword}{character, Password to access to ISMC database.}
@@ -75,9 +80,8 @@ These raw data will be used for recompilation. Format is YYYYMMDD.}
 This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
 }
 \description{
-This compiler is adapted version of original VRI compiler. It loads
-data from ISMC, pipes data into compilation processes and outputs
-compilated results at both tree and stand levels.
+This compiler is a general compiler to compile field data from either PSP or other
+programs.
 }
 \note{
 Improvements include:
