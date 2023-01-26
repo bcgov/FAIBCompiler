@@ -6,12 +6,14 @@
 #' @param compilationType character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
 #'                               is consistent with original PSP compiler, otherwise, it
 #'                               is consistent with VRI compiler.
-#' @param oracleUserName character, User name to access to ISMC database.
-#' @param oraclePassword character, Password to access to ISMC database.
+#' @param ismcUserName character, User name to access to ISMC database.
+#' @param ismcPassword character, Password to access to ISMC database.
 #' @param oracleEnv character, Specify which environment of ISMC database the data download from.
 #'                             Currently, it supports 1) \code{INT} for intergration environment;
 #'                             2) \code{TST} for test environment; 3) \code{PROD} for final production
 #'                             environment.
+#' @param bcgwUserName character, User name to access to bcgw database.
+#' @param bcgwPassword character, Password to access to bcgw database.
 #' @param compilationPath character, Specifies the path that stores all the data/processes. By specifying this,
 #'                         four folders will be created to record all the data/processes. Specifically,
 #'                         raw_from_oracle stores the data just after oracle and ascii without editing;
@@ -19,8 +21,6 @@
 #'                         compilation_db stores compiled results for volume and age compilation at both tree level
 #'                         and cluater level;
 #'                         Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
-#'                         By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
-#'                         which is consistent with our rdw system.
 #' @param equation character, Specifies the taper equation that is used for compiler. Currently supports
 #'                            BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).
 #' @param walkThru logical, Speciefies whether the data had been collected using work through method. Default is \code{TRUE},
@@ -73,20 +73,22 @@
 #'
 #' @author Yong Luo
 ISMCCompiler <- function(compilationType,
-                             oracleUserName,
-                             oraclePassword,
-                             oracleEnv = "INT",
-                             compilationPath = "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
-                             equation = "KBEC",
-                             walkThru = TRUE,
-                             logMinLength = 0.1,
-                             stumpHeight = 0.3,
-                             breastHeight = 1.3,
-                             UTOPDIB = 10,
-                             utilLevel = 4,
-                             weirdUtil = "4",
-                             recompile = FALSE,
-                             archiveDate = as.character(NA)){
+                         ismcUserName,
+                         ismcPassword,
+                         oracleEnv = "PROD",
+                         bcgwUserName,
+                         bcgwPassword,
+                         compilationPath,
+                         equation = "KBEC",
+                         walkThru = TRUE,
+                         logMinLength = 0.1,
+                         stumpHeight = 0.3,
+                         breastHeight = 1.3,
+                         UTOPDIB = 10,
+                         utilLevel = 4,
+                         weirdUtil = "4",
+                         recompile = FALSE,
+                         archiveDate = as.character(NA)){
   if(!(compilationType %in% c("PSP", "nonPSP"))){
     stop("The compilationType must be either PSP or nonPSP")
   }
@@ -141,8 +143,8 @@ ISMCCompiler <- function(compilationType,
 
     ### 2. load oracle data
     cat(paste(Sys.time(), ": Load data from ISMC database.\n", sep = ""))
-    FAIBOracle::loadISMC_bySampleType(userName = oracleUserName,
-                                      passWord = oraclePassword,
+    FAIBOracle::loadISMC_bySampleType(userName = ismcUserName,
+                                      passWord = ismcPassword,
                                       env = toupper(oracleEnv),
                                       sampleType = sampletypes,
                                       savePath = compilationPaths$raw_from_oracle,
@@ -160,30 +162,23 @@ ISMCCompiler <- function(compilationType,
                 coeffPath = compilationPaths$compilation_coeff)
 
   cat(paste(Sys.time(), ": Compile sample and plot information.\n", sep = ""))
-  standage_vegcomp <- read.xlsx(file.path(compilationPaths$compilation_coeff,
-                                          paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")),
-                                detectDates = TRUE) %>%
-    data.table
   samplePlotResults <- samplePlotCompilation(compilationType = compilationType,
                                              dataSourcePath = compilationPaths$compilation_sa,
                                              mapPath = compilationPaths$compilation_map,
-                                             coeffPath = compilationPaths$compilation_coeff,
-                                             SAVegComp = standage_vegcomp)
-  saveRDS(samplePlotResults$spatiallookup,
-          file.path(compilationPaths$compilation_db,
-                    "spatiallookup.rds"))
-  saveRDS(samplePlotResults$spatiallookup$spatiallookup,
+                                             coeffPath = compilationPaths$compilation_coeff)
+
+  cat(paste(Sys.time(), ": Update stand age from vegcomp layer.\n", sep = ""))
+  sample_site_header <- updateSA_vegcomp(compilationType = compilationType,
+                 coeffPath = compilationPaths$compilation_coeff,
+                 bcgwUserName = bcgwUserName,
+                 bcgwPassword = bcgwPassword,
+                 sampleSites = samplePlotResults$spatiallookup$spatiallookup)
+  saveRDS(sample_site_header,
           file.path(compilationPaths$compilation_db,
                     "sample_site_header.rds"))
-  if(compilationType == "nonPSP"){
-    saveRDS(samplePlotResults$spatiallookup,
-            file.path(compilationPaths$compilation_map,
-                      "spatiallookup_nonPSP.rds"))
-  } else {
-    saveRDS(samplePlotResults$spatiallookup,
-            file.path(compilationPaths$compilation_map,
-                      "spatiallookup_PSP.rds"))
-  }
+  saveRDS(samplePlotResults$spatiallookup,
+          file.path(compilationPaths$compilation_map,
+                    paste0("spatiallookup_", compilationType, ".rds")))
   cat("    Saved spatial attribute table. \n")
   samples <- data.table::copy(samplePlotResults$samples)
   samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, MEAS_DT,
@@ -202,11 +197,17 @@ ISMCCompiler <- function(compilationType,
   ## the species correct depends on BEC and BECsubzone, hence should be
   ## done after the bec zone information updated
   samples <- merge(samples,
-                    samplePlotResults$spatiallookup$spatiallookup[,.(SITE_IDENTIFIER,
-                                                                     BEC_ZONE, BEC_SBZ, BEC_VAR,
-                                                                     FIZ, TSA)],
-                    by = "SITE_IDENTIFIER",
-                    all.x = TRUE)
+                   sample_site_header[,.(SITE_IDENTIFIER,
+                                         BEC_ZONE, BEC_SBZ, BEC_VAR,
+                                         FIZ, TSA, PROJ_AGE_1,
+                                         PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
+                   by = "SITE_IDENTIFIER",
+                   all.x = TRUE)
+  samples[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
+  samples[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
+  samples[, ':='(PROJ_AGE_1 = NULL,
+              PROJECTED_Year = NULL,
+              measYear = NULL)]
   spCorr(BECInfor = samples[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR)],
          dataSourcePath = compilationPaths$compilation_sa)
   cat(paste(Sys.time(), ": Compile tree-level WSV_VOL and MER_VOL for volume trees.\n", sep = ""))
@@ -692,14 +693,14 @@ ISMCCompiler <- function(compilationType,
 
   cat(paste(Sys.time(), ": Convert RDS to xlsx.\n", sep = ""))
 
-if(recompile == TRUE){
-  allfolders <- c(compilationPaths$compilation_db,
-                  compilationPaths$compilation_sa)
-} else {
-  allfolders <- c(compilationPaths$compilation_db,
-                  compilationPaths$compilation_sa,
-                  compilationPaths$raw_from_oracle)
-}
+  if(recompile == TRUE){
+    allfolders <- c(compilationPaths$compilation_db,
+                    compilationPaths$compilation_sa)
+  } else {
+    allfolders <- c(compilationPaths$compilation_db,
+                    compilationPaths$compilation_sa,
+                    compilationPaths$raw_from_oracle)
+  }
 
   for (indifolder in allfolders){
     allfiles_indifolder <- dir(pattern = ".rds", indifolder)
@@ -708,17 +709,20 @@ if(recompile == TRUE){
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
       if(compilationType == "PSP" & indifile == "treelist"){
-      write.csv(thedata,
-                 file.path(indifolder, paste0(indifile, ".csv")),
-                row.names = FALSE)
+        write.csv(thedata,
+                  file.path(indifolder, paste0(indifile, ".csv")),
+                  row.names = FALSE)
       } else {
-      write.xlsx(thedata,
-                 file.path(indifolder, paste0(indifile, ".xlsx")))
+        write.xlsx(thedata,
+                   file.path(indifolder, paste0(indifile, ".xlsx")))
       }
     }
   }
   if(recompile == FALSE){
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
+    vegcompversion <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                        paste0("SA_VEGCOMP_", compilationType, ".rds")))
+    vegcompversion <- substr(vegcompversion$vegCompVersion, 1, 10)
     lastCompilationDate <- gsub(paste0(compilationPath, "/Archive_", compilationType, "_"), "",
                                 compilationPaths$compilation_last)
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
@@ -731,7 +735,8 @@ if(recompile == TRUE){
                                     compilationDate = compilationDate,
                                     lastCompilationDate = lastCompilationDate,
                                     compilationYear = compilationYear,
-                                    sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
+                                    sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100,
+                                    vegcompVersion = vegcompversion),
                       quiet = TRUE)
     cat(paste(Sys.time(), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
     if(dir.exists(compilationPaths$compilation_archive)){
@@ -760,6 +765,9 @@ if(recompile == TRUE){
   } else {
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
     cat(paste(Sys.time(), ": All recompiled outputs saved into Archive_", archiveDate, "_recomp", gsub("-", "", Sys.Date()), ".\n", sep = ""))
+    vegcompversion <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                        paste0("SA_VEGCOMP_", compilationType, ".rds")))
+    vegcompversion <- substr(vegcompversion$vegCompVersion, 1, 10)
     rmarkdown::render(input = file.path(compilationPaths$compilation_report,
                                         "general_report.Rmd"),
                       params = list(projectType = compilationType,
@@ -770,7 +778,8 @@ if(recompile == TRUE){
                                     compilationDate = compilationDate,
                                     lastCompilationDate = compilationDate,
                                     compilationYear = compilationYear,
-                                    sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100),
+                                    sindexVersion = as.numeric(SIndexR::SIndexR_VersionNumber())/100,
+                                    vegcompVersion = vegcompversion),
                       quiet = TRUE)
   }
 }

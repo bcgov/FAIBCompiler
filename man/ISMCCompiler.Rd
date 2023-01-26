@@ -7,11 +7,12 @@
 \usage{
 ISMCCompiler(
   compilationType,
-  oracleUserName,
-  oraclePassword,
-  oracleEnv = "INT",
-  compilationPath =
-    "//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/FromRCompiler",
+  ismcUserName,
+  ismcPassword,
+  oracleEnv = "PROD",
+  bcgwUserName,
+  bcgwPassword,
+  compilationPath,
   equation = "KBEC",
   walkThru = TRUE,
   logMinLength = 0.1,
@@ -29,14 +30,18 @@ ISMCCompiler(
 is consistent with original PSP compiler, otherwise, it
 is consistent with VRI compiler.}
 
-\item{oracleUserName}{character, User name to access to ISMC database.}
+\item{ismcUserName}{character, User name to access to ISMC database.}
 
-\item{oraclePassword}{character, Password to access to ISMC database.}
+\item{ismcPassword}{character, Password to access to ISMC database.}
 
 \item{oracleEnv}{character, Specify which environment of ISMC database the data download from.
 Currently, it supports 1) \code{INT} for intergration environment;
 2) \code{TST} for test environment; 3) \code{PROD} for final production
 environment.}
+
+\item{bcgwUserName}{character, User name to access to bcgw database.}
+
+\item{bcgwPassword}{character, Password to access to bcgw database.}
 
 \item{compilationPath}{character, Specifies the path that stores all the data/processes. By specifying this,
 four folders will be created to record all the data/processes. Specifically,
@@ -44,9 +49,7 @@ raw_from_oracle stores the data just after oracle and ascii without editing;
 compilation_sa stores key data (not all) that after editing and before volume and age compilation;
 compilation_db stores compiled results for volume and age compilation at both tree level
 and cluater level;
-Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
-By default, this path is set as \code{//albers/gis_tib/VRI/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/RCompilation},
-which is consistent with our rdw system.}
+Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.}
 
 \item{equation}{character, Specifies the taper equation that is used for compiler. Currently supports
 BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).}

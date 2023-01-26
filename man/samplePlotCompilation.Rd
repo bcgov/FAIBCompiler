@@ -5,13 +5,7 @@
 \alias{samplePlotCompilation}
 \title{Compile sample and plot level information}
 \usage{
-samplePlotCompilation(
-  compilationType,
-  dataSourcePath,
-  mapPath,
-  coeffPath,
-  SAVegComp
-)
+samplePlotCompilation(compilationType, dataSourcePath, mapPath, coeffPath)
 }
 \arguments{
 \item{compilationType}{character, either \code{PSP} or \code{nonPSP}. If it is \code{PSP}, it
@@ -23,8 +17,6 @@ is consistent with VRI compiler.}
 \item{mapPath}{character, Specifies the path dependent maps are stored.}
 
 \item{coeffPath}{character, Specifies the path dependent coeffs are stored.}
-
-\item{SAVegComp}{data.table, The stand age table from vegcomp layer.}
 }
 \value{
 A data table that contains key information at cluster/plot level and compiler log file.

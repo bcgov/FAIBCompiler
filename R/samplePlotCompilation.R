@@ -9,7 +9,6 @@
 #' @param dataSourcePath character, Specifies the path that contains prepared data from raw data.
 #' @param mapPath character, Specifies the path dependent maps are stored.
 #' @param coeffPath character, Specifies the path dependent coeffs are stored.
-#' @param SAVegComp data.table, The stand age table from vegcomp layer.
 #' @return A data table that contains key information at cluster/plot level and compiler log file.
 #'
 #' @importFrom data.table ':='
@@ -24,8 +23,7 @@
 samplePlotCompilation <- function(compilationType,
                                   dataSourcePath,
                                   mapPath,
-                                  coeffPath,
-                                  SAVegComp){
+                                  coeffPath){
   vi_a <- readRDS(file.path(dataSourcePath, "vi_a.rds"))
   vi_a <- vi_a[substr(PROJ_ID, 1, 3) != "DEV",]
   vi_a <- vi_a[substr(TYPE_CD, 1, 1) != "E", ]
@@ -114,17 +112,17 @@ samplePlotCompilation <- function(compilationType,
 
   vi_a[is.na(FIZ) | FIZ == " ", FIZ := "E"]
 
-  vi_a <- merge(vi_a,
-                SAVegComp[,.(SITE_IDENTIFIER, PROJ_AGE_1,
-                             PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
-                by = "SITE_IDENTIFIER",
-                all.x = TRUE)
-  vi_a[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
-
-  vi_a[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
-  vi_a[, ':='(PROJ_AGE_1 = NULL,
-              PROJECTED_Year = NULL,
-              measYear = NULL)]
+  # vi_a <- merge(vi_a,
+  #               SAVegComp[,.(SITE_IDENTIFIER, PROJ_AGE_1,
+  #                            PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
+  #               by = "SITE_IDENTIFIER",
+  #               all.x = TRUE)
+  # vi_a[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
+  #
+  # vi_a[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
+  # vi_a[, ':='(PROJ_AGE_1 = NULL,
+  #             PROJECTED_Year = NULL,
+  #             measYear = NULL)]
   vi_b <- readRDS(file.path(dataSourcePath, "vi_b.rds")) %>% data.table
   vi_b <- vi_b[CLSTR_ID %in% vi_a$CLSTR_ID,]
   vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, PROJ_ID)],
