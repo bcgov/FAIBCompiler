@@ -116,6 +116,7 @@ ISMC_DataPrep <- function(compilationType,
   }
   vi_a <- unique(SampleSiteVisits[,.(CLSTR_ID = NA,
                                      SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
+                                     PROJECT_DESCRIPTOR,
                                      STAND_DISTURBANCE_CODE, STAND_STRUCTURE_CODE,
                                      SAMPLE_BREAK_POINT, SAMPLE_BREAK_POINT_TYPE,
                                      STEM_MAP_REQD_IND,
@@ -156,10 +157,10 @@ ISMC_DataPrep <- function(compilationType,
 
   ## collect dbh_tagging_limit from sample measurement table
   samplemeasurement <- readRDS(dir(inputPath, pattern = "SampleMeasurements.rds",
-                             full.names = TRUE))
+                                   full.names = TRUE))
   samplemeasurement <- unique(samplemeasurement[!is.na(DBH_TAGGING_LIMIT), .(SITE_IDENTIFIER,
-                                                                      VISIT_NUMBER,
-                                                                      DBH_TAGGING_LIMIT)],
+                                                                             VISIT_NUMBER,
+                                                                             DBH_TAGGING_LIMIT)],
                               by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
   vi_a <- merge(vi_a,
                 samplemeasurement,
@@ -332,6 +333,8 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
+
+
   # JD = common juniper
   # My guess is we consider Juniper spp as shrubs, not trees.
   # And as a shrub, we would ignore in our compilation.
@@ -348,6 +351,14 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements <- treemeasurements[!is.na(CLSTR_ID),]
   # for nonPSP
   if(compilationType == "nonPSP"){
+    # remove A samples from vol and age compilation
+    ## output A sample treelist
+    ## after discussion with Dan and Chris
+    treemeasurements_A_samples <- treemeasurements[TYPE_CD == "A",]
+    saveRDS(treemeasurements_A_samples,
+            file.path(outputPath, "treelist_A_samples.rds"))
+    treemeasurements <- treemeasurements[TYPE_CD != "A",]
+    treemeasurements <- treemeasurements[DIAMETER >= 4,]
     # merge suit_si_from_notes to all tree measurements
     treemeasurements <- merge(treemeasurements, suit_si_from_notes,
                               by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
@@ -490,7 +501,20 @@ ISMC_DataPrep <- function(compilationType,
                            AGE_MEASMT_HEIGHT_org = NULL)]
     treemeasurements[, PLOT := PLOT_NUMBER]
   }
-
+  sp_last <- treemeasurements[,.(SITE_IDENTIFIER, PLOT, TREE_NUMBER,
+                                 VISIT_NUMBER, TREE_SPECIES_CODE)]
+  sp_last <- sp_last[order(SITE_IDENTIFIER, PLOT, TREE_NUMBER, VISIT_NUMBER),]
+  sp_last[, lastvisit := max(VISIT_NUMBER),
+          by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER")]
+  sp_last <- sp_last[VISIT_NUMBER == lastvisit,
+                     .(SITE_IDENTIFIER, PLOT, TREE_NUMBER, sp_last = TREE_SPECIES_CODE)]
+  treemeasurements <- merge(treemeasurements,
+                            sp_last,
+                            by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER"),
+                            all.x = TRUE)
+  treemeasurements[TREE_SPECIES_CODE != sp_last,
+                   TREE_SPECIES_CODE := sp_last]
+  rm(sp_last)
   # specieslookup <- lookup_species()
   # specieslookup <- unique(specieslookup[,.(SPECIES, SP0)],
   #                         by = "SPECIES")
@@ -500,7 +524,6 @@ ISMC_DataPrep <- function(compilationType,
   #                           all.x = TRUE)
   treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
                    TREE_SPECIES_CODE := "X"]
-
   vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 &
                              !is.na(LENGTH) &
                              OUT_OF_PLOT_IND == "N" &
@@ -508,7 +531,7 @@ ISMC_DataPrep <- function(compilationType,
                            .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
                              TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE,
                              DBH = DIAMETER, BROKEN_TOP_IND, DIAM_BTP = BROKEN_TOP_DIAMETER,
-                             HEIGHT_TO_BREAK,
+                             HEIGHT_TO_BREAK, TREE_PLANTED_IND,
                              CR_CL = CROWN_CLASS_CODE, TREE_LEN = LENGTH,
                              HT_PROJ = PROJECTED_HEIGHT,
                              HT_BRCH = HEIGHT_TO_LIVE_CROWN,
