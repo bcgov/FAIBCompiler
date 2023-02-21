@@ -126,7 +126,8 @@ samplePlotCompilation <- function(compilationType,
                   SAMP_NO,
                   SAMPLE_BREAK_POINT,
                   SAMPLE_BREAK_POINT_TYPE,
-                  DBH_LIMIT_TAG = DBH_TAGGING_LIMIT)]
+                  DBH_LIMIT_TAG = DBH_TAGGING_LIMIT,
+                  PROJECT_DESCRIPTOR)]
   mapsource <- data.table(mapFile = dir(mapPath, pattern = "_map"))
   spatialLookups <- list(spatiallookup = spatialLookups,
                          mapsource = mapsource)
@@ -241,6 +242,7 @@ samplePlotCompilation <- function(compilationType,
     site_visit1 <- vi_a[TYPE_CD != "N",]
     site_visit1 <- site_visit1[!(TYPE_CD == "B" &
                                    PROJ_ID == "KOL1"),]
+    ## these are test sites
     site_visit1 <- site_visit1[substr(PROJ_ID, 1, 4) != "2019",]
 
     site_visit1[, VISIT_NUMBER_first := min(VISIT_NUMBER),
@@ -267,6 +269,10 @@ samplePlotCompilation <- function(compilationType,
     site_visit1[is.na(SAMPLE_ESTABLISHMENT_TYPE),
                 SAMPLE_ESTABLISHMENT_TYPE := SAMPLE_ESTABLISHMENT_TYPE3]
     site_visit1[, SAMPLE_ESTABLISHMENT_TYPE3 := NULL]
+    site_visit1[TYPE_CD == "A",
+                SAMPLE_ESTABLISHMENT_TYPE := "EYSM"]
+    site_visit1[TYPE_CD == "A" & PROJECT_DESCRIPTOR == "Forest Health Early YSM",
+                SAMPLE_ESTABLISHMENT_TYPE := "FHYSM"]
     site_visit1 <- site_visit1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
     site_visit1[SITE_IDENTIFIER == "2104138",
                 SAMPLE_ESTABLISHMENT_TYPE := "YNS"]
