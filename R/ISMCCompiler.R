@@ -42,6 +42,7 @@
 #' @return This function compiles data and save outputs in \code{compilationPaths$compilation_db} and no file is returned.
 #'
 #' @importFrom data.table ':='
+#' @importFrom fs dir_create dir_copy
 #' @importFrom fpCompare '%<=%' '%==%' '%>=%' '%!=%' '%>>%' '%<<%'
 #' @references VRI compiler manual
 #' @note
@@ -358,6 +359,10 @@ ISMCCompiler <- function(compilationType,
                                         by = "CLSTR_ID",
                                         all.x = TRUE)
   if(compilationType == "nonPSP"){
+    fs::file_copy(file.path(compilationPaths$compilation_sa,
+                            "treelist_A_samples.rds"),
+                  file.path(compilationPaths$compilation_db,
+                            "treelist_A_samples.rds"))
     tree_ms7 <- DWBCompiler(compilationType = compilationType,
                             treeMS = tree_ms6[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
                             siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
@@ -709,9 +714,9 @@ ISMCCompiler <- function(compilationType,
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
       if(compilationType == "PSP" & indifile == "treelist"){
-        write.csv(thedata,
-                  file.path(indifolder, paste0(indifile, ".csv")),
-                  row.names = FALSE)
+        # write.csv(thedata,
+        #           file.path(indifolder, paste0(indifile, ".csv")),
+        #           row.names = FALSE)
       } else {
         write.xlsx(thedata,
                    file.path(indifolder, paste0(indifile, ".xlsx")))
@@ -742,26 +747,19 @@ ISMCCompiler <- function(compilationType,
     if(dir.exists(compilationPaths$compilation_archive)){
       unlink(compilationPaths$compilation_archive, recursive = TRUE)
     }
-    dir.create(compilationPaths$compilation_archive)
-
-    file.copy(from = compilationPaths$compilation_sa,
-              to = compilationPaths$compilation_archive,
-              recursive = TRUE)
-    file.copy(from = compilationPaths$compilation_db,
-              to = compilationPaths$compilation_archive,
-              recursive = TRUE)
-    file.copy(from = compilationPaths$raw_from_oracle,
-              to = compilationPaths$compilation_archive,
-              recursive = TRUE)
-    file.copy(from = compilationPaths$compilation_coeff,
-              to = compilationPaths$compilation_archive,
-              recursive = TRUE)
-    file.copy(from = compilationPaths$compilation_map,
-              to = compilationPaths$compilation_archive,
-              recursive = TRUE)
-    file.copy(from = compilationPaths$compilation_report,
-              to = compilationPaths$compilation_archive,
-              recursive = TRUE)
+    fs::dir_create(compilationPaths$compilation_archive)
+    fs::dir_copy(compilationPaths$compilation_sa,
+                 compilationPaths$compilation_archive)
+    fs::dir_copy(compilationPaths$compilation_db,
+                 compilationPaths$compilation_archive)
+    fs::dir_copy(compilationPaths$raw_from_oracle,
+                 compilationPaths$compilation_archive)
+    fs::dir_copy(compilationPaths$compilation_coeff,
+                 compilationPaths$compilation_archive)
+    fs::dir_copy(compilationPaths$compilation_map,
+                 compilationPaths$compilation_archive)
+    fs::dir_copy(compilationPaths$compilation_report,
+                 compilationPaths$compilation_archive)
   } else {
     cat(paste(Sys.time(), ": Generate reports in report folder.\n", sep = ""))
     cat(paste(Sys.time(), ": All recompiled outputs saved into Archive_", archiveDate, "_recomp", gsub("-", "", Sys.Date()), ".\n", sep = ""))
