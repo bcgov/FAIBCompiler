@@ -168,12 +168,13 @@ ISMCCompiler <- function(compilationType,
                                              mapPath = compilationPaths$compilation_map,
                                              coeffPath = compilationPaths$compilation_coeff)
 
+
   cat(paste(Sys.time(), ": Update stand age from vegcomp layer.\n", sep = ""))
   sample_site_header <- updateSA_vegcomp(compilationType = compilationType,
-                 coeffPath = compilationPaths$compilation_coeff,
-                 bcgwUserName = bcgwUserName,
-                 bcgwPassword = bcgwPassword,
-                 sampleSites = samplePlotResults$spatiallookup$spatiallookup)
+                                         coeffPath = compilationPaths$compilation_coeff,
+                                         bcgwUserName = bcgwUserName,
+                                         bcgwPassword = bcgwPassword,
+                                         sampleSites = samplePlotResults$spatiallookup$spatiallookup)
   saveRDS(sample_site_header,
           file.path(compilationPaths$compilation_db,
                     "sample_site_header.rds"))
@@ -201,14 +202,15 @@ ISMCCompiler <- function(compilationType,
                    sample_site_header[,.(SITE_IDENTIFIER,
                                          BEC_ZONE, BEC_SBZ, BEC_VAR,
                                          FIZ, TSA, PROJ_AGE_1,
-                                         PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)))],
+                                         PROJECTED_Year = as.numeric(substr(PROJECTED_DATE, 1, 4)),
+                                         SAMPLE_ESTABLISHMENT_TYPE)],
                    by = "SITE_IDENTIFIER",
                    all.x = TRUE)
   samples[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
   samples[, SA_VEGCOMP := measYear - PROJECTED_Year + PROJ_AGE_1]
   samples[, ':='(PROJ_AGE_1 = NULL,
-              PROJECTED_Year = NULL,
-              measYear = NULL)]
+                 PROJECTED_Year = NULL,
+                 measYear = NULL)]
   spCorr(BECInfor = samples[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR)],
          dataSourcePath = compilationPaths$compilation_sa)
   cat(paste(Sys.time(), ": Compile tree-level WSV_VOL and MER_VOL for volume trees.\n", sep = ""))
@@ -619,13 +621,12 @@ ISMCCompiler <- function(compilationType,
                 VOL_DWB = 0)]
   prep_smy[is.na(S_F), S_F := "S"]
   ## end of process
-
   if(compilationType == "nonPSP"){
-
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
                                  S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
                                  PHF_TREE, DBH, TREE_WT, VOL_WSV, VOL_MER, VOL_NTWB,
-                                 VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE)]
+                                 VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
+                                 TREE_PLANTED_IND)]
   } else {
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
                                  S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
@@ -633,7 +634,7 @@ ISMCCompiler <- function(compilationType,
                                  VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
                                  CR_CL, DIB_BH, DIB_STUMP, DIB_UTOP, HT_BH, HT_BRCH,
                                  HT_STUMP, PCT_BRK, PCT_DCY, PCT_WST, RESIDUAL, SECTOR,
-                                 VOL_STUMP)]
+                                 VOL_STUMP, TREE_PLANTED_IND)]
   }
 
   saveRDS(prep_smy_temp[order(CLSTR_ID, PLOT, TREE_NO),],
