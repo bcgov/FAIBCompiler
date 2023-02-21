@@ -60,6 +60,31 @@ samplePlotCompilation <- function(compilationType,
                                  (IP_NRTH_prev == IP_NRTH |
                                     (is.na(IP_NRTH_prev) & is.na(IP_NRTH)))]
     samples_skip <- vi_a[SITE_IDENTIFIER %in% samples_skip$SITE_IDENTIFIER,]
+    samples_skip <- merge(samples_skip,
+                          previousSamples[,.(SITE_IDENTIFIER, BEC_ZONE_prev,
+                                             BEC_SBZ_prev, BEC_VAR_prev,
+                                             TSA_prev, TSA_DESC_prev, FIZ_prev,
+                                             TFL_prev, OWNER_prev, SCHEDULE_prev)],
+                          by = "SITE_IDENTIFIER",
+                          all.x = TRUE)
+    samples_skip[,':='(BEC = BEC_ZONE_prev,
+                       BEC_SBZ = BEC_SBZ_prev,
+                       BEC_VAR = BEC_VAR_prev,
+                       TSA = TSA_prev,
+                       TSA_DESC = TSA_DESC_prev,
+                       FIZ = FIZ_prev,
+                       TFL = TFL_prev,
+                       OWNER = OWNER_prev,
+                       SCHEDULE = SCHEDULE_prev)]
+    samples_skip[,':='(BEC_ZONE_prev = NULL,
+                       BEC_SBZ_prev = NULL,
+                       BEC_VAR_prev = NULL,
+                       TSA_prev = NULL,
+                       TSA_DESC_prev = NULL,
+                       FIZ_prev = NULL,
+                       TFL_prev = NULL,
+                       OWNER_prev = NULL,
+                       SCHEDULE_prev = NULL)]
     samples_proc <- vi_a[!(SITE_IDENTIFIER %in% samples_skip$SITE_IDENTIFIER),]
     if(nrow(samples_proc) > 0){
       ## for PSP, some samples do not have good spatial coordinates, hence, causing
