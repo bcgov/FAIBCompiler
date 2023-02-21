@@ -52,12 +52,12 @@ vicPrep<- function(compilationType,
                                     unique(clusterplotHeader[,.(clusterPlot, SAMP_TYP,
                                                                 PLOT_WT, BLOWUP,
                                                                 FIZ,
-                                                                TYPE_CD)],
+                                                                TYPE_CD,
+                                                                SAMPLE_ESTABLISHMENT_TYPE)],
                                            by = "clusterPlot"),
                                     by = "clusterPlot", all.x = TRUE)
 
   if(compilationType == "nonPSP"){
-
     vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
                                                treeWeight = TREE_WT, plotWeight = PLOT_WT,
                                                treeBasalArea = BA_TREE)]
@@ -70,6 +70,13 @@ vicPrep<- function(compilationType,
   # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
   # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
   vi_c[TYPE_CD %in% c("F", "M", "Y", "L") & DBH < 9,
+       PHF_TREE := PHF_TREE*4]
+  #   2)	FHYSM Only - Can we change the PHF_TREE from 25 to 100 for the 4-9cm DBH deciduous trees in the 5.64m subplot?
+  #   •	The reason why is because there are non-standard diameter limits used in this project. All conifers >1m height in the 11.28m radius main plot are tagged (all conifers get a PHF_TREE = 25) while deciduous are tagged using standard YSM/CMI protocol.  ie., trees 4-9cm dbh in the 5.64m radius subplot (PHF_TREE = 100), and trees >9cm dbh in the 11.28m radius main plot (PHF_TREE = 25).
+  #   •	It looks like it only impacts one tree so far but these FHYSM samples will be remeasured and we may get more.
+  deci_sp <- lookup_species()
+  deci_sp <- unique(deci_sp[SP_TYPE == "D"]$SPECIES)
+  vi_c[SAMPLE_ESTABLISHMENT_TYPE == "FHYSM" & DBH < 9 & SPECIES %in% deci_sp,
        PHF_TREE := PHF_TREE*4]
   vi_c[BROKEN_TOP_IND == "Y" &
          !is.na(TREE_LEN),
@@ -88,7 +95,8 @@ vicPrep<- function(compilationType,
                                                   HEIGHT = TREE_LEN, BARK_PER,
                                                   HT_PROJ, DIAM_BTP, BROKEN_TOP_IND,
                                                   HT_BTOP,
-                                                  MEASUREMENT_ANOMALY_CODE)]
+                                                  MEASUREMENT_ANOMALY_CODE,
+                                                  TREE_PLANTED_IND)]
     return(vi_c)
   } else {
     vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT,
@@ -101,6 +109,7 @@ vicPrep<- function(compilationType,
                                                   HT_PROJ, DIAM_BTP, BROKEN_TOP_IND,
                                                   HT_BTOP,
                                                   MEASUREMENT_ANOMALY_CODE,
+                                                  TREE_PLANTED_IND,
                                                   LOG_G_1,  LOG_G_2,  LOG_G_3,  LOG_G_4,
                                                   LOG_G_5,  LOG_G_6,  LOG_G_7, LOG_G_8,
                                                   LOG_G_9 = as.numeric(NA),
