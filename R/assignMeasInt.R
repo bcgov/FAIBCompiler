@@ -47,8 +47,8 @@ assignMeasInt <- function(compilationType,
     vic[, MEAS_INTENSE := "H-ENHANCED"] # for the non-broken top trees, tree height is tree length
     vii[, MEAS_INTENSE := "NON-ENHANCED"]
     tree_all <- rbindlist(list(vic, vii), fill = TRUE)
-    tree_all <- merge(tree_all, vid[,.(CLSTR_ID, TREE_NO, full = TRUE)],
-                      by = c("CLSTR_ID", "TREE_NO"),
+    tree_all <- merge(tree_all, vid[,.(CLSTR_ID, PLOT, TREE_NO, full = TRUE)],
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                       all.x = TRUE)
     tree_all[MEAS_INTENSE == "H-ENHANCED" & full == TRUE,
              MEAS_INTENSE := "FULL"]
@@ -57,5 +57,5 @@ assignMeasInt <- function(compilationType,
               nonHTTrees = tree_all[MEAS_INTENSE == "NON-ENHANCED",
                                           .(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, TREE_NO,
                                             SPECIES_ORG, SPECIES, SP0,  DBH,  BA_TREE,
-                                            PHF_TREE, LV_D, MEAS_INTENSE)]))
+                                            PHF_TREE, LV_D, MEAS_INTENSE, MEASUREMENT_ANOMALY_CODE)]))
 }
