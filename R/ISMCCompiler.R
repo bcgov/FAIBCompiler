@@ -159,13 +159,11 @@ ISMCCompiler <- function(compilationType,
                 inputPath = compilationPaths$raw_from_oracle,
                 outputPath = compilationPaths$compilation_sa,
                 coeffPath = compilationPaths$compilation_coeff)
-
   cat(paste(Sys.time(), ": Compile sample and plot information.\n", sep = ""))
   samplePlotResults <- samplePlotCompilation(compilationType = compilationType,
                                              dataSourcePath = compilationPaths$compilation_sa,
                                              mapPath = compilationPaths$compilation_map,
                                              coeffPath = compilationPaths$compilation_coeff)
-
 
   cat(paste(Sys.time(), ": Update stand age from vegcomp layer.\n", sep = ""))
   sample_site_header <- updateSA_vegcomp(compilationType = compilationType,
@@ -224,6 +222,7 @@ ISMCCompiler <- function(compilationType,
                    samples,
                    by = "CLSTR_ID",
                    all.x = TRUE)
+
   tree_ms1 <- vicPrep(compilationType = compilationType,
                       data.table::copy(samples),
                       compilationPaths$compilation_sa,
@@ -655,7 +654,7 @@ ISMCCompiler <- function(compilationType,
                                  S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
                                  PHF_TREE, DBH, TREE_WT, VOL_WSV, VOL_MER, VOL_NTWB,
                                  VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
-                                 TREE_PLANTED_IND)]
+                                 TREE_PLANTED_IND, MEASUREMENT_ANOMALY_CODE)]
   } else {
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
                                  S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
@@ -663,7 +662,7 @@ ISMCCompiler <- function(compilationType,
                                  VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
                                  CR_CL, DIB_BH, DIB_STUMP, DIB_UTOP, HT_BH, HT_BRCH,
                                  HT_STUMP, PCT_BRK, PCT_DCY, PCT_WST, RESIDUAL, SECTOR,
-                                 VOL_STUMP, TREE_PLANTED_IND)]
+                                 VOL_STUMP, TREE_PLANTED_IND, MEASUREMENT_ANOMALY_CODE)]
   }
 
   saveRDS(prep_smy_temp[order(CLSTR_ID, PLOT, TREE_NO),],
