@@ -316,8 +316,26 @@ ISMC_DataPrep <- function(compilationType,
               ':='(F_FULL = TRUE,
                    F_HALF = NA,
                    F_QRTR = NA)]
-  saveRDS(vi_b_master, file.path(outputPath, "vi_b.rds"))
+  vi_b_master[CLSTR_ID %in% vi_a[SAMPLE_BREAK_POINT == DBH_TAGGING_LIMIT]$CLSTR_ID,
+              SMALL_TREE_SUBPLOT_RADIUS := 0]
+  # since 2021, if subplot area is missing and plot is either sq or rectangle,
+  # a 5.64 circle subplot will be used, as per communications with Chris on 2023-03-13
+  vi_b_master[CLSTR_ID %in% vi_a[substr(MEAS_DT, 1, 4) > 2020,]$CLSTR_ID &
+                !is.na(PLOT_WIDTH) &
+                is.na(SMALL_TREE_SUBPLOT_RADIUS),
+              SMALL_TREE_SUBPLOT_RADIUS := 5.64]
 
+  ## use subplot area lookup table to populate subplot area when it is missing
+  if(compilationType == "PSP"){
+    subplotarea_lookup <- read.csv(file.path(coeffPath, "area_subplot_lookup.csv"))
+    vi_b_master <- merge(vi_b_master,
+                         subplotarea_lookup,
+                         by = c("CLSTR_ID", "PLOT"),
+                         all.x = TRUE)
+  } else {
+    vi_b_master[, AREA_PS := as.numeric(NA)]
+  }
+  saveRDS(vi_b_master, file.path(outputPath, "vi_b.rds"))
 
   vi_e <- unique(plotdetails[PLOT_CATEGORY_CODE %in% c("IPC SM",  "IPC ST"),
                              .(CLSTR_ID, PLOT = "I", F_RAD = PLOT_RADIUS, PLOT_CATEGORY_CODE)],
