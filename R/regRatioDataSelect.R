@@ -84,8 +84,8 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     ## check sample point 0031-0005
     testdata <- selectedsamples[SAMP_POINT == "6000201",.(CLSTR_ID, PLOT)]
     if(!identical(testdata[order(CLSTR_ID, PLOT),],
-                  data.table(CLSTR_ID = c("6000201-NR1", "6000201-NR1", "6000201-NR1",
-                                          "6000201-NR1", "6000201-QO1"),
+                  data.table(CLSTR_ID = c("6000201-N2", "6000201-N2", "6000201-N2",
+                                          "6000201-N2", "6000201-Q1"),
                              PLOT = c("E", "N", "S", "W", "I")))){
       stop("Sample point with NVAF data is not correctly selected.")
     }
@@ -105,8 +105,8 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
 
     ## for sample point have the fixed area plot
     sampledata_fix <- sampledata[SAMP_TYP == "F",]
-    sampledata_fix[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
-    sampledata_fix <- sampledata_fix[MEAS_DT == LASTTIME,]
+    sampledata_fix[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
+    sampledata_fix <- sampledata_fix[VISIT_NUMBER == LASTTIME,]
     sampledata_fix <- sampledata_fix[CLSTR_ID != "4742-0104-FO1",] ## need to remove when figure out what is
     ## going on
     sampledata_fix[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
@@ -122,8 +122,8 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     sampledata <- sampledata[!(SAMP_POINT %in% unique(sampledata_fix$SAMP_POINT)), ]
 
     ## last selection for the sample point just have multiple variable plot samples
-    sampledata[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
-    sampledata <- sampledata[MEAS_DT == LASTTIME,]
+    sampledata[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
+    sampledata <- sampledata[VISIT_NUMBER == LASTTIME,]
     sampledata[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
     if(nrow(sampledata[clster_length > 1]) > 0){
       print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, MEAS_DT, SAMP_POINT)],
