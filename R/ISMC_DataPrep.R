@@ -382,6 +382,56 @@ ISMC_DataPrep <- function(compilationType,
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                             all.x = TRUE)
   treemeasurements <- treemeasurements[!is.na(CLSTR_ID),]
+
+  ## adjust dbh if a tree is from main plot to subplot if the sample break point does not change
+  ## based on rene's suggestions on March 14
+  treemeasurements_simp <- treemeasurements[!is.na(DIAMETER),.(SITE_IDENTIFIER, PLOT_NUMBER,
+                                                               TREE_NUMBER, VISIT_NUMBER,
+                                                               DIAMETER,
+                                                               SAMPLE_BREAK_POINT)]
+
+  treemeasurements_simp <- treemeasurements_simp[order(SITE_IDENTIFIER, PLOT_NUMBER, TREE_NUMBER,
+                                                       VISIT_NUMBER),]
+  needadjust <- NULL
+  for(i in 1:(max(treemeasurements_simp$VISIT_NUMBER)-1)){
+
+    treemeasurements_simp[DIAMETER %>=% SAMPLE_BREAK_POINT,
+                          plot_crt := "M"]
+    treemeasurements_simp[is.na(plot_crt),
+                          plot_crt := "S"]
+    treemeasurements_simp[, plot_first := shift(plot_crt, type = "lag"),
+                          by = c("SITE_IDENTIFIER", "PLOT_NUMBER", "TREE_NUMBER")]
+    treemeasurements_simp[, breakpoint_first := shift(SAMPLE_BREAK_POINT, type = "lag"),
+                          by = c("SITE_IDENTIFIER", "PLOT_NUMBER", "TREE_NUMBER")]
+
+    treemeasurements_simp[!is.na(plot_first), ':='(change = paste0(plot_first, "-", plot_crt))]
+
+    treemeasurements_simp[change == "M-S" &
+                            SAMPLE_BREAK_POINT %==% breakpoint_first &
+                            VISIT_NUMBER == (i+1),
+                          ':='(dbh_new = SAMPLE_BREAK_POINT,
+                               DIAMETER = SAMPLE_BREAK_POINT)]
+    needadjust <- rbind(needadjust,
+                        treemeasurements_simp[!is.na(dbh_new),
+                                              .(SITE_IDENTIFIER, PLOT_NUMBER,
+                                                TREE_NUMBER, VISIT_NUMBER, dbh_new)])
+    treemeasurements_simp <- treemeasurements_simp[VISIT_NUMBER != i,.(SITE_IDENTIFIER, PLOT_NUMBER,
+                                                                       TREE_NUMBER, VISIT_NUMBER,
+                                                                       DIAMETER,
+                                                                       SAMPLE_BREAK_POINT)]
+
+  }
+  treemeasurements <- merge(treemeasurements,
+                            needadjust,
+                            by = c("SITE_IDENTIFIER", "PLOT_NUMBER",
+                                   "TREE_NUMBER", "VISIT_NUMBER"),
+                            all.x = TRUE)
+  treemeasurements[!is.na(dbh_new),
+                   DIAMETER := dbh_new]
+  treemeasurements[,':='(SAMPLE_BREAK_POINT = NULL,
+                         dbh_new = NULL)]
+  rm(treemeasurements_simp, needadjust)
+  gc()
   # for nonPSP
   if(compilationType == "nonPSP"){
     # remove A samples from vol and age compilation
