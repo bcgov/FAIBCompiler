@@ -56,6 +56,7 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                           Longitude = Longitude_prev,
                                           Latitude = Latitude_prev)]
   if(nrow(samples_proc) > 0){
+
     samplesites_Loc_bcalbers <- FAIBBase::UTM_Convertor(point_ID = samples_proc$SITE_IDENTIFIER,
                                                         zone = samples_proc$IP_UTM,
                                                         northing = samples_proc$IP_NRTH,
@@ -169,7 +170,7 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                                 easting = samples_proc_all$IP_EAST,
                                                 spatialMap = fizmap$map,
                                                 spatialAttribute = "fiz")
-    names(samplesites_loc_tsa) <- c("SITE_IDENTIFIER", "FIZ")
+    names(samplesites_loc_fiz) <- c("SITE_IDENTIFIER", "FIZ")
     samplesites <- merge(samplesites, samplesites_loc_fiz,
                          by = "SITE_IDENTIFIER", all.x = TRUE)
   }
