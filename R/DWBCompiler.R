@@ -89,7 +89,7 @@ setMethod(
                                    height = tree_rsk$HEIGHT,
                                    species = tree_rsk$SP0,
                                    meanAge = tree_rsk$AGE_DWB,
-                                   BEC = tree_rsk$BEC_ZONE,
+                                   BEC = tree_rsk$BEC,
                                    riskGroup = tree_rsk$RISK_GRP,
                                    adjustID = tree_rsk$ADJ_ID)
     tree_rsk[, ':='(PCT_DCY = DWBfactors$decay,
