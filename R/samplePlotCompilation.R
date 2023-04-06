@@ -172,41 +172,60 @@ samplePlotCompilation <- function(compilationType,
   # remove I from N samples in CAR1 project, as these N samples do not have
   # IPC, see communications with Rene and Chris on July 29, 2022
   vi_b <- vi_b[!(PROJ_ID == "CAR1" & TYPE_CD == "N" & PLOT == "I"),]
-
   vi_b <- unique(vi_b, by = c("CLSTR_ID", "PLOT"))
   # for variable area plot
   vi_b[V_BAF > 0 & V_FULL == TRUE, PLOT_WT := 1]
   vi_b[V_BAF > 0 & V_HALF == TRUE, PLOT_WT := 2]
   vi_b[V_BAF > 0 & V_QRTR == TRUE, PLOT_WT := 4]
-  vi_b[V_BAF > 0, ':='(SAMP_TYP = "V", BLOWUP = V_BAF)]
+  vi_b[V_BAF > 0, ':='(SAMP_TYP = "V",
+                       PLOT_AREA_MAIN = as.numeric(NA),
+                       BLOWUP_MAIN = V_BAF)]
   # for fixed area plot
   vi_b[is.na(V_BAF) & F_FULL == TRUE, PLOT_WT := 1]
   vi_b[is.na(V_BAF) & F_HALF == TRUE, PLOT_WT := 2]
   vi_b[is.na(V_BAF) & F_QRTR == TRUE, PLOT_WT := 4]
+
+  # calculate main plot area
   #for circular plot
   vi_b[V_BAF %in% c(0, NA) &
          !is.na(F_RAD),
        ':='(SAMP_TYP = "F",
-            BLOWUP = 1 / (pi* F_RAD^2) * 10000)]
+            PLOT_AREA_MAIN = (pi* F_RAD^2)/10000)]
   # for rectangle plot
   vi_b[V_BAF %in% c(0, NA) &
          !is.na(PLOT_WIDTH) &
-         is.na(BLOWUP),
+         is.na(PLOT_AREA_MAIN),
        ':='(SAMP_TYP = "F",
-            BLOWUP = 1 / (PLOT_WIDTH* PLOT_LENGTH) * 10000)]
+            PLOT_AREA_MAIN = (PLOT_WIDTH* PLOT_LENGTH)/10000)]
   # for the plot that just have plot area
   vi_b[V_BAF %in% c(0, NA) &
          !is.na(PLOT_AREA) &
-         is.na(BLOWUP),
+         is.na(PLOT_AREA_MAIN),
        ':='(SAMP_TYP = "F",
-            BLOWUP = 1 / (PLOT_AREA * 10000) * 10000)]
+            PLOT_AREA_MAIN = PLOT_AREA)]
+  # for subplot area
+  vi_b[V_BAF %in% c(0, NA) &
+         !(SMALL_TREE_SUBPLOT_RADIUS %in% c(NA, 0)),
+       ':='(PLOT_AREA_SUBPLOT = (pi* SMALL_TREE_SUBPLOT_RADIUS^2) / 10000)]
+  vi_b[is.na(PLOT_AREA_SUBPLOT) &
+         SMALL_TREE_SUBPLOT_RADIUS == 0,
+       ':='(PLOT_AREA_SUBPLOT = 0)]
+  vi_b[is.na(PLOT_AREA_SUBPLOT) &
+         !is.na(AREA_PS),
+       ':='(PLOT_AREA_SUBPLOT = AREA_PS)] # area_ps is in hactre
 
+  # for the fixed area plot, the blowup is 1/total plot area
+  vi_b[SAMP_TYP == "F",
+       ':='(BLOWUP_MAIN = 1/sum(PLOT_AREA_MAIN),
+            BLOWUP_SUBPLOT = 1/sum(PLOT_AREA_SUBPLOT)),
+       by = "CLSTR_ID"]
+  vi_b[BLOWUP_SUBPLOT %in% c(Inf, NA),
+       BLOWUP_SUBPLOT := 0]
   vi_b[, NO_PLOTS := length(PLOT), by = CLSTR_ID]
   vi_b[, PLOT_DED := 1L]
   vi_b <- merge(vi_b, vi_a[,.(CLSTR_ID, MEAS_DT)],
                 by = "CLSTR_ID",
                 all.x = TRUE)
-
   vi_b[TYPE_CD == "N" | (as.numeric(substr(MEAS_DT, 1, 4)) >= 2008) |
          (as.numeric(substr(MEAS_DT, 1, 4)) == 2007 & PROJ_ID %in% c("0141", "014M", "0091")),
        PLOT_DED := NO_PLOTS]
@@ -285,8 +304,10 @@ samplePlotCompilation <- function(compilationType,
              FIZ = NULL)]
   return(list(spatiallookup = spatialLookups,
               samples = vi_a,
-              plots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, BLOWUP, PLOT_SHAPE_CODE, F_RAD,
-                              PLOT_WIDTH, PLOT_LENGTH, V_BAF, PLOT_AREA,
+              plots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, PLOT_AREA_MAIN, PLOT_AREA_SUBPLOT,
+                              BLOWUP_MAIN, BLOWUP_SUBPLOT,
+                              PLOT_SHAPE_CODE, F_RAD,
+                              PLOT_WIDTH, PLOT_LENGTH, V_BAF, SMALL_TREE_SUBPLOT_RADIUS,
                               PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION)]))
 }
 
