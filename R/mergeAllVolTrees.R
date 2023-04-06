@@ -49,7 +49,7 @@ setMethod(
     ## select count trees that have cluster id in the treeMS
     treeMS <- treeMS[,c("CLSTR_ID", "PLOT", "TREE_NO", "MEAS_INTENSE", "SPECIES", "LV_D", "S_F",
                         "LOG_G_1", "HEIGHT", "HT_TOTAL", "BTOP", "H_MERCH", "SP0", "BA_TREE", "PHF_TREE",
-                        "DBH", "TREE_WT", summaryCols), with = FALSE]
+                        "DBH", "TREE_WT", "BEC_ZONE", summaryCols), with = FALSE]
     ############on hold for this and confirm with Rene and Bob about the B samples
     # ## full measured tree data treeMS have three scenarios in terms of calculating volumes
     # ## 1. have both height and call grading net factoring information, for those observations,
