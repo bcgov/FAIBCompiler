@@ -477,10 +477,9 @@ ISMCCompiler <- function(compilationType,
     # derive ratio and regression routine
     if(needNewCoffs){
       cat(paste0("    Start to derive coefficients and ratios for year ", compilationYear, "\n"))
+
       alltreelist <- mergeAllVolTrees(treeMS = data.table::copy(tree_ms7),
-                                      treeAX = data.table::copy(tree_ax1))
-      samples_beccls <- unique(samples[,.(CLSTR_ID, BEC_ZONE)], by = "CLSTR_ID")
-      alltreelist <- merge(alltreelist, samples_beccls, by = "CLSTR_ID", all.x = TRUE)
+                                      treeAX = data.table::copy(tree_nonHT))
       allbecsplvd <- unique(alltreelist[,.(BEC_ZONE, SP0, LV_D)])
 
       ## if the regratiodata can not be found in coeff folder
@@ -493,14 +492,14 @@ ISMCCompiler <- function(compilationType,
       coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
       if(compilationYear > 2021){ ## comparison starts from 2022 to select the better model to predict BA-WSV relationship
         fixedcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                             paste0("fixedCoefs", compilationYear-1, ".rds")))
+                                             paste0("fixedCoefs", as.numeric(compilationYear)-1, ".rds")))
         fixedcoeff_prev[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
         randomcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                              paste0("randomCoefs", compilationYear-1, ".rds")))
+                                              paste0("randomCoefs", as.numeric(compilationYear)-1, ".rds")))
         randomcoeff_prev[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
-        allfix <- merge(coefs$fixedcoeff[,.(uni_strata,
+        allfix <- merge(coefs$fixedcoeff[,.(uni_strata = paste0(BEC_ZONE, SP0, LV_D),
                                             R2_Marginal_crt = R2_Marginal)],
                         fixedcoeff_prev[,.(uni_strata,
                                            R2_Marginal_prev = R2_Marginal,
