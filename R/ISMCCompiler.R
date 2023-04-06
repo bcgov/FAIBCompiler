@@ -96,7 +96,6 @@ ISMCCompiler <- function(compilationType,
   if(!(compilationType %in% c("PSP", "nonPSP"))){
     stop("The compilationType must be either PSP or nonPSP")
   }
-
   cat(paste(Sys.time(), ": Prepare folders in compilation path.\n", sep = ""))
   compilationDate <- gsub("-", "", Sys.Date())
   compilationPaths <- compilerPathSetup_new(compilationPath,
@@ -130,10 +129,6 @@ ISMCCompiler <- function(compilationType,
     needNewCoffs <- TRUE
   }
   cat("    Check stand age table from vegcomp:.\n")
-  if(!file.exists(file.path(compilationPaths$compilation_coeff,
-                            paste0("stand_age_from_vegcomp_dan_", compilationYear, ".xlsx")))){
-    stop(paste0("Ask Dan Turner to derive stand age table from vegcomp layer for ", compilationYear, ".\nAnd save it in coeff fold."))
-  }
   if(recompile == FALSE){
     if(compilationType == "nonPSP"){
       sampletypes <- c("M", "Y", "L", "Q", "N", "Z", "D", "T",
