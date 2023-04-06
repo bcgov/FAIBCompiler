@@ -99,15 +99,11 @@ ISMC_DataPrep <- function(compilationType,
 
       suit_si_from_notes <- rbind(suit_si_from_notes, indipositiontable)
     }
-
     suit_si_from_notes[, firstcut := substr(SAMPLE_SITE_VISIT_COMMENT, start_position+24, start_position+30)]
-
     suit_si_from_notes[, yesposition := unlist(lapply(firstcut, function(x){as.numeric(gregexpr("YES", x)[[1]])}))]
     suit_si_from_notes[, noposition := unlist(lapply(firstcut, function(x){as.numeric(gregexpr("NO", x)[[1]][1])}))]
-
     suit_si_from_notes[yesposition > 0, TREE_NO_yes := as.numeric(substr(firstcut, 1, yesposition-1))]
     suit_si_from_notes[noposition > 0, TREE_NO_no := as.numeric(substr(firstcut, 1, noposition-1))]
-
     suit_si_from_notes[(!is.na(TREE_NO_yes) & is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_yes,
                                                                        SUIT_SI_temp = "Y")]
     suit_si_from_notes[(is.na(TREE_NO_yes) & !is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_no,
@@ -236,7 +232,8 @@ ISMC_DataPrep <- function(compilationType,
                           PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
                           PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
                           PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                          PLOT_SHAPE_CODE)]
+                          PLOT_SHAPE_CODE,
+                          SMALL_TREE_SUBPLOT_RADIUS)]
     vi_b[PLOT == "IPC TD", PLOT := "I"]
     vi_b[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
   } else {
@@ -248,17 +245,16 @@ ISMC_DataPrep <- function(compilationType,
                           PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
                           PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
                           PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                          PLOT_SHAPE_CODE)]
+                          PLOT_SHAPE_CODE,
+                          SMALL_TREE_SUBPLOT_RADIUS)]
   }
-
   vi_b_master <- unique(vi_b[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                 PLOT, V_BAF, F_RAD,
                                 PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
                                 PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                                PLOT_SHAPE_CODE)],
+                                PLOT_SHAPE_CODE, SMALL_TREE_SUBPLOT_RADIUS)],
                         by = c("CLSTR_ID", "PLOT"))
   fixplots <- vi_b[!is.na(F_RAD),]
-
   vi_b_master <- merge(vi_b_master,
                        fixplots[PARTIAL_PLOT_REASON_CODE == "BOUNDARY",
                                 .(CLSTR_ID, PLOT, F_BDRY = TRUE)],
@@ -395,7 +391,8 @@ ISMC_DataPrep <- function(compilationType,
 
   treemeasurements <- merge(treemeasurements,
                             unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
-                                           CLSTR_ID, MEAS_DT)],
+                                           CLSTR_ID, MEAS_DT,
+                                           SAMPLE_BREAK_POINT)],
                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                             all.x = TRUE)
@@ -646,7 +643,8 @@ ISMC_DataPrep <- function(compilationType,
                              WL_BARK = BARK_RETENTION_CODE,
                              WL_WOOD = WOOD_CONDITION_CODE,
                              WL_LICHE = LICHEN_LOADING_RATING_CODE,
-                             MEASUREMENT_ANOMALY_CODE)]
+                             MEASUREMENT_ANOMALY_CODE,
+                             TREE_CLASS_CODE)]
   # only nonPSP has log information
   if(compilationType == "nonPSP"){
     treelog <- readRDS(dir(inputPath, "TreeLogAssessments.rds",
@@ -743,7 +741,7 @@ ISMC_DataPrep <- function(compilationType,
                              BORAG_FL = BORING_AGE + AGE_CORE_MISSED_YEARS_FIELD,
                              BORE_AGE = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS_LAB,
                              AGE_CORR = AGE_CORRECTION,  TOTAL_AG = TOTAL_AGE,
-                             PHYS_AGE = PHYSIOLOGICAL_AGE, GROW_20YR = RADIAL_INCREMENT_LAST_20_YR,
+                             PHYS_AGE = as.numeric(NA), GROW_20YR = RADIAL_INCREMENT_LAST_20_YR,
                              GROW_10YR = RADIAL_INCREMENT_LAST_10_YR,
                              GROW_5YR = RADIAL_INCREMENT_LAST_5_YR,
                              PRO_LEN = PRORATE_LENGTH, TREE_LEN = LENGTH,
@@ -852,14 +850,15 @@ ISMC_DataPrep <- function(compilationType,
   saveRDS(vi_h, file.path(outputPath, "vi_h.rds"))
   rm(vi_h, vi_h_th)
   gc()
-
   if(compilationType == "nonPSP"){
     vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
                              .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
                                SPECIES = TREE_SPECIES_CODE,
                                DBH = DIAMETER,
                                LV_D = TREE_EXTANT_CODE,
-                               S_F = TREE_STANCE_CODE)]
+                               S_F = TREE_STANCE_CODE,
+                               MEASUREMENT_ANOMALY_CODE,
+                               TREE_CLASS_CODE)]
   } else {
     vi_i <- treemeasurements[!is.na(DIAMETER) & is.na(LENGTH),
                              .(CLSTR_ID, PLOT,
@@ -871,7 +870,9 @@ ISMC_DataPrep <- function(compilationType,
                                BROKEN_TOP_IND,
                                DIAM_BTP = BROKEN_TOP_DIAMETER,
                                HEIGHT_TO_BREAK,
-                               HT_PROJ = PROJECTED_HEIGHT)]
+                               HT_PROJ = PROJECTED_HEIGHT,
+                               MEASUREMENT_ANOMALY_CODE,
+                               TREE_CLASS_CODE)]
   }
   saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
   rm(vi_i)
