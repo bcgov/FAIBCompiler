@@ -35,18 +35,30 @@ viiPrep<- function(compilationType,
     vi_i[, TREE_WT := 1]
     vi_i[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
     vi_i <- FAIBBase::merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP,
-                                                                  BLOWUP, PLOT_WT)],
+                                                                  BLOWUP_MAIN, BLOWUP_SUBPLOT,
+                                                                  SAMPLE_BREAK_POINT,
+                                                                  PLOT_WT)],
                                       by = "clusterplot", all.x = TRUE)
     if(compilationType == "nonPSP"){
-      vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP, treeWeight = TREE_WT,
+      vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN, treeWeight = TREE_WT,
                                                  plotWeight = PLOT_WT, treeBasalArea = BA_TREE)]
     } else {
-      vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP, treeWeight = TREE_WT,
-                                                 plotWeight = 1, treeBasalArea = BA_TREE)]
+      vi_i[DBH >= SAMPLE_BREAK_POINT,
+           PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
+                                               treeWeight = TREE_WT, plotWeight = 1,
+                                               treeBasalArea = BA_TREE)]
+      vi_i[DBH < SAMPLE_BREAK_POINT &
+             is.na(PHF_TREE) &
+             !is.na(BLOWUP_SUBPLOT),
+           PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_SUBPLOT,
+                                               treeWeight = TREE_WT, plotWeight = 1,
+                                               treeBasalArea = BA_TREE)]
     }
     return(vi_i[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, TREE_NO, SPECIES_ORG, SPECIES, SP0,
                    DBH, BA_TREE,
-                   PHF_TREE, LV_D)])
+                   PHF_TREE, LV_D,
+                   MEASUREMENT_ANOMALY_CODE,
+                   TREE_CLASS_CODE)])
   } else {
     return(vi_i[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, SPECIES, TREE_NO)])
   }

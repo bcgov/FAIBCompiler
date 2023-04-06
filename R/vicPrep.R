@@ -50,23 +50,17 @@ vicPrep<- function(compilationType,
   }
   vi_c <- FAIBBase::merge_dupUpdate(vi_c,
                                     unique(clusterplotHeader[,.(clusterPlot, SAMP_TYP,
-                                                                PLOT_WT, BLOWUP,
-                                                                FIZ,
-                                                                TYPE_CD,
-                                                                SAMPLE_ESTABLISHMENT_TYPE)],
+                                                                PLOT_WT, BLOWUP_MAIN, BLOWUP_SUBPLOT,
+                                                                FIZ, TYPE_CD,
+                                                                SAMPLE_ESTABLISHMENT_TYPE,
+                                                                DBH_LIMIT_TAG, SAMPLE_BREAK_POINT)],
                                            by = "clusterPlot"),
                                     by = "clusterPlot", all.x = TRUE)
 
   if(compilationType == "nonPSP"){
-    vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
+    vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
                                                treeWeight = TREE_WT, plotWeight = PLOT_WT,
                                                treeBasalArea = BA_TREE)]
-  } else {
-    vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP,
-                                               treeWeight = TREE_WT, plotWeight = 1,
-                                               treeBasalArea = BA_TREE)]
-  }
-
   # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
   # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
   vi_c[TYPE_CD %in% c("F", "M", "Y", "L") & DBH < 9,
@@ -78,6 +72,19 @@ vicPrep<- function(compilationType,
   deci_sp <- unique(deci_sp[SP_TYPE == "D"]$SPECIES)
   vi_c[SAMPLE_ESTABLISHMENT_TYPE == "FHYSM" & DBH < 9 & SPECIES %in% deci_sp,
        PHF_TREE := PHF_TREE*4]
+  } else {
+    vi_c[DBH >= SAMPLE_BREAK_POINT,
+         PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
+                                               treeWeight = TREE_WT, plotWeight = 1,
+                                               treeBasalArea = BA_TREE)]
+    vi_c[DBH < SAMPLE_BREAK_POINT &
+           is.na(PHF_TREE) &
+           !is.na(BLOWUP_SUBPLOT),
+         PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_SUBPLOT,
+                                               treeWeight = TREE_WT, plotWeight = 1,
+                                               treeBasalArea = BA_TREE)]
+  }
+
   vi_c[BROKEN_TOP_IND == "Y" &
          !is.na(TREE_LEN),
        HT_BTOP := TREE_LEN] ## as long as TREE_LEN is available, the break height is TREE_LEN
@@ -96,7 +103,8 @@ vicPrep<- function(compilationType,
                                                   HT_PROJ, DIAM_BTP, BROKEN_TOP_IND,
                                                   HT_BTOP,
                                                   MEASUREMENT_ANOMALY_CODE,
-                                                  TREE_PLANTED_IND)]
+                                                  TREE_PLANTED_IND,
+                                                  TREE_CLASS_CODE)]
     return(vi_c)
   } else {
     vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT,
@@ -110,6 +118,7 @@ vicPrep<- function(compilationType,
                                                   HT_BTOP,
                                                   MEASUREMENT_ANOMALY_CODE,
                                                   TREE_PLANTED_IND,
+                                                  TREE_CLASS_CODE,
                                                   LOG_G_1,  LOG_G_2,  LOG_G_3,  LOG_G_4,
                                                   LOG_G_5,  LOG_G_6,  LOG_G_7, LOG_G_8,
                                                   LOG_G_9 = as.numeric(NA),
