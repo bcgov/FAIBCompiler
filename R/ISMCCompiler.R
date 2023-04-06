@@ -21,6 +21,8 @@
 #'                         compilation_db stores compiled results for volume and age compilation at both tree level
 #'                         and cluater level;
 #'                         Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.
+#' @param syncTo character, Specifies the path, i.e., network drive, that user wants to share the compilation outputs
+#'                          with coworkers.
 #' @param equation character, Specifies the taper equation that is used for compiler. Currently supports
 #'                            BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).
 #' @param walkThru logical, Speciefies whether the data had been collected using work through method. Default is \code{TRUE},
@@ -80,6 +82,7 @@ ISMCCompiler <- function(compilationType,
                          bcgwUserName,
                          bcgwPassword,
                          compilationPath,
+                         syncTo = as.character(NA),
                          equation = "KBEC",
                          walkThru = TRUE,
                          logMinLength = 0.1,
@@ -781,4 +784,30 @@ ISMCCompiler <- function(compilationType,
                                     vegcompVersion = vegcompversion),
                       quiet = TRUE)
   }
+  if(!is.na(syncTo)){ ## let's sync the compilation to the target folder
+    cat(paste(Sys.time(), ": Sync compilation to network drive.\n", sep = ""))
+    for (indifoler in c("sa", "raw", "db", "report")) {
+      if(dir.exists(file.path(syncTo, paste0("compilation_", compilationType, "_", indifoler)))){
+        unlink(file.path(syncTo, paste0("compilation_", compilationType, "_", indifoler)), recursive = TRUE)
+      }
+    }
+    unlink(file.path(syncTo, "compilation_map"), recursive = TRUE)
+    unlink(file.path(syncTo, "compilation_coeff"), recursive = TRUE)
+    fs::dir_copy(compilationPaths$compilation_sa,
+                 syncTo)
+    fs::dir_copy(compilationPaths$compilation_db,
+                 syncTo)
+    fs::dir_copy(compilationPaths$raw_from_oracle,
+                 syncTo)
+    fs::dir_copy(compilationPaths$compilation_coeff,
+                 syncTo)
+    fs::dir_copy(compilationPaths$compilation_map,
+                 syncTo)
+    fs::dir_copy(compilationPaths$compilation_report,
+                 syncTo)
+    ## for archivement
+    fs::dir_copy(compilationPaths$compilation_archive,
+                 syncTo)
+  }
+  cat(paste(Sys.time(), ": Compilation is done. \n", sep = ""))
 }
