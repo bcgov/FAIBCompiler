@@ -57,5 +57,6 @@ assignMeasInt <- function(compilationType,
               nonHTTrees = tree_all[MEAS_INTENSE == "NON-ENHANCED",
                                           .(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, TREE_NO,
                                             SPECIES_ORG, SPECIES, SP0,  DBH,  BA_TREE,
-                                            PHF_TREE, LV_D, MEAS_INTENSE, MEASUREMENT_ANOMALY_CODE)]))
+                                            PHF_TREE, LV_D, MEAS_INTENSE,
+                                            MEASUREMENT_ANOMALY_CODE, TREE_CLASS_CODE)]))
 }
