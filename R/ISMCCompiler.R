@@ -743,10 +743,10 @@ ISMCCompiler <- function(compilationType,
 
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
-      if(compilationType == "PSP" & indifile == "treelist"){
-        # write.csv(thedata,
-        #           file.path(indifolder, paste0(indifile, ".csv")),
-        #           row.names = FALSE)
+      if(compilationType == "PSP" & indifile %in% c("treelist", "compiled_vi_d")){
+        write.csv(thedata,
+                  file.path(indifolder, paste0(indifile, ".csv")),
+                  row.names = FALSE)
       } else {
         write.xlsx(thedata,
                    file.path(indifolder, paste0(indifile, ".xlsx")))
