@@ -347,11 +347,6 @@ ISMCCompiler <- function(compilationType,
   ######################
   ### 5. start the decay, waste and breakage calculation for full/enhanced trees in vi_c
   cat(paste(Sys.time(), ": Compile DWB.\n", sep = ""))
-  siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
-                                            unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
-                                                   by = "CLSTR_ID"),
-                                            by = "CLSTR_ID",
-                                            all.x = TRUE)
   tree_ms6 <- FAIBBase::merge_dupUpdate(tree_ms6,
                                         unique(samples[,.(CLSTR_ID, PROJ_ID,
                                                           TSA)],
@@ -359,6 +354,11 @@ ISMCCompiler <- function(compilationType,
                                         by = "CLSTR_ID",
                                         all.x = TRUE)
   if(compilationType == "nonPSP"){
+    siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
+                                              unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
+                                                     by = "CLSTR_ID"),
+                                              by = "CLSTR_ID",
+                                              all.x = TRUE)
     fs::file_copy(file.path(compilationPaths$compilation_sa,
                             "treelist_A_samples.rds"),
                   file.path(compilationPaths$compilation_db,
@@ -372,6 +372,38 @@ ISMCCompiler <- function(compilationType,
                                tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
                           fill = TRUE)
   } else {
+    siteAgeTable <- merge(unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, PROJ_ID, SAMP_NO, TYPE_CD,
+                                            MEAS_DT, VISIT_NUMBER)],
+                                 by = "CLSTR_ID"),
+                          cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
+                          by = "CLSTR_ID",
+                          all.x = TRUE)
+    ## use June 15 as the cutpoint to define growth occures in current year or last year
+    siteAgeTable[, meas_year := as.numeric(substr(MEAS_DT, 1, 4))]
+    siteAgeTable[, growthcut := as.Date(paste0(meas_year, "-06-15"))]
+    siteAgeTable[as.Date(MEAS_DT) >= growthcut, growth_year := meas_year] ## measurements after June 15
+    siteAgeTable[is.na(growth_year),
+                 growth_year := meas_year - 1] ## growth from previous year
+    siteAgeTable_withage <- siteAgeTable[!is.na(AT_M_TLS),]
+    siteAgeTable_withage[, first_visit := min(VISIT_NUMBER),
+                         by = "SITE_IDENTIFIER"]
+    siteAgeTable_withage[first_visit == VISIT_NUMBER,
+                         first_year := growth_year]
+    siteAgeTable_withage[, first_year := mean(first_year, na.rm = TRUE),
+                         by = "SITE_IDENTIFIER"]
+    siteAgeTable_withage[, growth_length := growth_year - first_year]
+    siteAgeTable_withage[, AT_M_TLS_adj := mean(AT_M_TLS - growth_length),
+                         by = "SITE_IDENTIFIER"]
+    siteAgeTable_withage <- siteAgeTable_withage[growth_length == 0,
+                                                 .(SITE_IDENTIFIER, base_year = first_year,
+                                                   AT_M_TLS_adj)]
+
+    siteAgeTable <- merge(siteAgeTable,
+                          siteAgeTable_withage,
+                          by = "SITE_IDENTIFIER",
+                          all.x = TRUE)
+    siteAgeTable[, AT_M_TLS := AT_M_TLS_adj + (growth_year - base_year)]
+
     tree_ms7 <- DWBCompiler(compilationType = compilationType,
                             treeMS = tree_ms6,
                             siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
