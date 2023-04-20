@@ -409,7 +409,6 @@ ISMC_DataPrep <- function(compilationType,
                                                        VISIT_NUMBER),]
   needadjust <- NULL
   for(i in 1:(max(treemeasurements_simp$VISIT_NUMBER)-1)){
-
     treemeasurements_simp[DIAMETER %>=% SAMPLE_BREAK_POINT,
                           plot_crt := "M"]
     treemeasurements_simp[is.na(plot_crt),
@@ -455,8 +454,21 @@ ISMC_DataPrep <- function(compilationType,
     treemeasurements_A_samples <- treemeasurements[TYPE_CD == "A",]
     saveRDS(treemeasurements_A_samples,
             file.path(outputPath, "treelist_A_samples.rds"))
-    treemeasurements <- treemeasurements[TYPE_CD != "A",]
-    treemeasurements <- treemeasurements[DIAMETER >= 4,]
+    # for some A samples the trees are very small so that the DBH can not be taken
+    # I populated diameter_msmt_ht and diameter and flagged this modification with
+    # -SizeMOD in measurement_anomaly_code
+    treemeasurements[TYPE_CD == "A" &
+                       is.na(DIAMETER_MEASMT_HEIGHT) &
+                       is.na(LENGTH),
+                     LENGTH := 0]
+    treemeasurements[TYPE_CD == "A" &
+                       is.na(DIAMETER_MEASMT_HEIGHT) &
+                       TREE_PLANTED_IND == "Y", # this is for eysm
+                     ':='(DIAMETER_MEASMT_HEIGHT = 1.3,
+                          DIAMETER = 7, # so that this can be summarized at 4 but not at 7.5cm util
+                          LENGTH = 7 + LENGTH,
+                          MEASUREMENT_ANOMALY_CODE = paste0(MEASUREMENT_ANOMALY_CODE,
+                                                            "-SizeMOD"))]
     # merge suit_si_from_notes to all tree measurements
     treemeasurements <- merge(treemeasurements, suit_si_from_notes,
                               by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
@@ -623,9 +635,11 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
                    TREE_SPECIES_CODE := "X"]
   vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 &
+                             DIAMETER >= 4 &
                              !is.na(LENGTH) &
                              OUT_OF_PLOT_IND == "N" &
-                             MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N"), ## non tally tree, can not used for volume, see scott's comments
+                             (MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N") |
+                                grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE)), ## non tally tree, can not used for volume, see scott's comments
                            .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
                              TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE,
                              DBH = DIAMETER, BROKEN_TOP_IND, DIAM_BTP = BROKEN_TOP_DIAMETER,

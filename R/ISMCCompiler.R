@@ -648,6 +648,19 @@ ISMCCompiler <- function(compilationType,
                 VOL_NTWB = 0,
                 VOL_DWB = 0)]
   prep_smy[is.na(S_F), S_F := "S"]
+  ## for the A samples with -SizeMOD
+  ## i need to bring the volumes back to 0
+  ## bring the sizes to the original sizes
+  ## DBH is kept for summaries
+  prep_smy[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
+                ':='(HEIGHT = HEIGHT - 7,
+                     HT_TOTAL = HT_TOTAL -7,
+                     BA_TREE = 0,
+                     VOL_WSV = 0,
+                     VOL_MER = 0,
+                     VOL_NTWB = 0,
+                     VOL_DWB = 0)]
+
   ## end of process
   if(compilationType == "nonPSP"){
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
@@ -655,6 +668,11 @@ ISMCCompiler <- function(compilationType,
                                  PHF_TREE, DBH, TREE_WT, VOL_WSV, VOL_MER, VOL_NTWB,
                                  VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
                                  TREE_PLANTED_IND, MEASUREMENT_ANOMALY_CODE)]
+    prep_smy_temp[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
+           ':='(DBH = NA,
+                MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
+    prep_smy[substr(CLSTR_ID, 9, 9) == "A" & MEASUREMENT_ANOMALY_CODE == "NA",
+             MEASUREMENT_ANOMALY_CODE := NA]
   } else {
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, MEAS_INTENSE, LV_D,
                                  S_F, HEIGHT, HT_TOTAL, HT_TOTAL_SOURCE, BTOP, H_MERCH, SP0, BA_TREE,
@@ -686,6 +704,25 @@ ISMCCompiler <- function(compilationType,
   vrisummaries$vol_byc[,':='(VHA_DWB_LF = NULL,
                              VHA_DWB_DS = NULL,
                              VHA_DWB_DF = NULL)]
+  # for eysm samples, the QMD will be forced to NA, as the DBH infor is not available for them
+  vrisummaries$vol_bycs <- merge(vrisummaries$vol_bycs,
+                                 unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
+                                        by = "CLSTR_ID"),
+                                 by = "CLSTR_ID",
+                                 all.x = TRUE)
+  vrisummaries$vol_bycs[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
+                        ':='(QMD_LS = NA,
+                             QMD_DS = NA)]
+  vrisummaries$vol_byc <- merge(vrisummaries$vol_byc,
+                                 unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
+                                        by = "CLSTR_ID"),
+                                 by = "CLSTR_ID",
+                                 all.x = TRUE)
+  vrisummaries$vol_byc[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
+                        ':='(QMD_LS = NA,
+                             QMD_DS = NA)]
+  vrisummaries$vol_bycs[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
+  vrisummaries$vol_byc[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
   saveRDS(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.rds"))
   saveRDS(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.rds"))
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
@@ -742,14 +779,10 @@ ISMCCompiler <- function(compilationType,
 
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
-      if(compilationType == "PSP" & indifile %in% c("treelist", "compiled_vi_d")){
         write.csv(thedata,
                   file.path(indifolder, paste0(indifile, ".csv")),
+                  na = "",
                   row.names = FALSE)
-      } else {
-        write.xlsx(thedata,
-                   file.path(indifolder, paste0(indifile, ".xlsx")))
-      }
     }
   }
   if(recompile == FALSE){
