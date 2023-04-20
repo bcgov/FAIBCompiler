@@ -205,10 +205,15 @@ ISMC_DataPrep <- function(compilationType,
 
   ## see communications between Dan and I on March 07, 2023
   vi_a[, DBH_TAGGING_LIMIT_org := DBH_TAGGING_LIMIT]
-  vi_a[is.na(DBH_TAGGING_LIMIT),
-       DBH_TAGGING_LIMIT := 2]
-  vi_a[SAMPLE_BREAK_POINT < DBH_TAGGING_LIMIT,
-       ':='(SAMPLE_BREAK_POINT = 4)]
+  if(compilationType == "PSP"){
+    vi_a[is.na(DBH_TAGGING_LIMIT),
+         DBH_TAGGING_LIMIT := 2]
+    vi_a[SAMPLE_BREAK_POINT < DBH_TAGGING_LIMIT,
+         ':='(SAMPLE_BREAK_POINT = 4)]
+  } else {
+    vi_a[, DBH_TAGGING_LIMIT := 4]
+    vi_a[, SAMPLE_BREAK_POINT := 9] # trees between 4 and 8.9 are in subplot
+  }
 
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
@@ -388,10 +393,10 @@ ISMC_DataPrep <- function(compilationType,
   # Rene's email on 2022-09-09
 
   treemeasurements <- treemeasurements[TREE_SPECIES_CODE != "JD",]
-
   treemeasurements <- merge(treemeasurements,
                             unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                            CLSTR_ID, MEAS_DT,
+                                           DBH_TAGGING_LIMIT,
                                            SAMPLE_BREAK_POINT)],
                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
@@ -403,12 +408,15 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements_simp <- treemeasurements[!is.na(DIAMETER),.(SITE_IDENTIFIER, PLOT_NUMBER,
                                                                TREE_NUMBER, VISIT_NUMBER,
                                                                DIAMETER,
+                                                               DBH_TAGGING_LIMIT,
                                                                SAMPLE_BREAK_POINT)]
 
   treemeasurements_simp <- treemeasurements_simp[order(SITE_IDENTIFIER, PLOT_NUMBER, TREE_NUMBER,
                                                        VISIT_NUMBER),]
   needadjust <- NULL
   for(i in 1:(max(treemeasurements_simp$VISIT_NUMBER)-1)){
+    treemeasurements_simp[DIAMETER %<<% DBH_TAGGING_LIMIT,
+                          plot_crt := "L"] # a tree should not be tagged
     treemeasurements_simp[DIAMETER %>=% SAMPLE_BREAK_POINT,
                           plot_crt := "M"]
     treemeasurements_simp[is.na(plot_crt),
@@ -416,6 +424,8 @@ ISMC_DataPrep <- function(compilationType,
     treemeasurements_simp[, plot_first := shift(plot_crt, type = "lag"),
                           by = c("SITE_IDENTIFIER", "PLOT_NUMBER", "TREE_NUMBER")]
     treemeasurements_simp[, breakpoint_first := shift(SAMPLE_BREAK_POINT, type = "lag"),
+                          by = c("SITE_IDENTIFIER", "PLOT_NUMBER", "TREE_NUMBER")]
+    treemeasurements_simp[, taggingdbh_first := shift(DBH_TAGGING_LIMIT, type = "lag"),
                           by = c("SITE_IDENTIFIER", "PLOT_NUMBER", "TREE_NUMBER")]
 
     treemeasurements_simp[!is.na(plot_first), ':='(change = paste0(plot_first, "-", plot_crt))]
@@ -425,6 +435,11 @@ ISMC_DataPrep <- function(compilationType,
                             VISIT_NUMBER == (i+1),
                           ':='(dbh_new = SAMPLE_BREAK_POINT,
                                DIAMETER = SAMPLE_BREAK_POINT)]
+    treemeasurements_simp[change == "S-L" &
+                            DBH_TAGGING_LIMIT %==% taggingdbh_first &
+                            VISIT_NUMBER == (i+1),
+                          ':='(dbh_new = DBH_TAGGING_LIMIT,
+                               DIAMETER = DBH_TAGGING_LIMIT)]
     needadjust <- rbind(needadjust,
                         treemeasurements_simp[!is.na(dbh_new),
                                               .(SITE_IDENTIFIER, PLOT_NUMBER,
@@ -432,8 +447,8 @@ ISMC_DataPrep <- function(compilationType,
     treemeasurements_simp <- treemeasurements_simp[VISIT_NUMBER != i,.(SITE_IDENTIFIER, PLOT_NUMBER,
                                                                        TREE_NUMBER, VISIT_NUMBER,
                                                                        DIAMETER,
+                                                                       DBH_TAGGING_LIMIT,
                                                                        SAMPLE_BREAK_POINT)]
-
   }
   treemeasurements <- merge(treemeasurements,
                             needadjust,
@@ -442,7 +457,8 @@ ISMC_DataPrep <- function(compilationType,
                             all.x = TRUE)
   treemeasurements[!is.na(dbh_new),
                    DIAMETER := dbh_new]
-  treemeasurements[,':='(SAMPLE_BREAK_POINT = NULL,
+  treemeasurements[,':='(DBH_TAGGING_LIMIT = NULL,
+                         SAMPLE_BREAK_POINT = NULL,
                          dbh_new = NULL)]
   rm(treemeasurements_simp, needadjust)
   gc()
