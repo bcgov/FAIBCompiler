@@ -78,6 +78,17 @@ ISMC_DataPrep <- function(compilationType,
   if(nrow(samplesites) != length(unique(samplesites$SITE_IDENTIFIER))){
     warning("samplesites file: SITE_IDENTIFIER is not unique.")
   }
+  siteaccessnotes <- readRDS(dir(inputPath, pattern = "AccessNotes.rds",
+                                  full.names = TRUE)) %>%
+    data.table
+  siteaccessnotes <- siteaccessnotes[order(SITE_IDENTIFIER, ODOMETER_READING),]
+  siteaccessnotes[, changepointaction := paste0("[@", ODOMETER_READING, "km] ",
+                                                REMARKS)]
+  siteaccessnotes <- siteaccessnotes[,.(ACCESS_NOTES = paste(changepointaction, collapse = ", ")),
+                                     by = "SITE_IDENTIFIER"]
+  saveRDS(siteaccessnotes,
+          file.path(outputPath, "siteaccessnotes.rds"))
+
   SampleSiteVisits <- readRDS(dir(inputPath, pattern = "SampleSiteVisits.rds",
                                   full.names = TRUE)) %>%
     data.table
