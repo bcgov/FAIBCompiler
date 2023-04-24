@@ -13,6 +13,7 @@ ISMCCompiler(
   bcgwUserName,
   bcgwPassword,
   compilationPath,
+  syncTo = as.character(NA),
   equation = "KBEC",
   walkThru = TRUE,
   logMinLength = 0.1,
@@ -50,6 +51,9 @@ compilation_sa stores key data (not all) that after editing and before volume an
 compilation_db stores compiled results for volume and age compilation at both tree level
 and cluater level;
 Archive_YYYYMMDD achives all the data mentioned above for the future use or reference.}
+
+\item{syncTo}{character, Specifies the path, i.e., network drive, that user wants to share the compilation outputs
+with coworkers.}
 
 \item{equation}{character, Specifies the taper equation that is used for compiler. Currently supports
 BEC-based (\code{KBEC}) and FIZ-based (\code{KFIZ}).}
