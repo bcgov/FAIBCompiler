@@ -145,6 +145,7 @@ samplePlotCompilation <- function(compilationType,
                   SAMPLE_BREAK_POINT,
                   SAMPLE_BREAK_POINT_TYPE,
                   DBH_LIMIT_TAG = DBH_TAGGING_LIMIT,
+                  DBHLIMIT_COUNT,
                   PROJECT_DESCRIPTOR)]
   mapsource <- data.table(mapFile = dir(mapPath, pattern = "_map"))
   spatialLookups <- list(spatiallookup = spatialLookups,
