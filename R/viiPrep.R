@@ -37,18 +37,19 @@ viiPrep<- function(compilationType,
     vi_i <- FAIBBase::merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP,
                                                                   BLOWUP_MAIN, BLOWUP_SUBPLOT,
                                                                   SAMPLE_BREAK_POINT,
+                                                                  DBH_LIMIT_TAG,
                                                                   PLOT_WT)],
                                       by = "clusterplot", all.x = TRUE)
     if(compilationType == "nonPSP"){
       vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN, treeWeight = TREE_WT,
                                                  plotWeight = PLOT_WT, treeBasalArea = BA_TREE)]
     } else {
-      vi_i[DBH >= SAMPLE_BREAK_POINT,
+      vi_i[DBH >= SAMPLE_BREAK_POINT |
+             MEASUREMENT_ANOMALY_CODE == "PSP-TALLY",
            PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
                                                treeWeight = TREE_WT, plotWeight = 1,
                                                treeBasalArea = BA_TREE)]
-      vi_i[DBH < SAMPLE_BREAK_POINT &
-             is.na(PHF_TREE) &
+      vi_i[is.na(PHF_TREE) &
              !is.na(BLOWUP_SUBPLOT),
            PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_SUBPLOT,
                                                treeWeight = TREE_WT, plotWeight = 1,
