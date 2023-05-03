@@ -182,7 +182,7 @@ ISMCCompiler <- function(compilationType,
   samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, MEAS_DT,
                                    SAMPLE_SITE_PURPOSE_TYPE_CODE = TYPE_CD, SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
                                    SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO, SAMPLE_BREAK_POINT,
-                                   SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = NA, DBH_LIMIT_TAG)],
+                                   SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = DBHLIMIT_COUNT, DBH_LIMIT_TAG)],
                         by = "CLSTR_ID")
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db, "sample_msmt_header.rds"))
@@ -227,6 +227,7 @@ ISMCCompiler <- function(compilationType,
                       data.table::copy(samples),
                       compilationPaths$compilation_sa,
                       walkThru)
+
   tree_nonHT <- viiPrep(compilationType = compilationType,
                         clusterplotHeader = data.table::copy(samples),
                         dataSourcePath = compilationPaths$compilation_sa)
@@ -653,13 +654,13 @@ ISMCCompiler <- function(compilationType,
   ## bring the sizes to the original sizes
   ## DBH is kept for summaries
   prep_smy[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
-                ':='(HEIGHT = HEIGHT - 7,
-                     HT_TOTAL = HT_TOTAL -7,
-                     BA_TREE = 0,
-                     VOL_WSV = 0,
-                     VOL_MER = 0,
-                     VOL_NTWB = 0,
-                     VOL_DWB = 0)]
+           ':='(HEIGHT = HEIGHT - 7,
+                HT_TOTAL = HT_TOTAL -7,
+                BA_TREE = 0,
+                VOL_WSV = 0,
+                VOL_MER = 0,
+                VOL_NTWB = 0,
+                VOL_DWB = 0)]
 
   ## end of process
   if(compilationType == "nonPSP"){
@@ -669,8 +670,8 @@ ISMCCompiler <- function(compilationType,
                                  VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
                                  TREE_PLANTED_IND, MEASUREMENT_ANOMALY_CODE)]
     prep_smy_temp[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
-           ':='(DBH = NA,
-                MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
+                  ':='(DBH = NA,
+                       MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
     prep_smy[substr(CLSTR_ID, 9, 9) == "A" & MEASUREMENT_ANOMALY_CODE == "NA",
              MEASUREMENT_ANOMALY_CODE := NA]
   } else {
@@ -682,7 +683,6 @@ ISMCCompiler <- function(compilationType,
                                  HT_STUMP, PCT_BRK, PCT_DCY, PCT_WST, RESIDUAL, SECTOR,
                                  VOL_STUMP, TREE_PLANTED_IND, MEASUREMENT_ANOMALY_CODE)]
   }
-
   saveRDS(prep_smy_temp[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
   rm(prep_smy_temp)
@@ -692,12 +692,56 @@ ISMCCompiler <- function(compilationType,
   cat(paste(Sys.time(), ": Summarize volume at sample level.\n", sep = ""))
   nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
     data.table
-  vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
-                               clusterPlotHeader = samples,
-                               utilLevel = utilLevel,
-                               weirdUtil = weirdUtil,
-                               equation = "KBEC",
-                               nvafRatio = nvafratio)
+  if(compilationType == "nonPSP"){
+    vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
+                                 clusterPlotHeader = samples,
+                                 utilLevel = utilLevel,
+                                 weirdUtil = weirdUtil,
+                                 equation = "KBEC",
+                                 nvafRatio = nvafratio)
+  } else {
+    vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
+                                 clusterPlotHeader = samples,
+                                 utilLevel = 3,
+                                 weirdUtil = c("2", "4"),
+                                 equation = "KBEC",
+                                 nvafRatio = nvafratio)
+    dbh_tagged_range <- prep_smy[MEASUREMENT_ANOMALY_CODE != "PSP-TALLY" |
+                                 is.na(MEASUREMENT_ANOMALY_CODE),
+                               .(DBH_OBS_MIN = min(DBH, na.rm = TRUE),
+                                 DBH_OBS_MAX = max(DBH, na.rm = TRUE)),
+                               by = "CLSTR_ID"]
+
+    vrisummaries$vol_bycs <- merge(vrisummaries$vol_bycs,
+                                   samples[,.(CLSTR_ID, DBH_LIMIT_TAG, DBHLIMIT_COUNT)],
+                                   by = "CLSTR_ID",
+                                   all.x = TRUE)
+    vrisummaries$vol_bycs[!is.na(DBHLIMIT_COUNT), DBH_LIMIT_TAG := DBHLIMIT_COUNT]
+    vrisummaries$vol_bycs <- vrisummaries$vol_bycs[!(UTIL < DBH_LIMIT_TAG)]
+    vrisummaries$vol_bycs[,':='(DBH_LIMIT_TAG = NULL,
+                                DBHLIMIT_COUNT = NULL)]
+    vrisummaries$vol_byc <- merge(vrisummaries$vol_byc,
+                                  samples[,.(CLSTR_ID, DBH_LIMIT_TAG, DBHLIMIT_COUNT)],
+                                  by = "CLSTR_ID",
+                                  all.x = TRUE)
+    vrisummaries$vol_byc[!is.na(DBHLIMIT_COUNT), DBH_LIMIT_TAG := DBHLIMIT_COUNT]
+    vrisummaries$vol_byc <- vrisummaries$vol_byc[!(UTIL < DBH_LIMIT_TAG)]
+    vrisummaries$vol_byc[,':='(DBH_LIMIT_TAG = NULL,
+                                DBHLIMIT_COUNT = NULL)]
+
+
+    samp_msmt <- readRDS(file.path(compilationPaths$compilation_db,
+                                   "sample_msmt_header.rds"))
+    samp_msmt[!is.na(DBH_LIMIT_COUNT),
+              PSP_PLOT_DESIGN := "IMPERIAL"]
+    samp_msmt <- merge(samp_msmt,
+                       dbh_tagged_range,
+                       by = "CLSTR_ID",
+                       all.x = TRUE)
+    saveRDS(samp_msmt,
+            file.path(compilationPaths$compilation_db,
+                      "sample_msmt_header.rds"))
+  }
   vrisummaries$vol_bycs[,':='(VHA_DWB_LF = NULL,
                               VHA_DWB_DS = NULL,
                               VHA_DWB_DF = NULL)]
@@ -714,13 +758,13 @@ ISMCCompiler <- function(compilationType,
                         ':='(QMD_LS = NA,
                              QMD_DS = NA)]
   vrisummaries$vol_byc <- merge(vrisummaries$vol_byc,
-                                 unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
-                                        by = "CLSTR_ID"),
-                                 by = "CLSTR_ID",
-                                 all.x = TRUE)
+                                unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
+                                       by = "CLSTR_ID"),
+                                by = "CLSTR_ID",
+                                all.x = TRUE)
   vrisummaries$vol_byc[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
-                        ':='(QMD_LS = NA,
-                             QMD_DS = NA)]
+                       ':='(QMD_LS = NA,
+                            QMD_DS = NA)]
   vrisummaries$vol_bycs[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
   vrisummaries$vol_byc[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
   saveRDS(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.rds"))
@@ -779,10 +823,10 @@ ISMCCompiler <- function(compilationType,
 
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
-        write.csv(thedata,
-                  file.path(indifolder, paste0(indifile, ".csv")),
-                  na = "",
-                  row.names = FALSE)
+      write.csv(thedata,
+                file.path(indifolder, paste0(indifile, ".csv")),
+                na = "",
+                row.names = FALSE)
     }
   }
   if(recompile == FALSE){
