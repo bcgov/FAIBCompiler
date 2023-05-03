@@ -86,13 +86,18 @@ setMethod(
                 ':='(AGE_BOR = boredAgeCalculator_Phys(as.numeric(PHYS_AGE)),
                      AGE_BASE = "Phys",
                      AGE_SOURCE = "Physiologic Age")]
-    siteAgeData[PRO_LEN %>>% 0 & PRO_RING %>>% 0,
+    ## for the rot and crc, if prorated age is missing
+    ## use microscope_age as prorated age, if microscope_age is missing
+    siteAgeData[MEAS_COD %in% c("ROT", "CRC") &
+                  PRO_LEN %>>% 0 &
+                  PRO_RING %>>% 0,
                 ':='(AGE_BOR = boredAgeCalculator_Prorated(ringLength_prorated = PRO_LEN,
                                                            ringCount_prorated = PRO_RING,
                                                            boreDiameter = BNG_DIAM,
                                                            barkThickness = BARK_TEMP),
                      AGE_BASE = "Pro",
                      AGE_SOURCE = "Prorated Age")]
+
     ## call boredagecalculator_crted
     siteAgeData[HT_CALC %!=% 1.3 & HT_CALC %!=% 0,
                 ':='(AGE_BOR = boredAgeCalculator_Crted(boredAge = AGE_BOR,
