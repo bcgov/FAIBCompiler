@@ -816,17 +816,27 @@ ISMCCompiler <- function(compilationType,
                     compilationPaths$compilation_sa,
                     compilationPaths$raw_from_oracle)
   }
-
   for (indifolder in allfolders){
     allfiles_indifolder <- dir(pattern = ".rds", indifolder)
     allfiles_indifolder <- gsub(".rds", "", allfiles_indifolder)
-
     for (indifile in allfiles_indifolder) {
       thedata <- readRDS(file.path(indifolder, paste0(indifile, ".rds")))
       write.csv(thedata,
                 file.path(indifolder, paste0(indifile, ".csv")),
                 na = "",
                 row.names = FALSE)
+      if(indifolder == compilationPaths$compilation_db &
+         compilationType == "nonPSP"){
+        write.xlsx(thedata,
+                   file.path(indifolder, paste0(indifile, ".xlsx")),
+                   overwrite = TRUE)
+      } else if (indifolder == compilationPaths$compilation_db &
+                 compilationType == "PSP" &
+                 !(indifile %in% c("treelist", "compiled_vi_c"))){
+        write.xlsx(thedata,
+                   file.path(indifolder, paste0(indifile, ".xlsx")),
+                   overwrite = TRUE)
+      }
     }
   }
   if(recompile == FALSE){
