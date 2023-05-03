@@ -1054,7 +1054,90 @@ ISMC_DataPrep <- function(compilationType,
                                 all.x = TRUE)
   SmallLiveTreeTallies <- SmallLiveTreeTallies[!is.na(CLSTR_ID),]
   SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE)]
-  vi_f <- SmallLiveTreeTallies[,.(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
+  if(compilationType == "PSP"){
+    treeno_max <- treemeasurements[PLOT == 1,
+                                   .(TREE_NO_max = max(TREE_NUMBER)),
+                                   by = "CLSTR_ID"]
+    smalltrees_forvol <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE %in% 5:7,]
+    smalltrees_forvol <- merge(smalltrees_forvol,
+                               vi_a[,.(CLSTR_ID, DBH_TAGGING_LIMIT)],
+                               by = "CLSTR_ID")
+    # remove tally trees that do not make sense
+    # 1. for dbh_tagging_limit = 2
+    smalltrees_forvol <- smalltrees_forvol[DBH_TAGGING_LIMIT != 2]
+    # 2. for dbh_tagging_limit = 4, and tally_class = 6 and 7
+    smalltrees_forvol <- smalltrees_forvol[!(DBH_TAGGING_LIMIT == 4 & SMALL_TREE_TALLY_CLASS_CODE %in% c(6, 7)),]
+    # 3. for dbh_tagging_limit = 6.5 and tally_class = 7
+    smalltrees_forvol <- smalltrees_forvol[!(DBH_TAGGING_LIMIT == 6.5 & SMALL_TREE_TALLY_CLASS_CODE %in% c(7)),]
+    # 4. for dbh_tagging_limit = 7.5 and tally_class = 7
+    # prorate number_of_tree by multiplying by 0.4, which is derived using (7.5-6.5)/(9-6.5)
+    # assign a dummy class code 8 for them
+    smalltrees_forvol[DBH_TAGGING_LIMIT == 7.5 &
+                        SMALL_TREE_TALLY_CLASS_CODE == 7,
+                      ':='(SMALL_TREE_TALLY_CLASS_CODE = 8,
+                           NUMBER_OF_TREES = round(NUMBER_OF_TREES * 0.4))]
+    smalltrees_forvol <- smalltrees_forvol[NUMBER_OF_TREES > 0,]
+    small_tree_full <- NULL
+    NUMBER_OF_TREES_uni <- unique(smalltrees_forvol$NUMBER_OF_TREES)
+    for(indinumboftrees in NUMBER_OF_TREES_uni){
+      indismalltrees <- smalltrees_forvol[NUMBER_OF_TREES == indinumboftrees,]
+      small_tree_full_indi <- data.table(expand.grid(CLSTR_ID = unique(indismalltrees$CLSTR_ID),
+                                                     SMALL_TREE_TALLY_CLASS_CODE = as.character(5:7),
+                                                     TREE_SPECIES_CODE = unique(indismalltrees$TREE_SPECIES_CODE),
+                                                     TREE_NO_temp = 1:indinumboftrees))
+      small_tree_full_indi <- merge(small_tree_full_indi,
+                                    indismalltrees[,.(CLSTR_ID, SMALL_TREE_TALLY_CLASS_CODE,
+                                                      TREE_SPECIES_CODE)],
+                                    by = c("CLSTR_ID", "SMALL_TREE_TALLY_CLASS_CODE",
+                                           "TREE_SPECIES_CODE"))
+      small_tree_full <- rbind(small_tree_full,
+                               small_tree_full_indi)
+      rm(indismalltrees, small_tree_full_indi)
+    }
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 5,
+                    DBH := (1.5+3.9)/2] # trees with dbh between 1.5 and 3.9
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 6,
+                    DBH := (4.0+6.4)/2] # trees with dbh between 4 and 6.4
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 7,
+                    DBH := (6.5+9)/2] # trees with dbh between 6.5 and 9
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 8,
+                    DBH := (6.5+7.4)/2] # trees with dbh between 6.5 and 7.4
+
+    dbhlimit_count <- small_tree_full[,.(tally_class_min = min(SMALL_TREE_TALLY_CLASS_CODE)),
+                                      by = "CLSTR_ID"]
+    dbhlimit_count[tally_class_min == 5,
+                   DBHLIMIT_COUNT := 1.5]
+    dbhlimit_count[tally_class_min == 6,
+                   DBHLIMIT_COUNT := 4]
+    dbhlimit_count[is.na(DBHLIMIT_COUNT),
+                   DBHLIMIT_COUNT := 6.5]
+    vi_a_temp <- readRDS(file.path(outputPath, "vi_a.rds"))
+    vi_a_temp <- merge(vi_a_temp,
+                       dbhlimit_count[,.(CLSTR_ID, DBHLIMIT_COUNT)],
+                       by = "CLSTR_ID",
+                       all.x = TRUE)
+    saveRDS(vi_a_temp, file.path(outputPath, "vi_a.rds"))
+    small_tree_full <- merge(small_tree_full,
+                             treeno_max,
+                             by = "CLSTR_ID",
+                             all.x = TRUE)
+    small_tree_full <- small_tree_full[order(CLSTR_ID, SMALL_TREE_TALLY_CLASS_CODE,
+                                             TREE_SPECIES_CODE),]
+    small_tree_full[, temp_treeno := 1:length(TREE_NO_temp),
+                    by = "CLSTR_ID"]
+    small_tree_full[, TREE_NO := TREE_NO_max + temp_treeno]
+    small_tree_full <- small_tree_full[,.(CLSTR_ID, PLOT = 1,
+                                          TREE_NO, SPECIES = TREE_SPECIES_CODE,
+                                          DBH, LV_D = "L", S_F = "S",
+                                          BROKEN_TOP_IND = "N",
+                                          MEASUREMENT_ANOMALY_CODE = "PSP-TALLY",
+                                          TREE_CLASS_CODE = 1)]
+    vi_i <- rbind(vi_i, small_tree_full, fill = TRUE)
+    saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
+    rm(vi_i, small_tree_full)
+  }
+  vi_f <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE < 5,
+                               .(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
                                  low_bnd, TOTAL = NUMBER_OF_TREES)]
   vi_f <- vi_f[,.(TOTAL = sum(TOTAL)),
                by = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE", "low_bnd")]
