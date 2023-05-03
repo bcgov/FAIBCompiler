@@ -397,6 +397,15 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
+  ## based on discussion between Dan and sampling team on April 25, 2023
+  ## for the ages that were measured as rotten (ROT) and cannot reach center (CRC)
+  ## using prorate method to estimate boring age
+  ## the prolen was measured in the field, however, with missing prorated ages
+  ## the missing prorated ages were firstly using lab age, if lab age is missing using field boring age
+  treemeasurements[AGE_MEASURE_CODE %in% c("ROT", "CRC") &
+                     !is.na(PRORATE_LENGTH),
+                   PRORATE_RING_COUNT := ifelse(!is.na(MICROSCOPE_AGE), MICROSCOPE_AGE,
+                                                BORING_AGE)]
   if(compilationType == "PSP"){
     treemeasurements[, PLOT := PLOT_NUMBER]
   } else {
