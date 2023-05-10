@@ -32,6 +32,32 @@ samplePlotCompilation <- function(compilationType,
   # remove these plot from further compilation
   vi_a <- vi_a[substr(TYPE_CD, 1, 1) != "W",] # double check with Bob and Rene
   # vi_a <- vi_a[!(PROJ_ID == "CAR1" & TYPE_CD == "N"),]
+  vi_a[, meas_yr_temp := as.numeric(substr(MEAS_DT, 1, 4))]
+  vi_a[, meas_yr_cut := as.Date(paste0(meas_yr_temp, "-06-01"))]
+  vi_a[, MEAS_YR := ifelse(MEAS_DT >= meas_yr_cut, meas_yr_temp,
+                           meas_yr_temp - 1)]
+  vi_a[, NO_MEAS := max(VISIT_NUMBER),
+       by = "SITE_IDENTIFIER"]
+  vi_a[VISIT_NUMBER == 1,
+       ':='(MEAS_DT_FIRST = MEAS_DT,
+            MEAS_YR_FIRST = MEAS_YR)]
+  vi_a[VISIT_NUMBER == NO_MEAS,
+       ':='(MEAS_DT_LAST = MEAS_DT,
+            MEAS_YR_LAST = MEAS_YR)]
+  vi_a[, ':='(MEAS_DT_FIRST = min(MEAS_DT_FIRST, na.rm = TRUE),
+              MEAS_YR_FIRST = min(MEAS_YR_FIRST, na.rm = TRUE),
+              MEAS_DT_LAST = min(MEAS_DT_LAST, na.rm = TRUE),
+              MEAS_YR_LAST = min(MEAS_YR_LAST, na.rm = TRUE)),
+       by = "SITE_IDENTIFIER"]
+  vi_a[, TOTAL_PERIOD := MEAS_YR_LAST - MEAS_YR_FIRST]
+
+  vi_a <- vi_a[order(SITE_IDENTIFIER, VISIT_NUMBER),]
+  vi_a[, meas_yr_next := shift(MEAS_YR, type = "lag"),
+       by = "SITE_IDENTIFIER"]
+  vi_a[, PERIOD := MEAS_YR - meas_yr_next]
+  vi_a[,':='(meas_yr_temp = NULL,
+             meas_yr_cut = NULL,
+             meas_yr_next = NULL)]
   vi_a <- updateSpatial(compilationType = compilationType,
                         samplesites = vi_a,
                         mapPath = mapPath)
@@ -120,7 +146,9 @@ samplePlotCompilation <- function(compilationType,
                                      PROJ_ID, SAMP_NO,
                                      SAMPLE_ESTABLISHMENT_TYPE = paste0("PSP_", PSP_TYPE), SAMPLE_SITE_NAME,
                                      SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
-                                     STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND)],
+                                     STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND,
+                                     BGC_SS_GRD, MEAS_DT_FIRST, MEAS_DT_LAST, MEAS_YR_FIRST, MEAS_YR_LAST,
+                                     TOTAL_PERIOD, NO_MEAS)],
                              by = "SAMP_POINT")
   } else {
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
@@ -130,7 +158,9 @@ samplePlotCompilation <- function(compilationType,
                                      PROJ_ID, SAMP_NO,
                                      SAMPLE_SITE_NAME,
                                      SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
-                                     STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND)],
+                                     STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND,
+                                     BGC_SS_GRD, MEAS_DT_FIRST, MEAS_DT_LAST, MEAS_YR_FIRST, MEAS_YR_LAST,
+                                     TOTAL_PERIOD, NO_MEAS)],
                              by = "SAMP_POINT")
   }
   vi_a <- vi_a[,.(CLSTR_ID,
@@ -138,6 +168,8 @@ samplePlotCompilation <- function(compilationType,
                   VISIT_NUMBER,
                   BEC, FIZ,
                   MEAS_DT,
+                  MEAS_YR,
+                  PERIOD,
                   TYPE_CD,
                   SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
                   PROJ_ID,
