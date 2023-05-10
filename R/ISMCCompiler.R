@@ -181,8 +181,10 @@ ISMCCompiler <- function(compilationType,
   samples <- data.table::copy(samplePlotResults$samples)
   samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, MEAS_DT,
                                    SAMPLE_SITE_PURPOSE_TYPE_CODE = TYPE_CD, SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
+                                   MEAS_YR, PERIOD,
                                    SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO, SAMPLE_BREAK_POINT,
-                                   SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = DBHLIMIT_COUNT, DBH_LIMIT_TAG)],
+                                   SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = DBHLIMIT_COUNT,
+                                   DBH_LIMIT_TAG)],
                         by = "CLSTR_ID")
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db, "sample_msmt_header.rds"))
@@ -320,6 +322,14 @@ ISMCCompiler <- function(compilationType,
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
   ## vi_h data is the site age trees
   tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
+  if(compilationType == "PSP"){
+   ## for psp site age trees, the site age trees will be expended to the previous measurement
+   ## and if a tree was bored multiple times, the age from the last measurements will be used
+   ## to adjust the previous measurements
+    tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, PERIOD)],
+                                                by = "CLSTR_ID"),
+                          siteAgeTrees = data.table::copy(tree_ah1))
+  }
   tree_ah1 <- merge(tree_ah1,
                     unique(samples[,.(CLSTR_ID,
                                       FIZ = as.character(FIZ))],
