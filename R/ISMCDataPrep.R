@@ -17,10 +17,11 @@
 #'
 #' @importFrom data.table ':=' data.table melt
 #' @importFrom dplyr '%>%'
-#'
-#' @rdname ISMC_DataPrep
+#' @export
+#' @docType methods
+#' @rdname ISMCDataPrep
 #' @author Yong Luo
-ISMC_DataPrep <- function(compilationType,
+ISMCDataPrep <- function(compilationType,
                           inputPath,
                           outputPath,
                           coeffPath){
@@ -398,6 +399,17 @@ ISMC_DataPrep <- function(compilationType,
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
+    if(compilationType == "PSP"){
+    treemeasurements[, PLOT := PLOT_NUMBER]
+  } else {
+    treemeasurements[, PLOT := PLOT_CATEGORY_CODE]
+    treemeasurements[PLOT == "IPC TD", PLOT := "I"]
+    treemeasurements[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
+  }
+
+  treemeasurements <- treemsmtEditing(treemeasurements,
+                                      sitevisits = unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER)]))
+
   ## based on discussion between Dan and sampling team on April 25, 2023
   ## for the ages that were measured as rotten (ROT) and cannot reach center (CRC)
   ## using prorate method to estimate boring age
@@ -407,13 +419,7 @@ ISMC_DataPrep <- function(compilationType,
                      !is.na(PRORATE_LENGTH) & is.na(PRORATE_RING_COUNT),
                    PRORATE_RING_COUNT := ifelse(!is.na(MICROSCOPE_AGE), MICROSCOPE_AGE,
                                                 BORING_AGE)]
-  if(compilationType == "PSP"){
-    treemeasurements[, PLOT := PLOT_NUMBER]
-  } else {
-    treemeasurements[, PLOT := PLOT_CATEGORY_CODE]
-    treemeasurements[PLOT == "IPC TD", PLOT := "I"]
-    treemeasurements[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
-  }
+
   # JD = common juniper
   # My guess is we consider Juniper spp as shrubs, not trees.
   # And as a shrub, we would ignore in our compilation.
@@ -655,20 +661,8 @@ ISMC_DataPrep <- function(compilationType,
                            MICROSCOPE_AGE_org = NULL,
                            AGE_MEASMT_HEIGHT_org = NULL)]
   }
-  sp_last <- treemeasurements[,.(SITE_IDENTIFIER, PLOT, TREE_NUMBER,
-                                 VISIT_NUMBER, TREE_SPECIES_CODE)]
-  sp_last <- sp_last[order(SITE_IDENTIFIER, PLOT, TREE_NUMBER, VISIT_NUMBER),]
-  sp_last[, lastvisit := max(VISIT_NUMBER),
-          by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER")]
-  sp_last <- sp_last[VISIT_NUMBER == lastvisit,
-                     .(SITE_IDENTIFIER, PLOT, TREE_NUMBER, sp_last = TREE_SPECIES_CODE)]
-  treemeasurements <- merge(treemeasurements,
-                            sp_last,
-                            by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER"),
-                            all.x = TRUE)
-  treemeasurements[TREE_SPECIES_CODE != sp_last,
-                   TREE_SPECIES_CODE := sp_last]
-  rm(sp_last)
+  saveRDS(treemeasurements, file.path(outputPath, "treemeasurements.rds"))
+
   # specieslookup <- lookup_species()
   # specieslookup <- unique(specieslookup[,.(SPECIES, SP0)],
   #                         by = "SPECIES")
@@ -676,8 +670,6 @@ ISMC_DataPrep <- function(compilationType,
   # treemeasurements <- merge(treemeasurements, specieslookup,
   #                           by = "TREE_SPECIES_CODE",
   #                           all.x = TRUE)
-  treemeasurements[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
-                   TREE_SPECIES_CODE := "X"]
   vi_c <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 &
                              DIAMETER >= 4 &
                              !is.na(LENGTH) &
@@ -694,7 +686,8 @@ ISMC_DataPrep <- function(compilationType,
                              S_F = TREE_STANCE_CODE,
                              LV_D = TREE_EXTANT_CODE, WALKTHRU_STATUS = CMI_WALKTHROUGH_CODE,
                              BARK_PER = REMAINING_BARK_PERCENT,
-                             SECTOR = TAGGING_SECTOR_NUMBER,
+                             TAGGING_SECTOR_NO = TAGGING_SECTOR_NUMBER,
+                             SITE_SECTOR_NO = SITE_SECTOR_NUMBER,
                              RESIDUAL = RESIDUAL_IND, WL_USE = WILDLIFE_USE_CODE,
                              WL_APPEA = TREE_APPEARANCE_CODE,
                              WL_CROWN = CROWN_CONDITION_CODE,
@@ -892,6 +885,7 @@ ISMC_DataPrep <- function(compilationType,
   vi_h[, RANDOM_TREE_IND := NULL]
   vi_h[is.na(TH_TREE) & RESIDUAL_IND == "N" & is.na(RA_TREE),
        TH_TREE := "N"]
+  vi_h[, RESIDUAL := RESIDUAL_IND]
   vi_h[, RESIDUAL_IND := NULL]
 
   # for nonPSP
@@ -946,7 +940,10 @@ ISMC_DataPrep <- function(compilationType,
                                LV_D = TREE_EXTANT_CODE,
                                S_F = TREE_STANCE_CODE,
                                MEASUREMENT_ANOMALY_CODE,
-                               TREE_CLASS_CODE)]
+                               TREE_CLASS_CODE,
+                               TAGGING_SECTOR_NO = TAGGING_SECTOR_NUMBER,
+                               SITE_SECTOR_NO = SITE_SECTOR_NUMBER,
+                               RESIDUAL = RESIDUAL_IND)]
     saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
     rm(vi_i)
   } else {
@@ -962,7 +959,10 @@ ISMC_DataPrep <- function(compilationType,
                                HEIGHT_TO_BREAK,
                                HT_PROJ = PROJECTED_HEIGHT,
                                MEASUREMENT_ANOMALY_CODE,
-                               TREE_CLASS_CODE)]
+                               TREE_CLASS_CODE,
+                               TAGGING_SECTOR_NO = TAGGING_SECTOR_NUMBER,
+                               SITE_SECTOR_NO = SITE_SECTOR_NUMBER,
+                               RESIDUAL = RESIDUAL_IND)]
   }
   treeloss <- readRDS(dir(inputPath, "TreeLossIndicators.rds",
                           full.names = TRUE)) %>%
