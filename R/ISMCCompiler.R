@@ -155,7 +155,7 @@ ISMCCompiler <- function(compilationType,
     cat(paste(Sys.time(), paste0(": The compiler recompiles existing raw data: ", downloaddate, "\n"), sep = ""))
   }
   cat(paste(Sys.time(), ": Prepare ISMC data for compilation.\n", sep = ""))
-  ISMC_DataPrep(compilationType = compilationType,
+  ISMCDataPrep(compilationType = compilationType,
                 inputPath = compilationPaths$raw_from_oracle,
                 outputPath = compilationPaths$compilation_sa,
                 coeffPath = compilationPaths$compilation_coeff)
@@ -186,8 +186,7 @@ ISMCCompiler <- function(compilationType,
                                    SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = DBHLIMIT_COUNT,
                                    DBH_LIMIT_TAG)],
                         by = "CLSTR_ID")
-  saveRDS(samples_tmp,
-          file.path(compilationPaths$compilation_db, "sample_msmt_header.rds"))
+
   cat("    Saved compiled sample information. \n")
   saveRDS(samplePlotResults$plots,
           file.path(compilationPaths$compilation_db, "sample_plot_header.rds"))
@@ -211,6 +210,66 @@ ISMCCompiler <- function(compilationType,
                  measYear = NULL)]
   spCorr(BECInfor = samples[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR)],
          dataSourcePath = compilationPaths$compilation_sa)
+  treemsmt <- readRDS(file.path(compilationPaths$compilation_sa,
+                                "treemeasurements.rds"))
+  treemsmt <- merge(treemsmt,
+                    unique(samples[,.(SITE_IDENTIFIER, BEC_ZONE, BEC_SBZ, BEC_VAR)],
+                           by = "SITE_IDENTIFIER"),
+                    by = "SITE_IDENTIFIER",
+                    all.x = TRUE)
+  treemsmt[, SPECIES_ORG := TREE_SPECIES_CODE]
+  treemsmt[, SPECIES := speciesCorrection(TREE_SPECIES_CODE,
+                                          BEC_ZONE,
+                                          BEC_SBZ)]
+  saveRDS(treemsmt, file.path(compilationPaths$compilation_sa,
+                              "treemeasurements.rds"))
+
+  treelist <- assignChangeComponent(treelist = treemsmt,
+                                    samples = samples)
+  saveRDS(treelist, file.path(compilationPaths$compilation_db,
+                              "component_change_treelevel.rds"))
+
+  treemsmt_live_inplot <- treemsmt[TREE_EXTANT_CODE == "L" &
+                                     OUT_OF_PLOT_IND == "N" &
+                                     !(MEASUREMENT_ANOMALY_CODE %in% c("Z", "D")),
+                                   .(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER,
+                                     STEM_MAP_BEARING, STEM_MAP_DISTANCE)]
+  treemsmt_live_inplot[!is.na(STEM_MAP_BEARING) & !is.na(STEM_MAP_DISTANCE),
+                       stem_mapped := TRUE]
+  treemsmt_live_inplot[is.na(stem_mapped),
+                       stem_mapped := FALSE]
+
+  stem_mapped_smry_live <- treemsmt_live_inplot[,
+                                                .(NO_LIVE_TREE_MAPPED = sum(stem_mapped),
+                                                  NO_TOTAL_LIVE_TREE = length(stem_mapped)),
+                                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER")] # the summary is conducted for live trees
+  stem_mapped_smry_live[NO_LIVE_TREE_MAPPED/NO_TOTAL_LIVE_TREE > 0.75,
+                        STEM_MAPPED_SAMPLE := TRUE]
+  stem_mapped_smry_live[is.na(STEM_MAPPED_SAMPLE),
+                        STEM_MAPPED_SAMPLE := FALSE]
+  samples_tmp <- merge(samples_tmp,
+                       stem_mapped_smry_live,
+                       by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
+                       all.x = TRUE)
+  saveRDS(samples_tmp,
+          file.path(compilationPaths$compilation_db,
+                    "sample_msmt_header.rds"))
+  rm(treelist, treemsmt_live_inplot, stem_mapped_smry_live)
+  if(compilationType == "PSP"){
+    treemsmt <- treemsmt[,.(CLSTR_ID = paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER),
+                            SITE_IDENTIFIER, VISIT_NUMBER,
+                            PLOT = PLOT_NUMBER, TREE_NO = TREE_NUMBER,
+                            TREE_SUPPRESSION_CODE, CROWN_CLASS_CODE,
+                            TOP_HEIGHT_TREE_IND)]
+    treemsmt <- merge(treemsmt,
+                      samplePlotResults$plots[,.(CLSTR_ID, PLOT, PLOT_AREA_MAIN )],
+                      by = c("CLSTR_ID", "PLOT"),
+                      all.x = TRUE)
+  } else {
+    rm(treemsmt)
+  }
+  gc()
+
   cat(paste(Sys.time(), ": Compile tree-level WSV_VOL and MER_VOL for volume trees.\n", sep = ""))
   ## The volume trees are in two files: vi_c and vi_i
   ##
@@ -323,12 +382,21 @@ ISMCCompiler <- function(compilationType,
   ## vi_h data is the site age trees
   tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
   if(compilationType == "PSP"){
-   ## for psp site age trees, the site age trees will be expended to the previous measurement
-   ## and if a tree was bored multiple times, the age from the last measurements will be used
-   ## to adjust the previous measurements
-    tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, PERIOD)],
-                                                by = "CLSTR_ID"),
-                          siteAgeTrees = data.table::copy(tree_ah1))
+    ## for psp site age trees, the site age trees will be expended to the previous measurement
+    ## and if a tree was bored multiple times, the age from the last measurements will be used
+    ## to adjust the previous measurements
+    tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
+                                              by = "CLSTR_ID"),
+                        siteAgeTrees = data.table::copy(tree_ah1))
+    tree_ah1 <- merge(tree_ah1,
+                      tree_ms6[,.(CLSTR_ID, PLOT, TREE_NO, HT_TOTAL, HT_TOTAL_SOURCE)],
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                      all.x = TRUE)
+    tree_ah1[is.na(TREE_LEN), TREE_LEN := HT_TOTAL]
+    tree_ah1[,':='(HT_TOTAL = NULL,
+                   HT_TOTAL_SOURCE = NULL)]
+  } else {
+    tree_ah1[, BORED_AGE_FLAG := as.character(NA)]
   }
   tree_ah1 <- merge(tree_ah1,
                     unique(samples[,.(CLSTR_ID,
@@ -336,7 +404,13 @@ ISMCCompiler <- function(compilationType,
                            by = c("CLSTR_ID")),
                     by = c("CLSTR_ID"),
                     all.x = TRUE)
+  # if &bec_in in ('CWH','CDF','MH') then bec_i_c = 'C';
+  # else bec_i_c = 'I';
+  tree_ah1[is.na(FIZ),
+           FIZ := ifelse(BEC_ZONE %in% c("CWH", "CDF", "MH"), "C", "I")]
+
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
+
   tree_ah2_temp <- data.table::copy(tree_ah2)
   tree_ah2_temp[,c("FIZ", "BEC_ZONE", "SP0", "AGE_CORR",
                    "TOTAL_AG", "PHYS_AGE", "TREE_LEN",
@@ -345,6 +419,16 @@ ISMCCompiler <- function(compilationType,
                    "CR_CL") := NULL]
   saveRDS(tree_ah2_temp, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
   rm(tree_ah2_temp)
+  if(compilationType == "PSP"){
+    treemsmt <- merge(treemsmt,
+                      tree_ms6,
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"))
+    saveRDS(treemsmt,
+            file.path(compilationPaths$compilation_sa, "treemsmt.rds"))
+    saveRDS(tree_ah2,
+            file.path(compilationPaths$compilation_sa, "tree_ah2.rds"))
+  }
+
   siteAgeSummaries <- siteAgeSummary(tree_ah2)
   cl_ah <- siteAgeSummaries$cl_ah
   saveRDS(cl_ah, file.path(compilationPaths$compilation_db,
@@ -428,9 +512,7 @@ ISMCCompiler <- function(compilationType,
   tree_ms7[, ADJ_ID := NULL]
   tree_ms7 <- merge(tree_ms7,
                     vi_c_sa[,.(CLSTR_ID, PLOT, TREE_NO,
-                               CR_CL, WALKTHRU_STATUS,
-                               SECTOR, RESIDUAL,
-                               HT_BRCH)],
+                               CR_CL, WALKTHRU_STATUS, HT_BRCH)],
                     by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                     all.x = TRUE)
   tree_ms7[DIB_STUMP < DIB_BH,
@@ -690,13 +772,13 @@ ISMCCompiler <- function(compilationType,
                                  PHF_TREE, DBH, TREE_WT, VOL_WSV, VOL_MER, VOL_NTWB,
                                  VOL_DWB, SPECIES_ORG, NET_FCT_METHOD, WSV_VOL_SRCE, SP_TYPE,
                                  CR_CL, DIB_BH, DIB_STUMP, DIB_UTOP, HT_BH, HT_BRCH,
-                                 HT_STUMP, PCT_BRK, PCT_DCY, PCT_WST, RESIDUAL, SECTOR,
+                                 HT_STUMP, PCT_BRK, PCT_DCY, PCT_WST, RESIDUAL,
+                                 TAGGING_SECTOR_NO, SITE_SECTOR_NO,
                                  VOL_STUMP, TREE_PLANTED_IND, MEASUREMENT_ANOMALY_CODE)]
   }
   saveRDS(prep_smy_temp[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
   rm(prep_smy_temp)
-
 
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
   cat(paste(Sys.time(), ": Summarize volume at sample level.\n", sep = ""))
@@ -717,10 +799,10 @@ ISMCCompiler <- function(compilationType,
                                  equation = "KBEC",
                                  nvafRatio = nvafratio)
     dbh_tagged_range <- prep_smy[MEASUREMENT_ANOMALY_CODE != "PSP-TALLY" |
-                                 is.na(MEASUREMENT_ANOMALY_CODE),
-                               .(DBH_OBS_MIN = min(DBH, na.rm = TRUE),
-                                 DBH_OBS_MAX = max(DBH, na.rm = TRUE)),
-                               by = "CLSTR_ID"]
+                                   is.na(MEASUREMENT_ANOMALY_CODE),
+                                 .(DBH_OBS_MIN = min(DBH, na.rm = TRUE),
+                                   DBH_OBS_MAX = max(DBH, na.rm = TRUE)),
+                                 by = "CLSTR_ID"]
 
     vrisummaries$vol_bycs <- merge(vrisummaries$vol_bycs,
                                    samples[,.(CLSTR_ID, DBH_LIMIT_TAG, DBHLIMIT_COUNT)],
@@ -737,7 +819,7 @@ ISMCCompiler <- function(compilationType,
     vrisummaries$vol_byc[!is.na(DBHLIMIT_COUNT), DBH_LIMIT_TAG := DBHLIMIT_COUNT]
     vrisummaries$vol_byc <- vrisummaries$vol_byc[!(UTIL < DBH_LIMIT_TAG)]
     vrisummaries$vol_byc[,':='(DBH_LIMIT_TAG = NULL,
-                                DBHLIMIT_COUNT = NULL)]
+                               DBHLIMIT_COUNT = NULL)]
 
 
     samp_msmt <- readRDS(file.path(compilationPaths$compilation_db,
@@ -815,9 +897,40 @@ ISMCCompiler <- function(compilationType,
   saveRDS(stumpCompile$stmp_cs,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
   #############################
+  cat(paste(Sys.time(), ": Generate data dictionary.\n", sep = ""))
+  allfiles_db <- dir(compilationPaths$compilation_db, pattern = ".rds")
+  allfiles_db <- gsub(".rds", "", allfiles_db)
+  dictionary_file <- list()
+  col_missing <- NULL
+  datadictionary_master <- read.xlsx(file.path(compilationPaths$compilation_coeff,
+                                               "data_dictionary_master.xlsx")) %>%
+    data.table
+  datadictionary_master <- datadictionary_master[!is.na(Description)]
+  for (indifile_db in allfiles_db) {
+    indifile_db_file <- readRDS(file.path(compilationPaths$compilation_db,
+                                          paste0(indifile_db, ".rds")))
+    indifile_db_name <- data.table(ColumnName = names(indifile_db_file))
+    indifile_db_name <- merge(indifile_db_name,
+                              datadictionary_master,
+                              by = "ColumnName",
+                              all.x = TRUE)
+    indifile_db_name_missing <- indifile_db_name[is.na(Description),]
+    dictionary_file[[indifile_db]] <- indifile_db_name
+    col_missing <- rbind(col_missing, indifile_db_name_missing)
+  }
+  if(nrow(col_missing) > 0){
+    warning("There are some attributes do not have description. Please add them in the master table.")
+    datadictionary_master <- rbind(datadictionary_master,
+                                   col_missing)
+    write.xlsx(datadictionary_master,
+               file.path(compilationPaths$compilation_coeff,
+                         "data_dictionary_master.xlsx"))
+  }
+  write.xlsx(dictionary_file,
+             file.path(compilationPaths$compilation_db,
+                       "Data_dictionary.xlsx"))
 
   cat(paste(Sys.time(), ": Convert RDS to xlsx.\n", sep = ""))
-
   if(recompile == TRUE){
     allfolders <- c(compilationPaths$compilation_db,
                     compilationPaths$compilation_sa)
@@ -908,25 +1021,9 @@ ISMCCompiler <- function(compilationType,
   }
   if(!is.na(syncTo)){ ## let's sync the compilation to the target folder
     cat(paste(Sys.time(), ": Sync compilation to network drive.\n", sep = ""))
-    for (indifoler in c("sa", "raw", "db", "report")) {
-      if(dir.exists(file.path(syncTo, paste0("compilation_", compilationType, "_", indifoler)))){
-        unlink(file.path(syncTo, paste0("compilation_", compilationType, "_", indifoler)), recursive = TRUE)
-      }
+    if(!dir.exists(syncTo)){
+      stop("Network folder is not available.")
     }
-    unlink(file.path(syncTo, "compilation_map"), recursive = TRUE)
-    unlink(file.path(syncTo, "compilation_coeff"), recursive = TRUE)
-    fs::dir_copy(compilationPaths$compilation_sa,
-                 syncTo)
-    fs::dir_copy(compilationPaths$compilation_db,
-                 syncTo)
-    fs::dir_copy(compilationPaths$raw_from_oracle,
-                 syncTo)
-    fs::dir_copy(compilationPaths$compilation_coeff,
-                 syncTo)
-    fs::dir_copy(compilationPaths$compilation_map,
-                 syncTo)
-    fs::dir_copy(compilationPaths$compilation_report,
-                 syncTo)
     ## for archivement
     fs::dir_copy(compilationPaths$compilation_archive,
                  syncTo)
