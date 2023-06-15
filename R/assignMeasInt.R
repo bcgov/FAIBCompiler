@@ -58,5 +58,7 @@ assignMeasInt <- function(compilationType,
                                           .(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, TREE_NO,
                                             SPECIES_ORG, SPECIES, SP0,  DBH,  BA_TREE,
                                             PHF_TREE, LV_D, MEAS_INTENSE,
-                                            MEASUREMENT_ANOMALY_CODE, TREE_CLASS_CODE)]))
+                                            MEASUREMENT_ANOMALY_CODE, TREE_CLASS_CODE,
+                                            TAGGING_SECTOR_NO, SITE_SECTOR_NO,
+                                            RESIDUAL)]))
 }
