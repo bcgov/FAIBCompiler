@@ -108,7 +108,6 @@ setMethod(
                      HT_CALC = 1.3,
                      AGE_BASE = "Bh_cr",
                      AGE_ADJUST_TO_BH = "yes")]
-
     siteAgeData[, ':='(CORR = 0,
                        AGE_TOT = as.numeric(NA),
                        AGE_BH = as.numeric(NA),
@@ -137,7 +136,8 @@ setMethod(
     siteAgeData[, HEIGHT := HT_OLD]
     siteAgeData[, ':='(HT_OLD = NULL)]
     siteAgeData[SUIT_HT == "N" | SUIT_TR == "N", SI_TREE := as.numeric(NA)]
-    siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID, PLOT, TREE_NO, SPECIES,
+    siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID,
+                                               PLOT, TREE_NO, SPECIES,
                                                SUIT_TR, SUIT_HT, SUIT_SI, FIZ, BEC_ZONE, REGION_IC,
                                                TH_TREE, TP_TREE, RA_TREE,
                                                AGE_BASE, SP0,
@@ -145,7 +145,8 @@ setMethod(
                                                CR_CL, TREE_LEN, HEIGHT, BNG_DIAM, BARK_THK, PRO_LEN,
                                                PRO_RING, BORE_AGE, BORED_HT, SI_SP, AGE_BH, AGE_TOT, SI_TREE,
                                                BARK_PCT, RATE_5, RATE_10, RATE_20, SP_SINDEX,
-                                               AGE_SOURCE, AGE_ADJUST_TO_BH, MEAS_COD)]
+                                               AGE_SOURCE, AGE_ADJUST_TO_BH, MEAS_COD,
+                                               RESIDUAL, BORED_AGE_FLAG)]
     return(siteAgeData)
   })
 
