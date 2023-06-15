@@ -38,11 +38,23 @@ viiPrep<- function(compilationType,
                                                                   BLOWUP_MAIN, BLOWUP_SUBPLOT,
                                                                   SAMPLE_BREAK_POINT,
                                                                   DBH_LIMIT_TAG,
-                                                                  PLOT_WT)],
+                                                                  PLOT_WT, TYPE_CD,
+                                                                  SAMPLE_ESTABLISHMENT_TYPE)],
                                       by = "clusterplot", all.x = TRUE)
     if(compilationType == "nonPSP"){
       vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN, treeWeight = TREE_WT,
                                                  plotWeight = PLOT_WT, treeBasalArea = BA_TREE)]
+      # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
+      # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
+      vi_i[TYPE_CD %in% c("F", "M", "Y", "L") & DBH < 9,
+           PHF_TREE := PHF_TREE*4]
+      #   2)	FHYSM Only - Can we change the PHF_TREE from 25 to 100 for the 4-9cm DBH deciduous trees in the 5.64m subplot?
+      #   •	The reason why is because there are non-standard diameter limits used in this project. All conifers >1m height in the 11.28m radius main plot are tagged (all conifers get a PHF_TREE = 25) while deciduous are tagged using standard YSM/CMI protocol.  ie., trees 4-9cm dbh in the 5.64m radius subplot (PHF_TREE = 100), and trees >9cm dbh in the 11.28m radius main plot (PHF_TREE = 25).
+      #   •	It looks like it only impacts one tree so far but these FHYSM samples will be remeasured and we may get more.
+      deci_sp <- lookup_species()
+      deci_sp <- unique(deci_sp[SP_TYPE == "D"]$SPECIES)
+      vi_i[SAMPLE_ESTABLISHMENT_TYPE == "FHYSM" & DBH < 9 & SPECIES %in% deci_sp,
+           PHF_TREE := PHF_TREE*4]
     } else {
       vi_i[DBH >= SAMPLE_BREAK_POINT |
              MEASUREMENT_ANOMALY_CODE == "PSP-TALLY",
@@ -59,7 +71,10 @@ viiPrep<- function(compilationType,
                    DBH, BA_TREE,
                    PHF_TREE, LV_D,
                    MEASUREMENT_ANOMALY_CODE,
-                   TREE_CLASS_CODE)])
+                   TREE_CLASS_CODE,
+                   TAGGING_SECTOR_NO,
+                   SITE_SECTOR_NO,
+                   RESIDUAL)])
   } else {
     return(vi_i[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, SPECIES, TREE_NO)])
   }
