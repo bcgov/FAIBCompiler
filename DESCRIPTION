@@ -36,6 +36,7 @@ Imports:
   FAIBOracle,
   FAIBBase,
   sf,
-  fs
+  fs,
+  lmfor
 Suggests: 
     knitr
