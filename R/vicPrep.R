@@ -104,7 +104,10 @@ vicPrep<- function(compilationType,
                                                   HT_BTOP,
                                                   MEASUREMENT_ANOMALY_CODE,
                                                   TREE_PLANTED_IND,
-                                                  TREE_CLASS_CODE)]
+                                                  TREE_CLASS_CODE,
+                                                  TAGGING_SECTOR_NO,
+                                                  SITE_SECTOR_NO,
+                                                  RESIDUAL)]
     return(vi_c)
   } else {
     vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT,
@@ -119,6 +122,9 @@ vicPrep<- function(compilationType,
                                                   MEASUREMENT_ANOMALY_CODE,
                                                   TREE_PLANTED_IND,
                                                   TREE_CLASS_CODE,
+                                                  TAGGING_SECTOR_NO,
+                                                  SITE_SECTOR_NO,
+                                                  RESIDUAL,
                                                   LOG_G_1,  LOG_G_2,  LOG_G_3,  LOG_G_4,
                                                   LOG_G_5,  LOG_G_6,  LOG_G_7, LOG_G_8,
                                                   LOG_G_9 = as.numeric(NA),
