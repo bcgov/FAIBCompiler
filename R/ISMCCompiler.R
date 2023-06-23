@@ -156,9 +156,9 @@ ISMCCompiler <- function(compilationType,
   }
   cat(paste(Sys.time(), ": Prepare ISMC data for compilation.\n", sep = ""))
   ISMCDataPrep(compilationType = compilationType,
-                inputPath = compilationPaths$raw_from_oracle,
-                outputPath = compilationPaths$compilation_sa,
-                coeffPath = compilationPaths$compilation_coeff)
+               inputPath = compilationPaths$raw_from_oracle,
+               outputPath = compilationPaths$compilation_sa,
+               coeffPath = compilationPaths$compilation_coeff)
   cat(paste(Sys.time(), ": Compile sample and plot information.\n", sep = ""))
   samplePlotResults <- samplePlotCompilation(compilationType = compilationType,
                                              dataSourcePath = compilationPaths$compilation_sa,
@@ -381,23 +381,17 @@ ISMCCompiler <- function(compilationType,
   cat(paste(Sys.time(), ": Compile age trees.\n", sep = ""))
   ## vi_h data is the site age trees
   tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
-  if(compilationType == "PSP"){
-    ## for psp site age trees, the site age trees will be expended to the previous measurement
-    ## and if a tree was bored multiple times, the age from the last measurements will be used
-    ## to adjust the previous measurements
-    tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
-                                              by = "CLSTR_ID"),
-                        siteAgeTrees = data.table::copy(tree_ah1))
-    tree_ah1 <- merge(tree_ah1,
-                      tree_ms6[,.(CLSTR_ID, PLOT, TREE_NO, HT_TOTAL, HT_TOTAL_SOURCE)],
-                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-                      all.x = TRUE)
-    tree_ah1[is.na(TREE_LEN), TREE_LEN := HT_TOTAL]
-    tree_ah1[,':='(HT_TOTAL = NULL,
-                   HT_TOTAL_SOURCE = NULL)]
-  } else {
-    tree_ah1[, BORED_AGE_FLAG := as.character(NA)]
-  }
+  ## if a tree was bored multiple times, the age from the last measurements will be used
+  ## to adjust the previous measurements
+  tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
+                                            by = "CLSTR_ID"),
+                      siteAgeTrees = data.table::copy(tree_ah1))
+  tree_ah1 <- merge(tree_ah1,
+                    tree_ms6[,.(CLSTR_ID, PLOT, TREE_NO, HT_TOTAL, HT_TOTAL_SOURCE)],
+                    by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                    all.x = TRUE)
+  tree_ah1[is.na(TREE_LEN), TREE_LEN := HT_TOTAL]
+  tree_ah1[,':='(HT_TOTAL = NULL)]
   tree_ah1 <- merge(tree_ah1,
                     unique(samples[,.(CLSTR_ID,
                                       FIZ = as.character(FIZ))],
@@ -409,14 +403,11 @@ ISMCCompiler <- function(compilationType,
   tree_ah1[is.na(FIZ),
            FIZ := ifelse(BEC_ZONE %in% c("CWH", "CDF", "MH"), "C", "I")]
 
-  tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1))
+  tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1),
+                              compilationType = compilationType)
 
   tree_ah2_temp <- data.table::copy(tree_ah2)
-  tree_ah2_temp[,c("FIZ", "BEC_ZONE", "SP0", "AGE_CORR",
-                   "TOTAL_AG", "PHYS_AGE", "TREE_LEN",
-                   "SI_SP", "BARK_PCT",
-                   "AGE_SOURCE", "AGE_ADJUST_TO_BH",
-                   "CR_CL") := NULL]
+  tree_ah2_temp[,c("FIZ", "BEC_ZONE", "REGION_IC", "SI_SP") := NULL]
   saveRDS(tree_ah2_temp, file.path(compilationPaths$compilation_db, "compiled_vi_h.rds"))
   rm(tree_ah2_temp)
   if(compilationType == "PSP"){
