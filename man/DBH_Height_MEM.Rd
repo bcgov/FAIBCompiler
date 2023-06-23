@@ -4,16 +4,10 @@
 \alias{DBH_Height_MEM}
 \title{Develop the mixed effect models between DBH and height by strata.}
 \usage{
-DBH_Height_MEM(userName, passWord, env, mapPath, coeffSavePath)
+DBH_Height_MEM(compilationPath, coeffSavePath)
 }
 \arguments{
-\item{userName}{character, Specifies a valid user name in ISMC Oracle database.}
-
-\item{passWord}{character, Specifies the password to the user name.}
-
-\item{env}{character, Specifies which environment the data reside. Currently,
-the function supports \code{INT} (intergration)
-and \code {TEST} (test) environment.}
+\item{compilationPath}{character, Specifies the path that stores all the data/processes.}
 
 \item{coeffSavePath}{character, Specifies the path to save your outputs.}
 }
