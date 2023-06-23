@@ -32,35 +32,35 @@ siteAgeCorrection<- function(vih){
 
   vih_multi <- vih[obsn > 1]
   vih_multi <- vih_multi[order(siteid, PLOT, TREE_NO, visit_no),]
-  vih_multi[!is.na(BORE_AGE),
+  vih_multi[!is.na(BORE_AGE_LAB),
             ':='(BORAG_FL_temp = as.integer(NA),
                  TOTAL_AG_temp = as.integer(NA))]
-  vih_multi[is.na(BORE_AGE) & !is.na(BORAG_FL),
-            BORAG_FL_temp := BORAG_FL]
-  vih_multi[is.na(BORE_AGE) & is.na(BORAG_FL),
+  vih_multi[is.na(BORE_AGE_LAB) & !is.na(BORE_AGE_FLD),
+            BORAG_FL_temp := BORE_AGE_FLD]
+  vih_multi[is.na(BORE_AGE_LAB) & is.na(BORE_AGE_FLD),
             TOTAL_AG_temp := TOTAL_AG]
 
   ## identify ages copy from previous meas
   vih_multi[, ':='(meas_year_prev = shift(meas_year, type = "lag"),
                    grow5_prev = shift(GROW_5YR, type = "lag"),
-                   meas_code_prev = shift(MEAS_COD, type = "lag"),
-                   age_lab_prev = shift(BORE_AGE, type = "lag"),
+                   meas_code_prev = shift(AGE_MEASURE_CODE, type = "lag"),
+                   age_lab_prev = shift(BORE_AGE_LAB, type = "lag"),
                    age_field_prev = shift(BORAG_FL_temp, type = "lag"),
                    age_total_prev = shift(TOTAL_AG_temp, type = "lag")),
             by = c("siteid", "PLOT", "TREE_NO")]
   vih_multi[meas_year != meas_year_prev &
-              (BORE_AGE == age_lab_prev |
+              (BORE_AGE_LAB == age_lab_prev |
                  age_field_prev == BORAG_FL_temp |
                  age_total_prev == TOTAL_AG_temp),
-            MEAS_COD := "COPY"]
+            AGE_MEASURE_CODE := "COPY"]
 
   ## remove the copy ages and pre measured ages
-  vih_base <- vih_multi[!(MEAS_COD %in% c("PRE", "COPY")),
-                        .(siteid, PLOT, TREE_NO, meas_year, BORAG_FL,
-                          BORE_AGE, TOTAL_AG)]
+  vih_base <- vih_multi[!(AGE_MEASURE_CODE %in% c("PRE", "COPY")),
+                        .(siteid, PLOT, TREE_NO, meas_year, BORE_AGE_FLD,
+                          BORE_AGE_LAB, TOTAL_AG)]
 
   ## use the last measurement as the reference
-  vih_base_bore_age <- vih_base[!is.na(BORE_AGE),
+  vih_base_bore_age <- vih_base[!is.na(BORE_AGE_LAB),
                                 .(baseyear_bore_age = max(meas_year)),
                                 by = c("siteid", "PLOT", "TREE_NO")]
   vih_base <- merge(vih_base,
@@ -68,7 +68,7 @@ siteAgeCorrection<- function(vih){
                     by = c("siteid", "PLOT", "TREE_NO"),
                     all.x = TRUE)
 
-  vih_base_field_age <- vih_base[!is.na(BORAG_FL),
+  vih_base_field_age <- vih_base[!is.na(BORE_AGE_FLD),
                                  .(baseyear_field_age = max(meas_year)),
                                  by = c("siteid", "PLOT", "TREE_NO")]
   vih_base <- merge(vih_base,
@@ -101,8 +101,8 @@ siteAgeCorrection<- function(vih){
 
   vih_base <- vih_base[meas_year == baseyear,
                        .(siteid, PLOT, TREE_NO, baseyear, age_corrected,
-                         base_age_lab = BORE_AGE, ## first priority
-                         base_age_field = BORAG_FL, ## second priority
+                         base_age_lab = BORE_AGE_LAB, ## first priority
+                         base_age_field = BORE_AGE_FLD, ## second priority
                          base_age_total = TOTAL_AG)] ## third priority
 
   vih_base <- unique(vih_base, by = c("siteid", "PLOT", "TREE_NO"))
@@ -128,8 +128,8 @@ siteAgeCorrection<- function(vih){
   vih_multi[age_corrected == "total_age",
             age_total_corrected := age_total_pred]
 
-  vih_multi[, ':='(age_lab_dif = age_lab_pred - BORE_AGE,
-                   age_field_dif = age_field_pred - BORAG_FL,
+  vih_multi[, ':='(age_lab_dif = age_lab_pred - BORE_AGE_LAB,
+                   age_field_dif = age_field_pred - BORE_AGE_FLD,
                    age_total_dif = age_total_pred - TOTAL_AG)]
 
   ##
@@ -161,10 +161,10 @@ siteAgeCorrection<- function(vih){
   age_corrected_trees <- vih_multi[age_correct_tree == TRUE,
                                    .(CLSTR_ID, PLOT, TREE_NO, siteid, visit_no,
                                      meas_year, refer_year = baseyear, age_correct_meas,
-                                     BORE_AGE_org = BORE_AGE,
+                                     BORE_AGE_org = BORE_AGE_LAB,
                                      BORE_AGE_crt = age_lab_corrected,
                                      BORE_AGE_dif = age_lab_dif,
-                                     BORAG_FL_org = BORAG_FL,
+                                     BORAG_FL_org = BORE_AGE_FLD,
                                      BORAG_FL_crt = age_field_corrected,
                                      BORAG_FL_dif = age_field_dif,
                                      TOTAL_AG_org = TOTAL_AG,
@@ -173,10 +173,10 @@ siteAgeCorrection<- function(vih){
   age_corrected_meas <- vih_multi[age_correct_meas == TRUE,
                                   .(CLSTR_ID, PLOT, TREE_NO,
                                     meas_year, refer_year = baseyear,
-                                    BORE_AGE_org = BORE_AGE,
+                                    BORE_AGE_org = BORE_AGE_LAB,
                                     BORE_AGE_crt = age_lab_corrected,
                                     BORE_AGE_dif = age_lab_dif,
-                                    BORAG_FL_org = BORAG_FL,
+                                    BORAG_FL_org = BORE_AGE_FLD,
                                     BORAG_FL_crt = age_field_corrected,
                                     BORAG_FL_dif = age_field_dif,
                                     TOTAL_AG_org = TOTAL_AG,
@@ -207,7 +207,7 @@ siteAgeCorrection<- function(vih){
   # # 3) problimetic sites
   # problemsite <- vih[siteid == 1355611,
   #                    .(CLSTR_ID, PLOT, TREE_NO, SPECIES, meas_year, TREE_LEN,
-  #                      BORE_AGE, BORAG_FL, TOTAL_AG)]
+  #                      BORE_AGE_LAB, BORE_AGE_FLD, TOTAL_AG)]
 
   return(list("age_corrected" = age_corrected_meas,
               "age_corrected_trees_big_dif" = age_corrected_trees_big_dif,
