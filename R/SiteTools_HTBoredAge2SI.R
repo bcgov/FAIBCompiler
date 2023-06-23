@@ -61,19 +61,42 @@ setMethod(
                                                                     age = age,
                                                                     ageType = ageType,
                                                                     height = height,
-                                                                    estType = estType)$output)]
-    worktable[SI_SP >= 0 & SI_ERR < 0, SI_TREE := as.numeric(NA)]
+                                                                    estType = estType)$output,
+                               SI_SOURCE = "SI")]
+    worktable[SI_SP >= 0 & SI_ERR < 0,
+              ':='(SI_TREE = as.numeric(NA),
+                   SI_SOURCE = NA)]
     worktable[SI_SP >= 0 & age <= 50, ':='(GI_ERR = SIndexR::SIndexR_HtAgeToSI(curve = GRTH_CURVE,
-                                                                 age = age,
-                                                                 ageType = ageType,
-                                                                 height = height,
-                                                                 estType = estType)$error,
+                                                                               age = age,
+                                                                               ageType = ageType,
+                                                                               height = height,
+                                                                               estType = estType)$error,
                                            SI_GI = SIndexR::SIndexR_HtAgeToSI(curve = GRTH_CURVE,
                                                                               age = age,
                                                                               ageType = ageType,
                                                                               height = height,
                                                                               estType = estType)$output)]
     worktable[SI_SP >= 0 & age <= 50 & GI_ERR >= 0,
-              SI_TREE := SI_GI]
-    return(worktable[order(uniObs),]$SI_TREE)
+              ':='(SI_TREE = SI_GI,
+                   SI_SOURCE = "GI")]
+    curvenametable <- unique(worktable[,.(SI_SOURCE, SITE_CURVE, GRTH_CURVE)])
+    curvenametable[, CURVE_NAME := as.character(NA)]
+    for(indirow in 1:nrow(curvenametable)){
+      if(!is.na(curvenametable$SI_SOURCE[indirow])){
+
+        if(curvenametable$SI_SOURCE[indirow] == "SI"){
+          curvenametable$CURVE_NAME[indirow] <- SIndexR::Sindex_CurveName(curvenametable$SITE_CURVE[indirow])
+        } else if (curvenametable$SI_SOURCE[indirow] == "GI"){
+          curvenametable$CURVE_NAME[indirow] <- SIndexR::Sindex_CurveName(curvenametable$GRTH_CURVE[indirow])
+        }
+      }
+    }
+    worktable <- merge(worktable,
+                       curvenametable,
+                       by = c("SI_SOURCE", "SITE_CURVE", "GRTH_CURVE"),
+                       all.x = TRUE)
+    worktable <- worktable[order(uniObs),]
+    return(list(SI_TREE = worktable$SI_TREE,
+                SI_SOURCE = worktable$SI_SOURCE,
+                CURVE_NAME = worktable$CURVE_NAME))
   })
