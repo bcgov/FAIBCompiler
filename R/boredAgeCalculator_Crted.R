@@ -10,6 +10,7 @@
 #' @param species character, Species code, must be consistent with the species code in site tools.
 #'                           Can be derived using \code{\link{siteToolsSpeciesConvertor}}.
 #' @param FIZ character, Forest inventory zone.
+#' @param compilationType character, Compilation type.
 #'
 #' @return Tree age at breast height (1.3 m). For the estimated age <= 0.1, the bored age will be used as breast age and
 #'              a warning message will be given.
@@ -25,7 +26,7 @@
 #'
 setGeneric("boredAgeCalculator_Crted",
            function(boredAge, boredHeight, treeHeight,
-                    species, FIZ) {
+                    species, FIZ, compilationType) {
              standardGeneric("boredAgeCalculator_Crted")
            })
 
@@ -36,9 +37,10 @@ setMethod(
                 boredHeight = "numeric",
                 treeHeight = "numeric",
                 species = "character",
-                FIZ = "character"),
+                FIZ = "character",
+                compilationType = "character"),
   definition = function(boredAge, boredHeight, treeHeight,
-                        species, FIZ){
+                        species, FIZ, compilationType){
     worktable <- data.table(uniObs = 1:(max(length(boredHeight), length(boredAge))),
                             speciesFRED = species, AGE_BORE = boredAge,
                             HT_BORE = boredHeight, HT_TREE = treeHeight,
@@ -59,7 +61,7 @@ setMethod(
       ## what should we use for ageType
       worktable[firstBHA > 0, SI_N := SiteTools_HTBoredAge2SI(boredAge = firstBHA, height = HT_TREE,
                                                               species = speciesFRED, ICRegion = FIZ,
-                                                              ageType = 1, estType = 1)]
+                                                              ageType = 1, estType = 1)$SI_TREE]
       ## call SI_Y2BH an equivalent function to sindex_y2bh.sas
       worktable[firstBHA > 0, CORR_N := SiteTools_Y2BH(species = speciesFRED, ICRegion = FIZ,
                                                        siteIndex = SI_N)]
@@ -67,11 +69,22 @@ setMethod(
       worktable[firstBHA > 0, secondBHA := AGE_BORE - CORR_N*(1.3 - HT_BORE)/1.3]
       tempnewdata <- worktable[(I >= 2 & round(firstBHA) == round(secondBHA)) |
                                  I == 10,] ## set 10 as the last iteration
-      set(tempnewdata, , c("SI_N", "CORR_N"), NULL)
-      newdata <- rbindlist(list(newdata, tempnewdata))
+      set(tempnewdata, , c("SI_N"), NULL)
+      newdata <- rbindlist(list(newdata, tempnewdata), fill = TRUE)
       worktable <- worktable[!(uniObs %in% tempnewdata$uniObs),]
       rm(tempnewdata)
     }
+    if(compilationType == "PSP"){
+    # *limit yrs to breast height to a maximum value, the smallest of either the age at bored height, or 25yrs;
+    # *otherwise calculated y2bh can be excessive especially for those samples that generate;
+    # *very low <5m site index values, with cores taken other than at 1.3m;
+    newdata[CORR_N > AGE_BORE | CORR_N > 25,
+            CORR_N_new := ifelse(AGE_BORE > 25, 25,
+                             AGE_BORE)]
+    newdata[!is.na(CORR_N_new),
+            secondBHA := AGE_BORE - CORR_N_new*(1.3 - HT_BORE)/1.3]
+    } # need to discuss if the nonPSP needs to do this.
+
     ## give user a warning message when the corrected age at breast height is less than
     ## or equation to 0.1
     if(nrow(newdata[secondBHA <= 0.1]) > 0){
