@@ -58,6 +58,7 @@ vicPrep<- function(compilationType,
                                     by = "clusterPlot", all.x = TRUE)
 
   if(compilationType == "nonPSP"){
+    vi_c <- vi_c[DBH >= 4, ] # for nonPSP, only dbh bigger than or equal to 4 cm is valid
     vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
                                                treeWeight = TREE_WT, plotWeight = PLOT_WT,
                                                treeBasalArea = BA_TREE)]
