@@ -42,6 +42,7 @@ viiPrep<- function(compilationType,
                                                                   SAMPLE_ESTABLISHMENT_TYPE)],
                                       by = "clusterplot", all.x = TRUE)
     if(compilationType == "nonPSP"){
+      vi_i <- vi_i[DBH >= 4, ] # for nonPSP, only dbh bigger than or equal to 4 cm is valid
       vi_i[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN, treeWeight = TREE_WT,
                                                  plotWeight = PLOT_WT, treeBasalArea = BA_TREE)]
       # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
