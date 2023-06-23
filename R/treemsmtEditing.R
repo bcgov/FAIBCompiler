@@ -196,7 +196,18 @@ treemsmtEditing <- function(treemsmts,
                                      VISIT_NUMBER_next = NULL,
                                      VISIT_NUMBER_prev = NULL,
                                      VISIT_NUMBER_crt.y = NULL)]
-
+  treemsmts_missing_inbetween[,':='(BORING_AGE = NA,
+                                    AGE_CORE_MISSED_YEARS_FIELD = NA,
+                                    MICROSCOPE_AGE = NA,
+                                    AGE_CORE_MISSED_YEARS_LAB = NA,
+                                    AGE_CORRECTION = NA,
+                                    TOTAL_AGE = NA,
+                                    RADIAL_INCREMENT_LAST_10_YR = NA,
+                                    RADIAL_INCREMENT_LAST_5_YR = NA,
+                                    RADIAL_INCREMENT_LAST_20_YR = NA,
+                                    PRORATE_LENGTH = NA,
+                                    AGE_MEASURE_CODE = NA,
+                                    AGE_MEASMT_HEIGHT = NA)]
   treemsmts <- rbind(treemsmts, treemsmts_missing_inbetween,
                      fill = TRUE)
 
@@ -223,6 +234,18 @@ treemsmtEditing <- function(treemsmts,
                                 MSMT_MISSING_EDIT = "Missing at tail, added",
                                 DIAMETER_EDIT = "Diameter assinged based on previous msmt")]
 
+  treemsmts_missing_tail[,':='(BORING_AGE = NA,
+                                    AGE_CORE_MISSED_YEARS_FIELD = NA,
+                                    MICROSCOPE_AGE = NA,
+                                    AGE_CORE_MISSED_YEARS_LAB = NA,
+                                    AGE_CORRECTION = NA,
+                                    TOTAL_AGE = NA,
+                                    RADIAL_INCREMENT_LAST_10_YR = NA,
+                                    RADIAL_INCREMENT_LAST_5_YR = NA,
+                                    RADIAL_INCREMENT_LAST_20_YR = NA,
+                                    PRORATE_LENGTH = NA,
+                                    AGE_MEASURE_CODE = NA,
+                                    AGE_MEASMT_HEIGHT = NA)]
   treemsmts <- rbind(treemsmts,
                      treemsmts_missing_tail,
                      fill = TRUE)
@@ -298,5 +321,11 @@ treemsmtEditing <- function(treemsmts,
   treemsmts[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
             TREE_SPECIES_CODE := "X"]
   treemsmts[, unitreeid := NULL]
+
+  # 7. for missing diameter msmt height
+  treemsmts[is.na(DIAMETER_MEASMT_HEIGHT) &
+              !is.na(DIAMETER),
+            ':='(DIAMETER_MEASMT_HEIGHT = 1.3,
+                 DIAM_MSMT_HT_EDIT = "Missing diameter msmt height, 1.3 added")]
   return(treemsmts)
 }
