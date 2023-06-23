@@ -1,145 +1,72 @@
-rm(list = ls())
-library(data.table)
-library(readxl)
-library(tidyverse)
-library(openxlsx)
-library(dplyr)
-library(reshape)
-
-# this is a test from yong
-
-# define wkdir
-if(Sys.info()[["user"]] == "yluo"){
-  wkdir <- "G:/!Workgrp/Inventory/PSP Height Estimate"
-} else {
-  wkdir <- "G:\\PSP Height Estimate"
-}
 
 rankingMatrix <- function(my_data_psp_sumry_rating){
+##
+  rm(list = ls())
+  library(data.table)
+  library(readxl)
+  library(tidyverse)
+  library(openxlsx)
+  library(dplyr)
+  library(reshape)
 
-  sample1 <- read.xlsx(file.path(wkdir,
+  # this is a test from yong
+
+  # define wkdir
+  if(Sys.info()[["user"]] == "yluo"){
+    wkdir <- "G:/!Workgrp/Inventory/PSP Height Estimate"
+  } else {
+    wkdir <- "G:\\PSP Height Estimate"
+  }
+
+  sample_sites_org <- readRDS(file.path(wkdir,
                                  "lastversionSAS",
-                                 "sample_site_header.xlsx")) %>%
+                                 "sample_site_header.rds")) %>%
     data.table
 
-
-  sample2 <- data.table::copy(sample1)
-  names(sample2) <- toupper(names(sample2))
-
-  sample2[nchar(SAMPLE_SITE_NAME) == 11,
-          ":=" (SAMP_ID = paste0(substr(SAMPLE_SITE_NAME, 1, 2),
-                                 substr(SAMPLE_SITE_NAME, 4, 6),
-                                 " ",
-                                 substr(SAMPLE_SITE_NAME, 11, 11),
-                                 "000",
-                                 substr(SAMPLE_SITE_NAME, 8, 10)),
-                SAMPLETYPE_ISMC = substr(SAMPLE_SITE_NAME, 11, 11))]
-
-  sample2[nchar(SAMPLE_SITE_NAME) == 12,
-          ":=" (SAMP_ID = paste0(substr(SAMPLE_SITE_NAME, 1, 2),
-                                 substr(SAMPLE_SITE_NAME, 4, 6),
-                                 substr(SAMPLE_SITE_NAME, 7, 7),
-                                 substr(SAMPLE_SITE_NAME, 12, 12),
-                                 "000",
-                                 substr(SAMPLE_SITE_NAME, 9, 11)),
-                SAMPLETYPE_ISMC = substr(SAMPLE_SITE_NAME, 12, 12))]
-  sample2[is.na(BEC_VAR),
+  sample_sites <- data.table::copy(sample_sites_org)
+  sample_sites[is.na(BEC_VAR),
           BEC_VAR := ""]
-  sample2[, BECLABEL := paste0(BEC_ZONE, BEC_SBZ, BEC_VAR)]
-  sample2[, ':='(TSA_DESC = gsub("TSA", "", TSA_DESC))]
-  sample2[, ':='(TSA_DESC = gsub(" ", "", TSA_DESC))]
-  sample2[, TSA_DESC := sub("QueenCharlotte", "HaidaGwaii", TSA_DESC)]
-  sample2[, MGMT_UNIT := paste0("TSA", TSA, "_", TSA_DESC)]
-
-
-
-  # prep steps to define management unit
-
-  sample2[, ":=" (TSA_DESC2 = gsub("TSA", "", TSA_DESC),
-                  TFL_NO = gsub("TFL", "", TFL))]
-
-
-  sample2[nchar(TFL_NO) == 1, TFL_NO := paste0("0", TFL_NO)]
-
-  sample2[!is.na(IP_UTM), UTM_SOURCE_ISMC := "DGPS"]
-
-  setnames(sample2,
-           old = c("IP_UTM", "IP_NRTH", "IP_EAST", "OWNER"),
-           new = c("UTM_ZONE_ISMC", "UTM_NORTHING_ISMC", "UTM_EASTING_ISMC", "OWN"))
-
-  #-------------------------------------------------------------#
+  sample_sites[, BECLABEL := paste0(BEC_ZONE, BEC_SBZ, BEC_VAR)]
+  sample_sites[, ':='(TSA_DESC = gsub("TSA", "", TSA_DESC))]
+  sample_sites[, ':='(TSA_DESC = gsub(" ", "", TSA_DESC))]
+  sample_sites[, TSA_DESC := sub("QueenCharlotte", "HaidaGwaii", TSA_DESC)]
 
   # get mu lookup table, merge to get tfl licensee name
-
   mu_tfl <- read.xlsx(file.path(wkdir,
                                 "lastversionSAS",
                                 "tfl_lookup.xlsx")) %>%
     data.table
-
   names(mu_tfl) <- toupper(names(mu_tfl))
+  mu_tfl[, TFL := paste0("TFL", as.numeric(TFL))]
 
-  sample3 <- merge(sample2, mu_tfl, by.x = "TFL_NO", by.y = "TFL", all.x = TRUE)
+  sample_sites <- merge(sample_sites, mu_tfl,
+                   by = "TFL", all.x = TRUE)
 
   # define management unit (either 1) TFL or 2) remaining TSA outside TFL)
+  sample_sites <- data.table::copy(sample_sites)
 
-  sample4 <- data.table::copy(sample3)
-
-  sample4[, MGMT_UNIT_ISMC := ifelse(!is.na(TFL),
-                                     paste0("TFL", TFL_NO, "_", TFL_DESC),
+  sample_sites[, MGMT_UNIT := ifelse(!is.na(TFL),
+                                     paste0(TFL, "_", TFL_DESC),
                                      ifelse(!is.na(TSA),
-                                            paste0("TSA", TSA, "_", TSA_DESC3),
+                                            paste0("TSA", TSA, "_", TSA_DESC),
                                             NA))]
-  sample4[, MGMT_UNIT_ISMC := gsub(" ", "", MGMT_UNIT_ISMC)]
-  sample4 <- sample4[, !c("TFL_NO", "MU", "TSA_DESC2")]
-
-  # create tsa list file for subsequent batch processing
-
-  list1 <- unique(sample4[!is.na(TSA),
-                   .(TSA_NO = TSA,
-                     TSA_NAME = gsub(" ", "", TSA_DESC3))]) %>%
-    arrange(TSA_NO)
-
-
-  # export to text file
-  write.table(list1, file.path(wkdir, "list.txt"),
-              quote = FALSE,
-              row.names = FALSE, col.names = FALSE)
-
-  sample4 <- arrange(sample4, SITE_IDENTIFIER)
+  sample_sites[, MGMT_UNIT := gsub(" ", "", MGMT_UNIT)]
+  sample_sites <- sample_sites[, !c("MU")]
 
   #-----------------------------------------------------------#
   # get latest sample_site_visit
 
-  sample_visit1 <- read.xlsx(file.path(wkdir,
+  sample_msmt_org <- readRDS(file.path(wkdir,
                                        "lastversionSAS",
-                                       "sample_msmt_header.xlsx")) %>%
+                                       "sample_msmt_header.rds")) %>%
     data.table
-
-  sample_visit1 <- sample_visit1[, .(SITE_IDENTIFIER, VISIT_NUMBER, MEAS_DT)]
-
-  sample_visit2 <- data.table::copy(sample_visit1)
-
-  #sample_visit2[, ":=" (YR = substr(MEAS_DT, 1, 4),
-  #                      MN = substr(MEAS_DT, 6, 7),
-  #                      DY = substr(MEAS_DT, 9, 10),
-  #                      MEAS_DT_ISMC = )]
-
-  sample_visit2 <- sample_visit2 %>%
-    arrange(SITE_IDENTIFIER, MEAS_DT)
-
-  sample_visit3 <- sample_visit2 %>%
-    group_by(SITE_IDENTIFIER) %>%
-    slice(n()) %>% # select the last row for each group
-    setDT()
-
-  sample5 <- merge(sample4, sample_visit3, by = "SITE_IDENTIFIER")
-
-  sample5[, YR := substr(MEAS_DT, 1, 4)]
-
-  sample6 <- sample5[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME, SAMP_ID, MEAS_DT, YR, SAMPLETYPE_ISMC, OWN,
-           SCHEDULE, TSA_ISMC = TSA, MGMT_UNIT_ISMC, UTM_ZONE_ISMC, UTM_NORTHING_ISMC,
-           UTM_EASTING_ISMC, UTM_SOURCE_ISMC, SITE_STATUS_CODE, SITE_ACCESS_CODE,
-           BEC_ZONE, BEC_SBZ, BEC_VAR)]
+  sample_msmt_org[, ':='(PROJ_ID = NULL,
+                         SAMP_NO = NULL)]
+  sample_msmt <- merge(sample_msmt_org,
+                        sample_sites,
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
+  sample_msmt_last <- sample_msmt[MEAS_YR == MEAS_YR_LAST,]
 
   #-----------------------------------------------------------------#
 
@@ -151,241 +78,144 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
                                  "Boat Access_Updated_2022Feb24.xlsx")) %>%
     data.table
 
-  update1 <- update1[,.(SAMP_ID = Sample.Number,
+  update1 <- update1[,.(SITE_IDENTIFIER = Sample_ID,
                         site_access_code_update = gsub(" ", "",toupper(Access.Type)))]
 
-  # update1 <- update1[, .(SAMP_ID, site_access_code_update)]
-  names(update1) <- toupper(names(update1))
-
-  update1[, lofsitecode := nchar(SITE_ACCESS_CODE_UPDATE)]
-
-  update1 %<>%
-    group_by(SAMP_ID) %>%
-    arrange(lofsitecode) %>%
-    slice(n()) %>%
-    setDT()
-  update1 <- update1[,.(SAMP_ID, SITE_ACCESS_CODE_UPDATE)]
+  update1 <- update1[, site_access_code_update := paste0(site_access_code_update, collapse = ", "),
+          by = "SITE_IDENTIFIER"]
 
   # need site identifier to link with excel workbook listing updated access description
-
-  sample6[, SITE_ACCESS_CODE := NULL]
-  sample7 <- merge(sample6, update1, by = "SAMP_ID", all.x = TRUE)
-  sample7[!is.na(SITE_ACCESS_CODE_UPDATE),
-          SITE_ACCESS_CODE := SITE_ACCESS_CODE_UPDATE]
+  sample_msmt <- merge(sample_msmt, update1,
+                         by = "SITE_IDENTIFIER", all.x = TRUE)
+  sample_msmt[!is.na(site_access_code_update),
+          SITE_ACCESS_CODE := site_access_code_update]
 
   # sample7 <- sample7[, !c('SITE_ACCESS_CODE')]
   # sample7[!is.na(SITE_ACCESS_CODE_UPDATE), SITE_ACCESS_CODE := SITE_ACCESS_CODE_UPDATE]
 
-  planyr <- sample7[YR %in% c("2020", "2021", "2022"),]
-  setnames(planyr,
-           "YR", "PLAN_YR")
 
-### after long weekend
+  sample_msmt[substr(MEAS_DT, 1, 4) %in% c("2020", "2021", "2022"),
+              PLAN_YR := as.numeric(substr(MEAS_DT, 1, 4))]
+
   #-------------------------------------------------------------------#
   # base rating algorithm on psp attributes at the lowest compiled utilization limit
-  psp_sumry_all2 <- fread(file.path(wkdir,
-                                    "sasds",
-                                    "psp_sumry_all2.csv"))
-  psp_sumry_all2[psp_sumry_all2 == "." |
-                   psp_sumry_all2 == ""|
-                   psp_sumry_all2 == " "] = NA
-  # psp_sumry_all2 <- psp_sumry_all2[!is.na(SAMP_ID),]
-  names(psp_sumry_all2) <- toupper(names(psp_sumry_all2))
-  psp_sumry_all2 <- merge(psp_sumry_all2,
-                          sample2[,.(SAMP_ID, SITE_IDENTIFIER)],
-                          by = "SAMP_ID",
-                          all.x = TRUE)
 
-  psp_sumry_all2_new <- psp_sumry_all2[!is.na(SITE_IDENTIFIER),]
-  psp_sumry_all2_new[, VISIT_NUMBER := as.numeric(MEAS_NO) + 1]
-  psp_sumry_all2_new[, MEAS_DT := NULL]
+
+
+  psp_sumry_all2 <- readRDS(file.path(wkdir,
+                                    "lastversionSAS",
+                                    "Smries_volume_byCL.rds"))
+  psp_sumry_all2_new <- data.table::copy(psp_sumry_all2)
   psp_sumry_all2_new <- merge(psp_sumry_all2_new,
-                              sample_visit2,
-                              by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
+                              sample_msmt,
+                              by = c("CLSTR_ID"),
                               all.x = TRUE)
-  psp_sumry_all2_new[, MEAS_DT := as.numeric(substr(MEAS_DT, 1, 4))]
-
-  psp_sumry_all2_new[, DBHLIMIT_COMPILE := as.numeric(DBHLIMIT_COMPILE)]
-
-  ut1 <- arrange(psp_sumry_all2_new, SAMP_ID, DBHLIMIT_COMPILE)
-
-  ut2 <- ut1[!is.na(SAMP_ID), .(SAMP_ID, DBHLIMIT_COMPILE)]
-  ut2 %<>%
-    group_by(SAMP_ID) %>%
-    summarise(FREQ = n(), MIN_UTIL = min(DBHLIMIT_COMPILE, na.rm = TRUE)) %>%
-    setDT()
-
-  # a <- psp_sumry_all2 %>%
-  #  group_by(SAMP_ID) %>%
-  #  filter(!row_number() == 1)
-
-  # b <- ut2 %>%
-  #   group_by(SAMP_ID) %>%
-  #   filter(!row_number() == 1)
-
-  # c <- planyr %>%
-  #   group_by(SAMP_ID) %>%
-  #   filter(!row_number() == 1)
 
 
-  #------------------- preparing for merge -------------------------------------#
-  psp_sumry_all2_new[,':='(UTM_SOURCE_ISMC = NULL,
-                           UTM_ZONE_ISMC = NULL,
-                           UTM_NORTHING_ISMC = NULL,
-                           UTM_EASTING_ISMC = NULL,
-                           SITE_ACCESS_CODE = NULL)]
-  sample7_new <- data.table::copy(sample7)
-  sample7_new[,':='(MEAS_DT = NULL,
-                    SITE_IDENTIFIER = NULL)]
-  psp1a <- merge(psp_sumry_all2_new,
-                    sample7_new,
-                    by = c("SAMP_ID"),
-                    all.x = TRUE)
-
-  psp1a <- merge(psp1a,
-                    ut2,
-                    by = c("SAMP_ID"),
-                    all.x = TRUE)
-
-  psp1a <- merge(psp1a,
-                    planyr[,.(SAMP_ID, PLAN_YR)],
-                    by = c("SAMP_ID"),
-                    all.x = TRUE)
+ # it may come from vol_smry
+  psp_sumry_all2_new[,':='(UTIL_FREQ = length(NO_TREES),
+                               UTIL_MIN = min(UTIL)),
+                            by = "SITE_IDENTIFIER"]
 
 
 
-
-
-  #----------------- cleanup psp1a ------------------------------------------#
-
-  rm(access1, list1, mu_tfl,
-     sample_visit1, sample_visit2, sample_visit3, sample1, sample2,
-     sample3, sample4, sample5, ut1, CURRENT_YEAR, YEAR_NUMERIC, YEAR_STRING)
-
-  psp1a <- psp1a[, .(SITE_IDENTIFIER, SAMP_ID, PROJ_ID, SAMP_NO, TYPE_CD, SAMPLETYPE,
-                     OWN_SCHED, OWN_SCHED_DESCRIP, PRIVATE, OWNER, OLD_OWNER, NEW_OWNER,
-                     TSA, MGMT_UNIT, MGMT_UNIT_ISMC, PROJECT, BEC_SOURCE,
-                     BGC_ZONE, BECLABEL, BECLABEL_GRD,
-                     BGC_SS_GRD, MAP_TILE, POLYGON_NO, OPENING_NO, UTM_VERSION, UTM_SOURCE,
-                     UTM_ZONE, UTM_EASTING, UTM_NORTHING, UTM_SOURCE_ISMC, UTM_ZONE_ISMC,
-                     UTM_EASTING_ISMC, UTM_NORTHING_ISMC, UTM_SOURCE_GYS, UTM_ZONE_GYS,
-                     UTM_EASTING_GYS, UTM_NORTHING_GYS, UTM_SOURCE_RECON, UTM_ZONE_RECON,
-                     UTM_EASTING_RECON, UTM_NORTHING_RECON, UTM_SOURCE_REMEASOP1,
-                     UTM_ZONE_REMEASOP1, UTM_EASTING_REMEASOP1, UTM_NORTHING_REMEASOP1,
-                     UTM_SOURCE_REMEASOP2, UTM_ZONE_REMEASOP2, UTM_EASTING_REMEASOP2,
-                     UTM_NORTHING_REMEASOP2, BCALB_X, BCALB_Y, LATITUDE, LONGITUDE,
-                     ASPECT, SLOPE, SL_POS, ELEV, SAMP_STS,
-                     LANDSAT_DISTURB_YR, MEAS_YR_FIRST, MEAS_YR_LAST,
-                     CALEND_YR_LAST_HARDY, RECON_YR, RELEASE, NO_PLOTS, AREA_PM,
-                     SHP_PM, RAD_PM, LEN_PM, WID_PM, NO_MEAS,
-                     TOT_PERIOD, STEMSHA_LIV, WSVHA_LIV, SPC_LABEL_LIVE, TOT_STAND_AGE,
-                     SAMPLETYPE_DUP, SITE_ACCESS_CODE, BAF_PM, PLOT_TYP, FIZ, BUFFER_RAD,
-                     BUFFER_OK, STEM_MAPPED_IND,
-                     STND_ORG, STND_STR, SEL_LGD, TREATMENT, TRT_CODE, OWN, SCHEDULE,
-                     DBHLIMIT_TAG, MEAS_DT, MEAS_YR, MIN_UTIL, TSA_ISMC, BEC_ZONE,
-                     BGC_SBZN, BEC_SBZ, BEC_VAR, MEAS_NO, MEAS_FIRST, SPC_LIVE1,
-                     SPCPER_LIVE1, STEMSHA_L, LEAD_SI1, LEAD_SI2, LEAD_SI3,
-                     LEAD_SI4, MEAS_LAST, SITE_STATUS_CODE, PERIOD, PLAN_YR,
-                     CALEND_YR_LAST, LEAD_HTOP1, LEAD_HTOP2, LEAD_HTOP3,
-                     BH_STAND_AGE, SAMPLETYPE_ISMC, DBHLIMIT_COMPILE, WSVHA_L, WSVHA_V)]
-
-  #--------------------------------------------------------------------------#
 
   # temporary fix, to bring back sampletype to those samples that were never in oracle to begin with
 
-  psp1a[is.na(SAMPLETYPE), SAMPLETYPE := SAMPLETYPE_ISMC]
+  psp_sumry_all2_new[, SAMPLETYPE := substr(SAMPLE_ESTABLISHMENT_TYPE, 5, 5)]
 
-  psp1a[!is.na(OWN) & !is.na(SCHEDULE), OWN_SCHED2 := paste0(OWN, "-", SCHEDULE)]
-  psp1a[, PRIVATE := ifelse(OWN_SCHED2 %in% c("40-N", "41-N", "52-N", "72-A", "77-A", "79-A"),
+## this can be achieved in the sample site table
+  psp_sumry_all2_new[!is.na(OWNER) & !is.na(SCHEDULE),
+        OWN_SCHED := paste0(OWNER, "-", SCHEDULE)]
+  psp_sumry_all2_new[, PRIVATE := ifelse(OWN_SCHED %in% c("40-N", "41-N", "52-N", "72-A", "77-A", "79-A"),
                             "Y",
                             "N")]
-
-  psp1a[, OWN_SCHED := NULL]
-  setnames(psp1a, "OWN_SCHED2", "OWN_SCHED")
-
   # deletes records from tsas where no samples are present, these are from null records
 
-  psp1a <- psp1a[!is.na(SAMP_ID), ]
-  psp1a <- psp1a[SAMPLETYPE %in% c("G", "R", "CMI", "VRI",
+  psp_sumry_all2_new <- psp_sumry_all2_new[SAMPLETYPE %in% c("G", "R", "CMI", "VRI",
                                    "YSM", "NFI", "CMO",
                                    "T", "I", "EP", "FLT",
                                    "VLT", "SUP"), ]
 
   # for samples that have no ownership code assigned, assign VGIS based samples all as MOF owned
-  psp1a[SAMPLETYPE %in% c("VRI", "CMI", "NFI", "YSM", "CMO",
+  psp_sumry_all2_new[SAMPLETYPE %in% c("VRI", "CMI", "NFI", "YSM", "CMO",
                           "EP", "FLT", "VLY", "SUP"),
         OWNER := "MOF"]
   # for remaining samples with no ownership record, assume MOF
-  psp1a[is.na(OWNER), OWNER := "MOF"]
+  psp_sumry_all2_new[is.na(OWNER), OWNER := "MOF"]
 
   # plot area not populated for some fixed radius sample types
   # note, for those samples that are made up of multiple plots, eg., 3 * 0.015ha plots on a transect, then the evaluation should be based on the ;
   # individual plot area, and not the combined area of all plots within a sample id;
   # this is the area of the individual plot. the total area of all plots in a sample id would be (area_pm * no_plots);
+  samp_plot <- readRDS(file.path(wkdir, "lastversionSAS", "sample_plot_header.rds"))
+  psp1a <- merge(psp_sumry_all2_new,
+                 unique(samp_plot[,.(CLSTR_ID, PLOT_AREA_MAIN)],
+                        by = "CLSTR_ID"),
+                 by = "CLSTR_ID",
+                 all.x = TRUE)
 
   psp1a[, AREA := ifelse(SAMPLETYPE %in% c("CMI", "YSM", "NFI", "CMO", "FLT"),
                          0.04,
-                         ifelse(SAMPLETYPE == "SUP" & PLOT_TYP == "F",
+                         ifelse(SAMPLETYPE == "SUP" & SAMP_TYP == "F",
                                 0.04,
-                                AREA_PM))]
+                                PLOT_AREA_MAIN))]
 
-  psp1a[, DBHLIMIT_TAG := ifelse(SAMPLETYPE %in% c("CMI", "YSM", "NFI", "CMO","FLT"), 4.0,
-                                 ifelse(SAMPLETYPE == "SUP" & PLOT_TYP == "F",
+  psp1a[, DBH_LIMIT_TAG := ifelse(SAMPLETYPE %in% c("CMI", "YSM", "NFI", "CMO","FLT"), 4.0,
+                                 ifelse(SAMPLETYPE == "SUP" & SAMP_TYP == "F",
                                         4.0,
-                                        DBHLIMIT_TAG))]
+                                        DBH_LIMIT_TAG))]
 
-  psp1a[,':='(AREA = as.numeric(AREA),
-              STEMSHA_LIV = as.numeric(STEMSHA_LIV))]
+  psp1a[, STEMS_HA_L := STEMS_HA_LS + STEMS_HA_LF] # all live trees regardless of staning or falling
+
 
   psp1a[, AREA_PM_MIN := ifelse(round(AREA, digits = 2) >= 0.04 & !is.na(AREA),
                                 "Y", "N")]
 
   # compute an equivalent number of live trees per plot computed at the minimum dbh limit
-  psp1a[, TREE_COUNT := STEMSHA_LIV * AREA]
+  psp1a[, TREE_COUNT := STEMS_HA_L * AREA]
 
   # track calendar year
 
-  psp1a[, CALEND_YR := ifelse(!is.na(MEAS_DT),
-                              substr(MEAS_DT, 1, 4),
-                              MEAS_YR)]
+  psp1a[, CALEND_YR := as.numeric(substr(MEAS_DT, 1, 4))]
 
   # base rating algorithm on compiled attributes at lowest utilization limit
 
-  psp1a <- subset(psp1a, DBHLIMIT_COMPILE == MIN_UTIL)
+  psp1a_minutil <- psp1a[UTIL == UTIL_MIN,]
 
-  # update coordinates with ISMC source, to represent the most up to date information source
-  # as of ismc prod updates to january 2022
-
-  psp1a[(is.na(UTM_ZONE) & UTM_ZONE_ISMC > 0) |
-          (UTM_ZONE > 0 & UTM_ZONE_ISMC > 0 & UTM_ZONE != UTM_ZONE_ISMC) |
-          (UTM_NORTHING > 0 & UTM_NORTHING_ISMC > 0 & UTM_NORTHING != UTM_NORTHING_ISMC) |
-          (UTM_EASTING > 0 & UTM_EASTING_ISMC > 0 & UTM_EASTING != UTM_EASTING_ISMC),
-        ":=" (UTM_SOURCE = UTM_SOURCE_ISMC,
-              UTM_VERSION = "ISMC",
-              UTM_ZONE = UTM_ZONE_ISMC,
-              UTM_NORTHING = UTM_NORTHING_ISMC,
-              UTM_EASTING = UTM_EASTING_ISMC)]
-
-  psp1a[, TSA_ISMC := as.numeric(TSA_ISMC)]
-
-  psp1a[TSA != TSA_ISMC & !is.na(TSA_ISMC),
-        ":=" (TSA = TSA_ISMC,
-              TSA_SOURCE = "ISMC")]
+  # # update coordinates with ISMC source, to represent the most up to date information source
+  # # as of ismc prod updates to january 2022
+  #
+  # psp1a[(is.na(UTM_ZONE) & UTM_ZONE_ISMC > 0) |
+  #         (UTM_ZONE > 0 & UTM_ZONE_ISMC > 0 & UTM_ZONE != UTM_ZONE_ISMC) |
+  #         (UTM_NORTHING > 0 & UTM_NORTHING_ISMC > 0 & UTM_NORTHING != UTM_NORTHING_ISMC) |
+  #         (UTM_EASTING > 0 & UTM_EASTING_ISMC > 0 & UTM_EASTING != UTM_EASTING_ISMC),
+  #       ":=" (UTM_SOURCE = UTM_SOURCE_ISMC,
+  #             UTM_VERSION = "ISMC",
+  #             UTM_ZONE = UTM_ZONE_ISMC,
+  #             UTM_NORTHING = UTM_NORTHING_ISMC,
+  #             UTM_EASTING = UTM_EASTING_ISMC)]
+  #
+  # psp1a[, TSA_ISMC := as.numeric(TSA_ISMC)]
+  #
+  # psp1a[TSA != TSA_ISMC & !is.na(TSA_ISMC),
+  #       ":=" (TSA = TSA_ISMC,
+  #             TSA_SOURCE = "ISMC")]
 
   # use use ismc spatial intersect of bec classification for all psps with values present
   # that also have coordinates, otherwise use default reg/comp/bec lookup table
 
-  psp1a[!is.na(BEC_ZONE) & UTM_VERSION == "ISMC",
-        ":=" (BGC_ZONE = BEC_ZONE,
-              BGC_SBZN = BEC_SBZ,
-              BGC_VAR = BEC_VAR,
-              BECLABEL = paste0(BEC_ZONE, BEC_SBZ, BEC_VAR),
-              BEC_SOURCE = "ISMC")]
-
-  psp1a[, MGMT_UNIT_GYS := MGMT_UNIT]
-  psp1a[!is.na(MGMT_UNIT_ISMC),
-        ":=" (MGMT_UNIT = MGMT_UNIT_ISMC,
-              MGMT_UNIT_SOURCE = "ISMC")]
+  # psp1a[!is.na(BEC_ZONE) & UTM_VERSION == "ISMC",
+  #       ":=" (BGC_ZONE = BEC_ZONE,
+  #             BGC_SBZN = BEC_SBZ,
+  #             BGC_VAR = BEC_VAR,
+  #             BECLABEL = paste0(BEC_ZONE, BEC_SBZ, BEC_VAR),
+  #             BEC_SOURCE = "ISMC")]
+  #
+  # psp1a[, MGMT_UNIT_GYS := MGMT_UNIT]
+  # psp1a[!is.na(MGMT_UNIT_ISMC),
+  #       ":=" (MGMT_UNIT = MGMT_UNIT_ISMC,
+  #             MGMT_UNIT_SOURCE = "ISMC")]
 
   # delete variables that haven't yet been created
 
@@ -410,7 +240,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   psp1b <- data.table::copy(psp1a)
 
   # keep only first measure record
-  psp1b <- subset(psp1b, psp1b$MEAS_FIRST == "Y")
+  psp1b <- psp1b[MEAS_DT == MEAS_DT_FIRST,]
 
   # new 7 class age classes, as per 2019 strategic plan
 
@@ -426,34 +256,39 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
                                                     "201_240YR",
                                                     ">240YR")))]
 
+  vol_smry_cs <- readRDS(file.path(wkdir, "lastversionSAS",
+                                   "Smries_volume_byCLSP.rds"))
+  leadingspecies <- vol_smry_cs[order(CLSTR_ID, UTIL, -SP_PCT_BA_LS),
+                                .(CLSTR_ID, UTIL, SPECIES, SP_PCT_BA_LS)]
+  leadingspecies <- unique(leadingspecies,
+                           by = c("CLSTR_ID", "UTIL"))
+
   # species strata
   # use 80% species as per 2019 strategic plan
 
-  psp1b[, ":="(SPC1 = SPC_LIVE1,
-               PCT1 = as.numeric(SPCPER_LIVE1))]
-
-  psp1b[, SPC_STRATA := ifelse(PCT1 > 80,
-                             sprintf("%sPURE", SPC1),
-                             ifelse(PCT1 >0 & PCT1 <= 80,
-                                    sprintf("%sMIX", SPC1),
+  leadingspecies[, SPC_STRATA := ifelse(SP_PCT_BA_LS > 80,
+                             sprintf("%sPURE", SPECIES),
+                             ifelse(SP_PCT_BA_LS >0 & SP_PCT_BA_LS <= 80,
+                                    sprintf("%sMIX", SPECIES),
                                     NA))]
+  psp1b <- merge(psp1b,
+                 leadingspecies,
+                 by = c("CLSTR_ID", "UTIL"),
+                 all.x = TRUE)
   # density strata
-
-  psp1b[,STEMSHA_L := as.numeric(psp1b$STEMSHA_L)]
-
-  psp1b$DEN_STRATA <- ifelse(psp1b$STEMSHA_L > 5000,
+  psp1b[, DEN_STRATA := ifelse(STEMS_HA_L > 5000,
                              ">5000SPH",
-                             ifelse(psp1b$STEMSHA_L > 1000 & psp1b$STEMSHA_L <= 5000,
+                             ifelse(STEMS_HA_L > 1000 & STEMS_HA_L <= 5000,
                                     "1001-5000SPH",
-                                    ifelse(psp1b$STEMSHA_L > 0 & psp1b$STEMSHA_L <= 1000,
-                                           "<=1000SPH", NA)))
+                                    ifelse(STEMS_HA_L > 0 & STEMS_HA_L <= 1000,
+                                           "<=1000SPH", NA)))]
 
   # site index
-  psp1b$REG <- ifelse(psp1b$BGC_ZONE %in% c("CWH", "CDF", "MH", "CMA"),
-                      "C", "I")
+  psp1b[, REG := ifelse(BEC_ZONE %in% c("CWH", "CDF", "MH", "CMA"),
+                      "C", "I")]
 
   # decide on source of available site index estimates
-
+ siteage_cs <- readRDS(file.path(wkdir, "lastversionSAS", "Smries_siteAge_byCLSP.rds"))
   psp1b[, ":="(LEAD_SI1 = as.numeric(LEAD_SI1),
                LEAD_SI2 = as.numeric(LEAD_SI2),
                LEAD_SI3 = as.numeric(LEAD_SI3),
@@ -478,13 +313,13 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   # bec strata
   # new bec strata classification based on subzone, as per 2019 strategic plan
 
-  psp1b[, BEC_STRATA := ifelse(!is.na(BGC_ZONE) & !is.na(BGC_SBZN),
-                               paste0(BGC_ZONE, BGC_SBZN), NA)]
+  psp1b[, BEC_STRATA := ifelse(!is.na(BEC_ZONE) & !is.na(BEC_SBZ),
+                               paste0(BEC_ZONE, BEC_SBZ), NA)]
 
   # site series strata
-
   psp1b[, SS_STRATA := BGC_SS_GRD]
-  psp1b <- psp1b[,.(SAMP_ID,
+
+  psp1b <- psp1b[,.(SITE_IDENTIFIER,
                     AGE_STRATA,
                     SPC_STRATA,
                     DEN_STRATA,
@@ -502,10 +337,9 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   #------- psp1c --------------------------------------------------------#
 
-  psp1c <- data.table::copy(psp1a)
-
   # keep only last measure
-  psp1c <- subset(psp1c, psp1c$MEAS_LAST == "Y")
+  psp1c <- psp1a[MEAS_DT == MEAS_DT_LAST,]
+
 
   # treatment strata
   psp1c[, TRT_STRATA := ifelse(TREATMENT == "THINNED", "T",
@@ -513,19 +347,12 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
 
   # status strata
-  psp1c[, SAMP_STS := ifelse(SITE_STATUS_CODE == "IA" & !is.na(SITE_STATUS_CODE), "X",
-                             ifelse(SAMPLETYPE %in% c("CMI", "VRI", "NFI", "YSM", "CMO", "EP", "SUP"), "A",
-                                    ifelse(is.na(SAMP_STS), "A",
-                                           ifelse(SAMP_ID == "71058 G000003" & SAMP_STS == "L", "P",
-                                                  SAMP_STS))))]
-
-  psp1c[, STS_STRATA := ifelse(SAMP_STS %in% c("A", "P", "Q"), "A",
-                               "X")]
+  psp1c[, STS_STRATA := ifelse(SITE_STATUS_CODE != "A", "X",
+                                SITE_STATUS_CODE)]
 
   setnames(psp1c, "CALEND_YR", "CALEND_YR_LAST")
-  psp1c <- psp1c[,.(SAMP_ID,
+  psp1c <- psp1c[,.(SITE_IDENTIFIER,
                     TRT_STRATA,
-                    SAMP_STS,
                     STS_STRATA,
                     CALEND_YR_LAST)]
 
@@ -544,57 +371,17 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   # need to get access note data, as part of assessment of keeping a sample
   # ie., a sample needs to have either a gps coordinate or access notes, otherwise do not keep
 
-  ac1 <- fread(file.path(wkdir, "sasds", "psp_access_notes.csv"))
-
-
-
-  # "G:\\PSP Height Estimate\\sasds\\")
-  ac1[ac1 == "." |
-        ac1 == ""|
-        ac1 == " "] = NA
-  names(ac1) <- toupper(names(ac1))
-  ac1 <- merge(ac1, sample2[,.(SITE_IDENTIFIER, SAMP_ID,
-                               IP_UTM, IP_NRTH, IP_EAST)],
-               by = "SAMP_ID",
-               all.x = TRUE)
-  ac1 <- ac1[!is.na(SITE_IDENTIFIER),]
-
-  ac1[(UTM_ZONE == IP_UTM | (is.na(UTM_ZONE) & is.na(IP_UTM))) &
-      (UTM_NORTHING == IP_NRTH | (is.na(UTM_NORTHING) & is.na(IP_NRTH))) &
-      (UTM_EASTING == IP_EAST | (is.na(UTM_EASTING) & is.na(IP_EAST))),
-      utm_same := "Y"]
-  ac1[is.na(utm_same)]
-
-
 
 
   ac_ismc <- read_rds(file.path(wkdir, "siteaccessnotes.rds"))
-
-  ac1 <- merge(ac1,
-               ac_ismc[,.(SITE_IDENTIFIER, ACCESS_NOTES_ismc = ACCESS_NOTES)],
-               by = "SITE_IDENTIFIER",
+  ac1 <- merge(sample_sites,
+                        ac_ismc[,.(SITE_IDENTIFIER, ACCESS_NOTES)],
+                        by = "SITE_IDENTIFIER",
                all.x = TRUE)
-  a <- ac1[is.na(ACCESS_NOTES_ismc) & !is.na(ACCESS_NOTES)]
-  b <- ac1[!is.na(ACCESS_NOTES_ismc) & is.na(ACCESS_NOTES)]
-  c <- ac1[is.na(ACCESS_NOTES_ismc) & is.na(ACCESS_NOTES)]
-  d <- ac1[!is.na(ACCESS_NOTES_ismc) & !is.na(ACCESS_NOTES)]
 
-
-  write.xlsx(a[,.(SITE_IDENTIFIER, SAMP_ID, ACCESS_NOTES_old_compiled = ACCESS_NOTES,
-                  ACCESS_NOTES_ismc)],
-             "missing_accessnotes_inISMC.xlsx")
-
-  write.xlsx(b[,.(SITE_IDENTIFIER, SAMP_ID, ACCESS_NOTES_old_compiled = ACCESS_NOTES,
-                  ACCESS_NOTES_ismc)],
-             "populated_accessnotes_inISMC.xlsx")
-
-
-  ac1[, ":="(UTM_ZONE = as.numeric(UTM_ZONE),
-             UTM_NORTHING = as.numeric(UTM_NORTHING),
-             UTM_EASTING = as.numeric(UTM_EASTING))]
 
   # create access coord flag, and access notes flag
-  ac1[, ACCESS_COORD := ifelse(UTM_ZONE > 0 & UTM_NORTHING > 0 & UTM_EASTING > 0,
+  ac1[, ACCESS_COORD := ifelse(IP_UTM > 0 & IP_NRTH > 0 & IP_EAST > 0,
                                "Y", "N")]
   ac1[is.na(ACCESS_COORD), ACCESS_COORD := "N"]
 
@@ -610,13 +397,10 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
                          ifelse(ACCESS_COORD == "Y" | ACCESS_NOTE == "Y",
                                 "Y", NA))]
 
-  ac1 <- ac1[,.(SAMP_ID,
+  ac1 <- ac1[,.(SITE_IDENTIFIER,
                 ACCESS_COORD,
                 ACCESS_NOTE,
                 ACCESS)]
-
-  ac1 <- arrange(ac1, SAMP_ID)
-
   #------------------- psp2a ----------------------#
 
   psp1a1 <- psp1a[, !c("SAMP_STS", "CALEND_YR_LAST")]
@@ -628,9 +412,8 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
                      psp1b,
                      psp1c,
                      ac1)
-
   psp2a <- Reduce(function(x,y)
-    merge(x, y, by = "SAMP_ID", all = TRUE),
+    merge(x, y, by = "SITE_IDENTIFIER", all = TRUE),
     join_list2)
 
   #------------------- psp2a cleanup ------------#
@@ -686,7 +469,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   mastertable <- unique(psp2_1[,.(SAMP_ID)])
   interestcols <- c("PERIOD", "WSVHA_L", "WSVHA_V",
-                    "TOT_STAND_AGE", "MEAS_YR", "DBHLIMIT_TAG",
+                    "TOT_STAND_AGE", "MEAS_YR", "DBH_LIMIT_TAG",
                     "TREE_COUNT")
 
   for (indicolname in interestcols) {
@@ -708,7 +491,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
       prefix <- "TAGE_"
     } else if (indicolname == "MEAS_YR"){
       prefix <- "MEASYR_"
-    } else if (indicolname == "DBHLIMIT_TAG"){
+    } else if (indicolname == "DBH_LIMIT_TAG"){
       prefix <- "DBHLIM_"
     } else if (indicolname == "TREE_COUNT"){
       prefix <- "NTREES_"
@@ -728,6 +511,11 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
                                "sasds",
                                "psp_tree_all_small.xlsx")) %>%
     data.table
+
+
+
+
+
   names(nhts1) <- toupper(names(nhts1))
   # nhts1 <- merge(nhts1,
   #                sample2[,.(SITE_IDENTIFIER, SAMP_ID)],
@@ -1088,7 +876,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   #------------------------------------------------------------#
 
-  psp6f[, NUM_TREES_LIV := STEMSHA_LIV * as.numeric(AREA_PM)] # need to keep what has been done for this
+  psp6f[, NUM_TREES_LIV := STEMS_HA_L * as.numeric(AREA_PM)] # need to keep what has been done for this
 
   psp6f[, ":=" (BGC_ZONE_DUP = BGC_ZONE,
                 STS_STRATA_DUP = STS_STRATA,
@@ -1235,7 +1023,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
                                          AREA,
                                          NO_MEAS,
                                          TOT_PERIOD,
-                                         STEMSHA_LIV,
+                                         STEMS_HA_L,
                                          WSVHA_LIV,
                                          SPC_LABEL_LIVE,
                                          TOT_STAND_AGE,
