@@ -15,6 +15,7 @@
 #'
 #' @importFrom data.table ':=' data.table melt
 #' @importFrom dplyr '%>%'
+#' @importFrom sf st_transform st_intersection st_crs
 #'
 #' @rdname spAttriFromRegCompt
 #' @author Yong Luo
@@ -25,8 +26,8 @@ spAttriFromRegCompt <- function(region,
                                 mapName){
   regionCompartTable <- unique(data.table(SAMPLING_REGION_NUMBER = region,
                                           COMPARTMENT_NUMBER = compartment))
-  if(as.character(crs(regionCompartMap)) != as.character(crs(spAttributeMap))){
-    regionCompartMap <- st_transform(regionCompartMap, crs = spAttributeMap)
+  if(as.character(st_crs(regionCompartMap))[1] != as.character(st_crs(spAttributeMap))[1]){
+    regionCompartMap <- st_transform(regionCompartMap, crs = st_crs(spAttributeMap))
   }
   intersection_table <- suppressWarnings(st_intersection(regionCompartMap,
                                                          spAttributeMap)) %>%
