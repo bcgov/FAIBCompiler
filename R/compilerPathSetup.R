@@ -162,6 +162,8 @@ compilerPathSetup <- function(compilationPath = ".",
 #'                               is consistent with VRI compiler.
 #' @param recompile logical, Defines whether we want to use existing data that downloaded
 #'                              previously.
+#' @param download logical, Defines whether we want to use existing data that downloaded
+#'                              previously.
 #' @param archiveDate character, Defines on which archive date the raw data were downloaded.
 #'                             These raw data will be used for recompilation. Format is YYYYMMDD.
 #'
@@ -194,10 +196,11 @@ compilerPathSetup <- function(compilationPath = ".",
 #' @author Yong Luo
 #'
 compilerPathSetup_new <- function(compilationPath = ".",
-                              compilationDate,
-                              compilationType,
-                              recompile,
-                              archiveDate){
+                                  compilationDate,
+                                  compilationType,
+                                  recompile,
+                                  download,
+                                  archiveDate){
   if(!dir.exists(compilationPath)){
     dir.create(compilationPath)
   }
@@ -232,17 +235,23 @@ compilerPathSetup_new <- function(compilationPath = ".",
 
     ## for coeff and map, create empty one if they do not exist,
     ## otherwise keep them
-    if(dir.exists(raw_from_oracle)){
-      unlink(raw_from_oracle, recursive = TRUE)
+    if(download == TRUE){
+      if(dir.exists(raw_from_oracle)){
+        unlink(raw_from_oracle, recursive = TRUE)
+      }
+      if(!dir.exists(raw_from_oracle)){
+        dir.create(raw_from_oracle)
+      }
+    } else {
+      if(!dir.exists(raw_from_oracle)){
+        stop("There is no file in the raw folder.")
+      }
     }
     if(dir.exists(compilation_sa)){
       unlink(compilation_sa, recursive = TRUE)
     }
     if(dir.exists(compilation_db)){
       unlink(compilation_db, recursive = TRUE)
-    }
-    if(!dir.exists(raw_from_oracle)){
-      dir.create(raw_from_oracle)
     }
     dir.create(compilation_sa)
     dir.create(compilation_db)

@@ -10,6 +10,7 @@ compilerPathSetup_new(
   compilationDate,
   compilationType,
   recompile,
+  download,
   archiveDate
 )
 }
@@ -25,6 +26,9 @@ is consistent with original PSP compiler, otherwise, it
 is consistent with VRI compiler.}
 
 \item{recompile}{logical, Defines whether we want to use existing data that downloaded
+previously.}
+
+\item{download}{logical, Defines whether we want to use existing data that downloaded
 previously.}
 
 \item{archiveDate}{character, Defines on which archive date the raw data were downloaded.
