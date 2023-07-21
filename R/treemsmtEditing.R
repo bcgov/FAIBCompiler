@@ -38,6 +38,7 @@
 #'
 #' @importFrom data.table ':='
 #' @importFrom FAIBBase merge_dupUpdate
+#' @importFrom data.table shift
 #'
 #'
 #' @export
@@ -87,7 +88,30 @@ treemsmtEditing <- function(treemsmts,
     treemsmts[, lvd_next := shift(TREE_EXTANT_CODE, type = "lead"),
               by = "unitreeid"]
   }
-  treemsmts[, lvd_next := NULL]
+
+  # Please note that this is the correction diameter in old sas codes,
+  # realize this correction approach may have problem as
+  # there may be an added decimal for current msmt, in the below example, the
+  # current diameter could be 67
+  # Therefore, I implemented a manual correction process based on observed
+  # diameter from other msmts of a tree
+  # *determine that previous measurement was incorrectly keypunched by missing the decimal;
+  # *the last measurement is assumed to be correct, so start check from latest measurement;
+  # *assessment is done by computing the ratio of current dbh to last dbh measurement;
+  # *if previous dbh is over 9X greater than current dbh, then it is extemely likely that the decimal was missed;
+  # *at previous measurement;
+  # *eg., from 64cm to 6.7cm, where the ratio 64/6.7=9.6;
+
+  treemsmts[, diam_new := dbhManualCorrection(treeID = unitreeid,
+                                              visitNum = VISIT_NUMBER,
+                                              diameterOrg = DIAMETER)]
+
+  treemsmts[!is.na(diam_new), ':='(DIAMETER = diam_new,
+                                   DIAMETER_EDIT = "Abnormal diameter, mannually corrected")]
+  treemsmts[DIAMETER == 0,
+            DIAMETER := NA]
+  treemsmts[, ':='(lvd_next = NULL,
+                   diam_new = NULL)]
 
   # correction 4. if the last msmt do not have diameter infomation, assign lvd as D
   # realized that there are a lot trees do not have diameter at any msmt
@@ -104,6 +128,8 @@ treemsmtEditing <- function(treemsmts,
                      treemsmts_withdiameter,
                      by = "unitreeid",
                      all.x = TRUE)
+  rm(treemsmts_withdiameter)
+  gc()
   # lv_d = L, but without diameter msmt
   # and inplot tree
   # *identify if tree at very last measurement is missing a diameter measurement, then assume it is a dead fallen tree;
@@ -119,7 +145,21 @@ treemsmtEditing <- function(treemsmts,
                   diameter_last = NULL,
                   diameter_ht_last = NULL)]
 
-  # correction b, if this tree is dead, and diameter is missing
+  # correction c,
+  # *check for outlier ht/dbh ratios;
+  # *if measured heights are more than 3X DBH, then assume height decimal placement error, divide by 10;
+  # if ld_fill(c) in ("L","I","V") and htmeas_fill(c) > 0 and dbh_fill(c) > 0 then do;
+  # if htmeas_fill(c)/dbh_fill(c) >= 3 then do;
+  # htmeas_fill(c) = htmeas_fill(c) / 10;
+  # tree_err11 = "_extrhtdbh";
+  # end;
+  # end;
+  treemsmts[LENGTH/DIAMETER >= 3,
+            ':='(LENGTH = LENGTH/10,
+                 HEIGHT_EDIT = "Abnomal HEIGHT-DBH ratio, divided by 10")]
+
+
+  # correction d, if this tree is dead, and diameter is missing
   # and previous it is live with diameter
   treemsmts <- treemsmts[order(unitreeid, VISIT_NUMBER),]
   treemsmts[, ':='(lvd_prev = shift(TREE_EXTANT_CODE, type = "lag"),
@@ -135,7 +175,7 @@ treemsmtEditing <- function(treemsmts,
   treemsmts[,':='(lvd_prev = NULL,
                   diam_prev = NULL,
                   diam_ht_prev = NULL)]
-
+  gc()
   # 2. add missing observation in between two msmt
   msmts_tree <- unique(treemsmts[,.(unitreeid, SITE_IDENTIFIER, VISIT_NUMBER,
                                     intreemsmt = TRUE)])
@@ -160,16 +200,19 @@ treemsmtEditing <- function(treemsmts,
                            msmts_tree_range,
                            by = "unitreeid",
                            all.x = TRUE)
+  rm(msmts_tree, msmts_tree_range)
   msmt_missing_inbetween <- msmts_tree_full[is.na(intreemsmt) & VISIT_NUMBER > visit_first &
                                               VISIT_NUMBER < visit_last,
                                             .(unitreeid, VISIT_NUMBER_crt = VISIT_NUMBER, VISIT_NUMBER_next, VISIT_NUMBER_prev)]
-
+  rm(msmts_tree_full)
+  gc()
 
   # use all the same information from next msmt for a temporary solution
   msmt_missing_inbetween[, VISIT_NUMBER := VISIT_NUMBER_next]
   treemsmts_missing_inbetween <- merge(treemsmts,
                                        msmt_missing_inbetween,
                                        by = c("unitreeid", "VISIT_NUMBER"))
+  rm(msmt_missing_inbetween)
   treemsmts_missing_inbetween[, ':='(VISIT_NUMBER = VISIT_NUMBER_crt, # get back to the right visit number
                                      LENGTH = NA, # set tree height as NA
                                      MSMT_MISSING_EDIT = "Missing in between, added")]
@@ -210,6 +253,8 @@ treemsmtEditing <- function(treemsmts,
                                     AGE_MEASMT_HEIGHT = NA)]
   treemsmts <- rbind(treemsmts, treemsmts_missing_inbetween,
                      fill = TRUE)
+  rm(treemsmts_missing_inbetween, treemsmts_missing_inbetween_prev)
+  gc()
 
   # 3. add missing observation at tail
   treemsmts[, visit_tree_last := max(VISIT_NUMBER),
@@ -235,20 +280,22 @@ treemsmtEditing <- function(treemsmts,
                                 DIAMETER_EDIT = "Diameter assinged based on previous msmt")]
 
   treemsmts_missing_tail[,':='(BORING_AGE = NA,
-                                    AGE_CORE_MISSED_YEARS_FIELD = NA,
-                                    MICROSCOPE_AGE = NA,
-                                    AGE_CORE_MISSED_YEARS_LAB = NA,
-                                    AGE_CORRECTION = NA,
-                                    TOTAL_AGE = NA,
-                                    RADIAL_INCREMENT_LAST_10_YR = NA,
-                                    RADIAL_INCREMENT_LAST_5_YR = NA,
-                                    RADIAL_INCREMENT_LAST_20_YR = NA,
-                                    PRORATE_LENGTH = NA,
-                                    AGE_MEASURE_CODE = NA,
-                                    AGE_MEASMT_HEIGHT = NA)]
+                               AGE_CORE_MISSED_YEARS_FIELD = NA,
+                               MICROSCOPE_AGE = NA,
+                               AGE_CORE_MISSED_YEARS_LAB = NA,
+                               AGE_CORRECTION = NA,
+                               TOTAL_AGE = NA,
+                               RADIAL_INCREMENT_LAST_10_YR = NA,
+                               RADIAL_INCREMENT_LAST_5_YR = NA,
+                               RADIAL_INCREMENT_LAST_20_YR = NA,
+                               PRORATE_LENGTH = NA,
+                               AGE_MEASURE_CODE = NA,
+                               AGE_MEASMT_HEIGHT = NA)]
   treemsmts <- rbind(treemsmts,
                      treemsmts_missing_tail,
                      fill = TRUE)
+  rm(treemsmts_missing_tail)
+  gc()
   treemsmts <- treemsmts[order(unitreeid, VISIT_NUMBER),]
   treemsmts[, ':='(visit_tree_last = NULL,
                    visit_site_last = NULL,
@@ -317,6 +364,7 @@ treemsmtEditing <- function(treemsmts,
             ':='(TREE_SPECIES_CODE = sp_last,
                  SP_EDIT = "Species changed based on last msmt")]
   rm(sp_last)
+  gc()
   treemsmts[, sp_last := NULL]
   treemsmts[TREE_SPECIES_CODE %in% c("XH", "Z", "ZH"),
             TREE_SPECIES_CODE := "X"]
