@@ -4,59 +4,40 @@
 #' @description Develop the mixed effect model, and select the best models per strata.
 #' @param compilationPath character, Specifies the path that stores all the data/processes.
 #' @param coeffSavePath character, Specifies the path to save your outputs.
+#' @param fityear numeric, Specifies the year of the fit.
 #'
 #' @return no item returned
 #'
 #' @importFrom data.table ':=' data.table melt
 #' @importFrom dplyr '%>%'
 #' @importFrom lmfor fithd startHDlogistic startHDkorf startHDweibull startHDrichards startHDcurtis startHDnaslund
-#' @importFrom nlme nlme
+#' @importFrom nlme nlme nlmeControl
 #'
 #' @rdname DBH_Height_MEM
 #' @author Yong Luo
-DBH_Height_MEM <- function(compilationPath, coeffSavePath){
-  compilationPath_psp <- "D:/ISMC project/ISMC compiler/ISMC compiler G version/Archive_PSP_20230530/"
-
-    coeffSavePath <- "D:/ISMC project/ISMC compiler/ISMC compiler G version/compilation_coeff/"
-  treelist_psp <- readRDS(file.path(compilationPath_psp, "compilation_PSP_db", "treelist.rds"))
-  treelist_psp <- treelist_psp[!is.na(HEIGHT) & is.na(BTOP) &
-                                 HT_TOTAL_SOURCE == "Field measured",
-                               .(CLSTR_ID, PLOT, TREE_NO, SPECIES,
-                                 LV_D, DBH, HEIGHT, SP0, SP_TYPE)]
-  compilationPath <- "D:/ISMC project/ISMC compiler/ISMC compiler G version/"
-  treelist_nonpsp <- readRDS(file.path(compilationPath, "compilation_nonPSP_db", "treelist.rds"))
-  treelist_nonpsp <- treelist_nonpsp[!is.na(HEIGHT) & is.na(BTOP) &
-                                       HT_TOTAL_SOURCE == "Field measured",
-                                     .(CLSTR_ID, PLOT, TREE_NO, SPECIES,
-                                       LV_D, DBH, HEIGHT, SP0, SP_TYPE)]
+DBH_Height_MEM <- function(compilationPath, coeffSavePath, fityear){
+  treelist_psp <- readRDS(file.path(compilationPath, "compilation_PSP_sa", "treemeasurements.rds"))
+  treelist_psp <- treelist_psp[!is.na(DIAMETER) & DIAMETER_MEASMT_HEIGHT == 1.3 &
+                                 LENGTH > 1.3 & # all height and dbh are present
+                                 TREE_EXTANT_CODE == "L" & # all alive trees
+                                 is.na(HEIGHT_EDIT) &  # no modification for height
+                                 is.na(DIAMETER_EDIT) & # no diameter modification
+                                 BROKEN_TOP_IND == "N", # no broken top trees
+                               .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
+                                 DBH = DIAMETER, HEIGHT = LENGTH,
+                                 SPECIES, BEC_ZONE)]
+  splookup <- lookup_species()
+  treelist_psp <- merge(treelist_psp,
+                        unique(splookup[,.(SPECIES, SP0, SP_TYPE)]),
+                        by = "SPECIES",
+                        all.x = TRUE)
   # treelist_all <- rbind(treelist_psp, treelist_nonpsp)
   treelist_all <- data.table::copy(treelist_psp)
   treelist_all[, SITE_IDENTIFIER := as.numeric(substr(CLSTR_ID, 1, 7))]
 
-  samp_site_psp <- readRDS(file.path(compilationPath, "compilation_PSP_db",
-                                     "sample_site_header.rds"))
-  samp_site_nonpsp <- readRDS(file.path(compilationPath, "compilation_nonPSP_db",
-                                        "sample_site_header.rds"))
-  samp_site_all <- rbind(samp_site_nonpsp, samp_site_psp)
-  treelist_all <- merge(treelist_all,
-                        samp_site_all[,.(SITE_IDENTIFIER, BEC = BEC_ZONE, NO_MEAS)],
-                        by = "SITE_IDENTIFIER",
-                        all.x = TRUE)
   allcombo <- unique(treelist_all[,.(SPECIES, SP0, SP_TYPE)])
 
-  ## select trees that had been measured multiple times
-  treelist_all <- treelist_all[LV_D == "L",]
-  treelist_all[, meas_time_tree := length(DBH),
-               by = c("SITE_IDENTIFIER", "PLOT", "TREE_NO")]
-  fitdata <- data.table::copy(treelist_all[meas_time_tree > 1,])
   fitdata <- data.table::copy(treelist_all)
-
-
-  # treelist_all[, cls_len := nchar(CLSTR_ID)]
-  # treelist_all[, VISIT_NO := ifelse(cls_len == 10, as.numeric(substr(CLSTR_ID, 10, 10)),
-  #                                   ifelse(cls_len == 12, as.numeric(substr(CLSTR_ID, 12, 12)),
-  #                                          as.numeric(substr(CLSTR_ID, 12, 13))))]
-  # fitdata <- treelist_all[VISIT_NO == NO_MEAS]
 
   fitdata_smry <- fitdata[,.(Nobs = length(DBH)),
                           by = c("SPECIES", "SP0", "SP_TYPE")]
@@ -75,15 +56,7 @@ DBH_Height_MEM <- function(compilationPath, coeffSavePath){
   allcombo[is.na(datagroup) & Nobs2 >= 1000,
            ':='(datagroup = "sp0",
                 Nobs = Nobs2)]
-  # fitdata_smry3 <- fitdata[,.(Nobs3 = length(DBH)),
-  #                          by = c("BEC", "SP_TYPE")]
-  # allcombo <- merge(allcombo,
-  #                   fitdata_smry3,
-  #                   by = c("BEC", "SP_TYPE"),
-  #                   all.x = TRUE)
-  # allcombo[is.na(datagroup) & Nobs3 >= 500,
-  #          ':='(datagroup = "bec+sp_type",
-  #               Nobs = Nobs3)]
+
 
   fitdata_smry4 <- fitdata[,.(Nobs4 = length(DBH)),
                            by = c("SP_TYPE")]
@@ -98,39 +71,37 @@ DBH_Height_MEM <- function(compilationPath, coeffSavePath){
   allcombo[,':='(Nobs2 = NULL,
                  Nobs4 = NULL)]
   fitdata[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NO)]
-  saveRDS(fitdata, file.path(coeffSavePath, "fitdata_ht_dbh.rds"))
-
+  # saveRDS(fitdata, file.path(coeffSavePath, paste0("fitdata_ht_dbh", fityear, ".rds")))
   # allcombo_org <- data.table::copy(allcombo)
   # allcombo <- data.table::copy(allcombo_org)[1:2,]
   for(indidatagroup in c("species", "sp0", "sp_type")){
     indifitdata <- allcombo[datagroup == indidatagroup]
-    # indifitdata <- indifitdata[1:2,]
     if(nrow(indifitdata) > 0){
       # modelforms = c("logistic", "korf", "weibull", "richards")
       indiresults <- fithdmodel(groupType = indidatagroup,
                                 masterRow = indifitdata,
                                 fitData = fitdata,
                                 modelforms = c("naslund", "curtis"))
-        if(nrow(indiresults$strata_failed) > 0){
-          if(indidatagroup == "species"){
-            allcombo[SPECIES %in% indiresults$strata_failed$SPECIES,
+      if(nrow(indiresults$strata_failed) > 0){
+        if(indidatagroup == "species"){
+          allcombo[SPECIES %in% indiresults$strata_failed$SPECIES,
                    datagroup := "sp0"]
           indiresults$strata_failed <- NULL
-          } else if(indidatagroup == "sp0"){
-            allcombo[SPECIES %in% indiresults$strata_failed$SPECIES,
-                     datagroup := "sp_type"]
+        } else if(indidatagroup == "sp0"){
+          allcombo[SPECIES %in% indiresults$strata_failed$SPECIES,
+                   datagroup := "sp_type"]
           indiresults$strata_failed <- NULL
-          }
         }
+      }
       if(indidatagroup == "species"){
         allresults <- indiresults
       } else {
         allresults$fixed_best <- rbind(allresults$fixed_best,
                                        indiresults$fixed_best)
         allresults$random_best_site <- rbind(allresults$random_best_site,
-                                        indiresults$random_best_site)
+                                             indiresults$random_best_site)
         allresults$random_best_tree <- rbind(allresults$random_best_tree,
-                                        indiresults$random_best_tree)
+                                             indiresults$random_best_tree)
 
         allresults$strata_failed <- rbind(allresults$strata_failed,
                                           indiresults$strata_failed)
@@ -138,7 +109,8 @@ DBH_Height_MEM <- function(compilationPath, coeffSavePath){
     }
   }
   rm(indidatagroup, indifitdata)
-  saveRDS(allresults, file.path(coeffSavePath, "besthdmodels_nlme_by_species.rds"))
+  saveRDS(allresults, file.path(coeffSavePath,
+                                paste0("bestmodels_ht_dbh_bysp", fityear, ".rds")))
 }
 
 
@@ -179,43 +151,41 @@ fithdmodel <- function(groupType, masterRow,
     }
     R2_bottom <- sum((fitdata_ind$HEIGHT-mean(fitdata_ind$HEIGHT))^2)
     for (indmodelform in modelforms) {
-    cat("fit model for", i, "of", nrow(uniqueRow),
-        "using", indmodelform, "\n")
       if(indmodelform == "logistic"){
         start_metrix <- startHDlogistic(fitdata_ind$DBH, fitdata_ind$HEIGHT)
         try_model <- try(outputs_m <- nlme::nlme(HEIGHT ~ 1.3 + a/(1 + b*exp(-c*DBH)),
-                                    data = fitdata_ind,
-                                    fixed = a + b + c~1,
-                                    start = start_metrix,
-                                    random =  a ~1|SITE_IDENTIFIER/unitreeid,
-                                    control = nlmeControl(minScale=1e-100, maxIter=1000)),
+                                                 data = fitdata_ind,
+                                                 fixed = a + b + c~1,
+                                                 start = start_metrix,
+                                                 random =  a ~1|SITE_IDENTIFIER/unitreeid,
+                                                 control = nlmeControl(minScale=1e-100, maxIter=1000)),
                          silent = TRUE)
       } else if (indmodelform == "korf"){
         start_metrix <- startHDkorf(fitdata_ind$DBH, fitdata_ind$HEIGHT)
         try_model <- try(outputs_m <- nlme::nlme(HEIGHT ~ 1.3 + a*exp(-b*(DBH^-c)),
-                                    data = fitdata_ind,
-                                    fixed = a + b + c~1,
-                                    start = start_metrix,
-                                    random =  a ~1|SITE_IDENTIFIER/unitreeid,
-                                    control = nlmeControl(minScale=1e-100, maxIter=1000)),
+                                                 data = fitdata_ind,
+                                                 fixed = a + b + c~1,
+                                                 start = start_metrix,
+                                                 random =  a ~1|SITE_IDENTIFIER/unitreeid,
+                                                 control = nlmeControl(minScale=1e-100, maxIter=1000)),
                          silent = TRUE)
       } else if (indmodelform == "richards"){
         start_metrix <- startHDrichards(fitdata_ind$DBH, fitdata_ind$HEIGHT)
         try_model <- try(outputs_m <- nlme::nlme(HEIGHT ~ 1.3 + a*(((1-exp(-b*DBH)))^c),
-                                    data = fitdata_ind,
-                                    fixed = a + b + c~1,
-                                    start = start_metrix,
-                                    random =  a ~1|SITE_IDENTIFIER/unitreeid,
-                                    control = nlmeControl(minScale=1e-100, maxIter=1000)),
+                                                 data = fitdata_ind,
+                                                 fixed = a + b + c~1,
+                                                 start = start_metrix,
+                                                 random =  a ~1|SITE_IDENTIFIER/unitreeid,
+                                                 control = nlmeControl(minScale=1e-100, maxIter=1000)),
                          silent = TRUE)
       } else if(indmodelform == "weibull"){
         start_metrix <- startHDweibull(fitdata_ind$DBH, fitdata_ind$HEIGHT)
         try_model <- try(outputs_m <- nlme::nlme(HEIGHT ~ 1.3 + a*(1-exp(-b*(DBH^c))),
-                                    data = fitdata_ind,
-                                    fixed = a + b + c~1,
-                                    start = start_metrix,
-                                    random =  a ~1|SITE_IDENTIFIER/unitreeid,
-                                    control = nlmeControl(minScale=1e-100, maxIter=1000)),
+                                                 data = fitdata_ind,
+                                                 fixed = a + b + c~1,
+                                                 start = start_metrix,
+                                                 random =  a ~1|SITE_IDENTIFIER/unitreeid,
+                                                 control = nlmeControl(minScale=1e-100, maxIter=1000)),
                          silent = TRUE)
       } else if(indmodelform == "naslund"){
         start_metrix <- startHDnaslund(fitdata_ind$DBH, fitdata_ind$HEIGHT)

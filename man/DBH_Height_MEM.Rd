@@ -4,12 +4,14 @@
 \alias{DBH_Height_MEM}
 \title{Develop the mixed effect models between DBH and height by strata.}
 \usage{
-DBH_Height_MEM(compilationPath, coeffSavePath)
+DBH_Height_MEM(compilationPath, coeffSavePath, fityear)
 }
 \arguments{
 \item{compilationPath}{character, Specifies the path that stores all the data/processes.}
 
 \item{coeffSavePath}{character, Specifies the path to save your outputs.}
+
+\item{fityear}{numeric, Specifies the year of the fit.}
 }
 \value{
 no item returned
