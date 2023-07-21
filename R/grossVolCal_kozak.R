@@ -145,14 +145,6 @@ grossVolCal_kozak<- function(compilationType,
     netFacteredTree <- cbind(netFacteredTree, netvols)
     fullDimTreeData <- rbindlist(list(netFacteredTree, nonnetFacteredTree), fill = TRUE)
     rm(netFacteredTree, nonnetFacteredTree, netvols)
-    gradedTree <- fullDimTreeData[MEAS_INTENSE %in% c("FULL", "ENHANCED") & !(LOG_G_1 %in% c("*", NA)),]
-    nonGradedTree <- fullDimTreeData[!(uniobs %in% gradedTree$uniobs),]
-    treevalue <- valueCalculator(species = gradedTree$SPECIES,
-                                 grossVolMatrix = gradedTree[, paste("LOG_V_", 0:9, sep = ""), with = FALSE],
-                                 grossMerchVolMatrix = gradedTree[, paste("LOG_VM_", 1:9, sep = ""), with = FALSE],
-                                 callGradeMatrix = gradedTree[, paste("LOG_G_", 1:9, sep = ""), with = FALSE])
-    gradedTree <- cbind(gradedTree, treevalue)
-    fullDimTreeData <- rbindlist(list(gradedTree, nonGradedTree), fill = TRUE)
     fullDimTreeData[, uniobs := NULL]
   } else {
     ## based on Rene's comment, adjust VOL_MER to 0 for trees
@@ -163,5 +155,6 @@ grossVolCal_kozak<- function(compilationType,
     fullDimTreeData[LV_D == "D" & TREE_CLASS_CODE == 4,
                     VOL_MER := 0]
   }
+  gc()
   return(fullDimTreeData)
 }
