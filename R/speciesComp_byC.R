@@ -46,6 +46,7 @@ setMethod(
     if (speciesMaxNO %>>% 99 | speciesMaxNO %<<% 3){
       stop("speciesMaxNO must defined between 3 and 99.")
     }
+    CSSmryTable[, SPECIES := gsub(" ", "", SPECIES)]
     CSSmryTable <- CSSmryTable[,c(bygroup, "SPECIES", basedOn), with = FALSE]
     setnames(CSSmryTable, basedOn, "BASEDON")
     CSSmryTable[, TOTALBYCL := sum(BASEDON), by = bygroup]
