@@ -22,6 +22,8 @@ ISMCCompiler(
   UTOPDIB = 10,
   utilLevel = 4,
   weirdUtil = "4",
+  download = TRUE,
+  saveXlsx = TRUE,
   recompile = FALSE,
   archiveDate = as.character(NA)
 )
@@ -74,6 +76,11 @@ see \code{\link{logMatrixAdjustment}} for details. If missing 0.1 is used.}
 
 \item{weirdUtil}{character, Specifies weird utilization in summarizing tree volumes at cluster and species level.
 Default is \code{no}, if missing. Otherwise, a number should be provided.}
+
+\item{download}{logical, Specifies if the data from ISMC need to be downloaded. Default is \code{TRUE}, which m
+means need download.}
+
+\item{saveXlsx}{logical, Specifies if the outputs need to be saved into xlsx. Default is save.}
 
 \item{recompile}{logical, Defines whether we want to recompile data using archived
 raw data. Default is FALSE, which means the compiler needs to
