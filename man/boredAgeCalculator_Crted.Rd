@@ -3,12 +3,26 @@
 \docType{methods}
 \name{boredAgeCalculator_Crted}
 \alias{boredAgeCalculator_Crted}
-\alias{boredAgeCalculator_Crted,numeric,numeric,numeric,character,character-method}
+\alias{boredAgeCalculator_Crted,numeric,numeric,numeric,character,character,character-method}
 \title{Derive age at breast height}
 \usage{
-boredAgeCalculator_Crted(boredAge, boredHeight, treeHeight, species, FIZ)
+boredAgeCalculator_Crted(
+  boredAge,
+  boredHeight,
+  treeHeight,
+  species,
+  FIZ,
+  compilationType
+)
 
-\S4method{boredAgeCalculator_Crted}{numeric,numeric,numeric,character,character}(boredAge, boredHeight, treeHeight, species, FIZ)
+\S4method{boredAgeCalculator_Crted}{numeric,numeric,numeric,character,character,character}(
+  boredAge,
+  boredHeight,
+  treeHeight,
+  species,
+  FIZ,
+  compilationType
+)
 }
 \arguments{
 \item{boredAge}{numeric, Age at bored height}
@@ -21,6 +35,8 @@ boredAgeCalculator_Crted(boredAge, boredHeight, treeHeight, species, FIZ)
 Can be derived using \code{\link{siteToolsSpeciesConvertor}}.}
 
 \item{FIZ}{character, Forest inventory zone.}
+
+\item{compilationType}{character, Compilation type.}
 }
 \value{
 Tree age at breast height (1.3 m). For the estimated age <= 0.1, the bored age will be used as breast age and

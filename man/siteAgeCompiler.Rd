@@ -3,16 +3,18 @@
 \docType{methods}
 \name{siteAgeCompiler}
 \alias{siteAgeCompiler}
-\alias{siteAgeCompiler,data.table-method}
+\alias{siteAgeCompiler,data.table,character-method}
 \title{Compile breast age, total age, and site index where possible-VRI specific}
 \usage{
-siteAgeCompiler(siteAgeData)
+siteAgeCompiler(siteAgeData, compilationType)
 
-\S4method{siteAgeCompiler}{data.table}(siteAgeData)
+\S4method{siteAgeCompiler}{data.table,character}(siteAgeData, compilationType)
 }
 \arguments{
 \item{siteAgeData}{data.table, Site age data with plot header information.
 An output from \code{\link{VRIInit_siteTree}} function.}
+
+\item{compilationType}{character, Compilation type.}
 }
 \value{
 A data table and a log file.

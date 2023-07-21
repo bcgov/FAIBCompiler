@@ -50,7 +50,6 @@ samplePlotCompilation <- function(compilationType,
               MEAS_YR_LAST = min(MEAS_YR_LAST, na.rm = TRUE)),
        by = "SITE_IDENTIFIER"]
   vi_a[, TOTAL_PERIOD := MEAS_YR_LAST - MEAS_YR_FIRST]
-
   vi_a <- vi_a[order(SITE_IDENTIFIER, VISIT_NUMBER),]
   vi_a[, meas_yr_next := shift(MEAS_YR, type = "lag"),
        by = "SITE_IDENTIFIER"]
