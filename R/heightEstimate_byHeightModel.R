@@ -208,36 +208,36 @@ heightEstimate_mixedEffect <- function(BEC, siteID, sp0,
 #' @rdname heightEstimate_mixedEffect_nlme
 #'
 #' @author Yong Luo
-heightEstimate_mixedEffect_nlme <- function(siteID, unitreeid, sp0,
+heightEstimate_mixedEffect_nlme <- function(siteID, unitreeid, species,
                                         DBH, fixedEffects,
                                        randomEffects_site,
                                        randomEffects_tree){
   worktable <- data.table(uniID = 1:length(DBH),
                           SITE_IDENTIFIER = siteID,
                           unitreeid,
-                          SP0 = sp0,
+                          SPECIES = species,
                           DBH = DBH)
   worktable <- merge(worktable,
-                     fixedEffects[,.(SP0, model,
+                     fixedEffects[,.(SPECIES, model,
                                      a_fixed = a,
                                      b_fixed = b,
                                      c_fixed = c)],
-                     by = c("SP0"),
+                     by = c("SPECIES"),
                      all.x = TRUE)
   worktable <- merge(worktable,
                      randomEffects_site[,.(SITE_IDENTIFIER = as.numeric(SITE_IDENTIFIER),
-                                      SP0,
+                                           SPECIES,
                                       model_random_site = model,
                                       a_random_site = a)],
-                     by = c("SP0", "SITE_IDENTIFIER"),
+                     by = c("SPECIES", "SITE_IDENTIFIER"),
                      all.x = TRUE)
 
   worktable <- merge(worktable,
                      randomEffects_tree[,.(unitreeid,
-                                      SP0,
+                                           SPECIES,
                                       model_random_tree = model,
                                       a_random_tree = a)],
-                     by = c("SP0", "unitreeid"),
+                     by = c("SPECIES", "unitreeid"),
                      all.x = TRUE)
 
   if(nrow(worktable[model != model_random_site,]) > 0){

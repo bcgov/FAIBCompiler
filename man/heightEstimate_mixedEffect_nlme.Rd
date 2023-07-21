@@ -8,7 +8,7 @@
 heightEstimate_mixedEffect_nlme(
   siteID,
   unitreeid,
-  sp0,
+  species,
   DBH,
   fixedEffects,
   randomEffects_site,
@@ -18,6 +18,8 @@ heightEstimate_mixedEffect_nlme(
 \arguments{
 \item{siteID}{character, site identifier}
 
+\item{species}{character, Species.}
+
 \item{DBH}{numeric, Diameter at breast height (cm).}
 
 \item{fixedEffects}{data.table, Fixed effect of the best model by each
@@ -26,8 +28,6 @@ sp0.}
 \item{randomEffects_site}{data.table, Random effects of the best model at site level.}
 
 \item{randomEffects_tree}{data.table, Random effects of the best model at tree level.}
-
-\item{species}{character, Species.}
 }
 \value{
 projected total height
