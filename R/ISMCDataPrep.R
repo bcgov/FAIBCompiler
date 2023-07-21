@@ -15,16 +15,17 @@
 #'
 #' @return no item returned
 #'
-#' @importFrom data.table ':=' data.table melt
+#' @importFrom data.table ':=' data.table melt shift
 #' @importFrom dplyr '%>%'
+#' @importFrom parallel detectCores makeCluster clusterExport parLapply stopCluster
 #' @export
 #' @docType methods
 #' @rdname ISMCDataPrep
 #' @author Yong Luo
 ISMCDataPrep <- function(compilationType,
-                          inputPath,
-                          outputPath,
-                          coeffPath){
+                         inputPath,
+                         outputPath,
+                         coeffPath){
   sitenavigation <- readRDS(dir(inputPath, pattern = "SiteNavigation.rds", full.names = TRUE)) %>%
     data.table
   sitenavigation <- sitenavigation[!is.na(UTM_ZONE) &
@@ -70,7 +71,6 @@ ISMCDataPrep <- function(compilationType,
                     UTM_NORTHING_act = NULL,
                     ELEVATION_act = NULL,
                     source_act = NULL)]
-
   # for PSP, the I samples should be removed from compilation
   if(compilationType == "PSP"){
     samplesites <- samplesites[!(PSP_TYPE %in% c("I", "T")),] #
@@ -399,17 +399,79 @@ ISMCDataPrep <- function(compilationType,
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
-    if(compilationType == "PSP"){
+  treemeasurements <- treemeasurements[SITE_IDENTIFIER %in% unique(vi_a$SITE_IDENTIFIER),]
+  #to write
+  if(compilationType == "PSP"){
     treemeasurements[, PLOT := PLOT_NUMBER]
   } else {
     treemeasurements[, PLOT := PLOT_CATEGORY_CODE]
     treemeasurements[PLOT == "IPC TD", PLOT := "I"]
     treemeasurements[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
   }
-
-  treemeasurements <- treemsmtEditing(treemeasurements,
-                                      sitevisits = unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER)]))
-
+  treemeasurements[,':='(PLOT_CATEGORY_CODE = NULL,
+                         PLOT_NUMBER = NULL,
+                         COUNT_TREE_IND = NULL,
+                         FELLED_IND = NULL,
+                         NVAF_TREE_IND = NULL,
+                         NEAR_TREE_NUMBER = NULL,
+                         STEM_MAP_TARGET_CODE = NULL,
+                         TAG_MISSING_IND = NULL,
+                         HEIGHT_SOURCE_CODE = NULL,
+                         HEIGHT_CROWN_SOURCE_CODE = NULL,
+                         HT_DIAMTR_CURVE_USE_CODE = NULL,
+                         HEIGHT_TO_LEANING_TIP = NULL,
+                         SITE_INDEX = NULL,
+                         BENCHMARK_AGE_IND = NULL,
+                         FALLING_HAZARD_IND = NULL,
+                         SPIRAL_GRAIN_IND = NULL,
+                         VERT_DISTANCE_MEAS_REQ_IND = NULL,
+                         LEANING_TREE_BEARING = NULL,
+                         SPECIES_CHANGE_IND = NULL)]
+  gc()
+  allsites <- unique(vi_a$SITE_IDENTIFIER)
+  numCore <- as.integer(0.5*detectCores())
+  clusterInFunction <- makeCluster(numCore)
+  numofrow <- as.integer(length(allsites)/numCore)
+  inputdata_list <- list()
+  for (indicore in 1:numCore) {
+    if(indicore != numCore){
+      indisites <- allsites[((indicore-1)*numofrow+1):(indicore*numofrow)]
+    } else {
+      indisites <- allsites[((indicore-1)*numofrow+1):(length(allsites))]
+    }
+    indi_treemsmt <- treemeasurements[SITE_IDENTIFIER %in% indisites,]
+    indi_vi_a <- unique(vi_a[SITE_IDENTIFIER %in% indisites,
+                             .(SITE_IDENTIFIER, VISIT_NUMBER)])
+    inputdata_list[[indicore]] <- list("treemeasurements" = indi_treemsmt,
+                                       "sitevisits" = indi_vi_a)
+    rm(indi_treemsmt, indisites, indi_vi_a)
+  }
+  rm(treemeasurements)
+  gc()
+  clusterExport(clusterInFunction,
+                varlist = c("treemsmtEditing",
+                            "dbhManualCorrection",
+                            "data.table", ":=",
+                            "shift"),
+                envir = environment())
+  allresults <- parLapply(cl = clusterInFunction,
+                          inputdata_list,
+                          function(x){treemsmtEditing(treemsmts = x$treemeasurements,
+                                                      sitevisits = x$sitevisits)})
+  stopCluster(clusterInFunction)
+  rm(inputdata_list)
+  gc()
+  for (i in 1:length(allresults)) {
+    if(i == 1){
+      treemeasurements <- allresults[[i]]
+    } else {
+      treemeasurements <- rbind(treemeasurements, allresults[[i]],
+                                fill = TRUE)
+    }
+  }
+  rm(allsites, numCore, clusterInFunction, numofrow,
+     allresults)
+  gc()
   ## based on discussion between Dan and sampling team on April 25, 2023
   ## for the ages that were measured as rotten (ROT) and cannot reach center (CRC)
   ## using prorate method to estimate boring age
@@ -837,7 +899,8 @@ ISMCDataPrep <- function(compilationType,
   rm(vi_h, vi_h_th)
   gc()
   if(compilationType == "nonPSP"){
-    vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH),
+    vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH) &
+                               OUT_OF_PLOT_IND == "N",
                              .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
                                SPECIES = TREE_SPECIES_CODE,
                                DBH = DIAMETER,
@@ -851,7 +914,8 @@ ISMCDataPrep <- function(compilationType,
     saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
     rm(vi_i)
   } else {
-    vi_i <- treemeasurements[!is.na(DIAMETER) & is.na(LENGTH),
+    vi_i <- treemeasurements[!is.na(DIAMETER) & is.na(LENGTH) &
+                               OUT_OF_PLOT_IND == "N",
                              .(CLSTR_ID, PLOT,
                                TREE_NO = TREE_NUMBER,
                                SPECIES = TREE_SPECIES_CODE,
