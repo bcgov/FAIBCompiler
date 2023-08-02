@@ -37,7 +37,8 @@
 #'                             Default is \code{no}, if missing. Otherwise, a number should be provided.
 #' @param download logical, Specifies if the data from ISMC need to be downloaded. Default is \code{TRUE}, which m
 #'                          means need download.
-#' @param saveXlsx logical, Specifies if the outputs need to be saved into xlsx. Default is save.
+#' @param saveCSV logical, Specifies if the outputs need to be saved into CSV. Default is save.
+#' @param forPublish logical, Specifies if compiler produces data for publish for BCGW warehouse. Default is \code{FALSE}, which means no.
 #' @param recompile logical, Defines whether we want to recompile data using archived
 #'                              raw data. Default is FALSE, which means the compiler needs to
 #'                              download data from ISMC database. When it is \code{TRUE}, a folder will
@@ -100,7 +101,8 @@ ISMCCompiler <- function(compilationType,
                          utilLevel = 4,
                          weirdUtil = "4",
                          download = TRUE,
-                         saveXlsx = TRUE,
+                         saveCSV = TRUE,
+                         forPublish = FALSE,
                          recompile = FALSE,
                          archiveDate = as.character(NA)){
   if(!(compilationType %in% c("PSP", "nonPSP"))){
@@ -113,7 +115,8 @@ ISMCCompiler <- function(compilationType,
                                             compilationType,
                                             recompile = recompile,
                                             download = download,
-                                            archiveDate = archiveDate)
+                                            archiveDate = archiveDate,
+                                            forPublish = forPublish)
 
   cat(paste(Sys.time(), ": Check requirements for compilation:\n", sep = ""))
   checkMaps(mapPath = compilationPaths$compilation_map)
@@ -417,11 +420,11 @@ ISMCCompiler <- function(compilationType,
     if(HTEstimateMethod == "bestMEM"){
       treemsmt[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NO)]
       treemsmt[,':='(HT_TOTAL_EST = round(heightEstimate_mixedEffect_nlme(siteID = SITE_IDENTIFIER,
-                                                                     unitreeid = unitreeid,
-                                                                     species = SPECIES, DBH = DBH,
-                                                                     fixedEffects = best_height_models$fixed_best,
-                                                                     randomEffects_site = best_height_models$random_best_site,
-                                                                     randomEffects_tree = best_height_models$random_best_tree),
+                                                                          unitreeid = unitreeid,
+                                                                          species = SPECIES, DBH = DBH,
+                                                                          fixedEffects = best_height_models$fixed_best,
+                                                                          randomEffects_site = best_height_models$random_best_site,
+                                                                          randomEffects_tree = best_height_models$random_best_tree),
                                           1))]
       treemsmt[, unitreeid := NULL]
       treemsmt[!is.na(HEIGHT),
@@ -1050,11 +1053,20 @@ ISMCCompiler <- function(compilationType,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCL.rds"))
   saveRDS(stumpCompile$stmp_cs,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
+
+  #############################
+  # for publish
+  if(forPublish){
+    cat(paste(Sys.time(), ": Prepare data for publish.\n", sep = ""))
+    preparePublishData(compilationPaths,
+                       compilationType)
+  }
+
   #############################
   cat(paste(Sys.time(), ": Generate data dictionary.\n", sep = ""))
   allfiles_db <- dir(compilationPaths$compilation_db, pattern = ".rds")
   allfiles_db <- gsub(".rds", "", allfiles_db)
-  dictionary_file <- list()
+  dictionary_file_db <- list()
   col_missing <- NULL
   datadictionary_master <- read.xlsx(file.path(compilationPaths$compilation_coeff,
                                                "data_dictionary_master.xlsx")) %>%
@@ -1070,9 +1082,36 @@ ISMCCompiler <- function(compilationType,
                               by = "ColumnName",
                               all.x = TRUE)
     indifile_db_name_missing <- indifile_db_name[is.na(Description),]
-    dictionary_file[[indifile_db]] <- indifile_db_name
+    dictionary_file_db[[indifile_db]] <- indifile_db_name
     col_missing <- rbind(col_missing, indifile_db_name_missing)
   }
+  write.xlsx(dictionary_file_db,
+             file.path(compilationPaths$compilation_db,
+                       "Data_dictionary.xlsx"))
+
+  if(forPublish){
+    allfiles_publish <- dir(compilationPaths$compilation_publish, pattern = ".csv")
+    allfiles_publish <- gsub(".csv", "", allfiles_publish)
+    dictionary_file_publish <- list()
+    for (indifile_publish in allfiles_publish) {
+      indifile_publish_file <- read.csv(file.path(compilationPaths$compilation_publish,
+                                                  paste0(indifile_publish, ".csv")))
+      indifile_publish_name <- data.table(ColumnName = names(indifile_publish_file))
+      rm(indifile_publish_file)
+      indifile_publish_name <- merge(indifile_publish_name,
+                                     datadictionary_master,
+                                     by = "ColumnName",
+                                     all.x = TRUE)
+      indifile_publish_name_missing <- indifile_publish_name[is.na(Description),]
+      dictionary_file_publish[[indifile_db]] <- indifile_publish_name
+      col_missing <- rbind(col_missing, indifile_publish_name_missing)
+    }
+    write.xlsx(dictionary_file_publish,
+               file.path(compilationPaths$compilation_publish,
+                         "Data_dictionary.xlsx"))
+
+  }
+
   if(nrow(col_missing) > 0){
     warning("There are some attributes do not have description. Please add them in the master table.")
     datadictionary_master <- rbind(datadictionary_master,
@@ -1081,11 +1120,8 @@ ISMCCompiler <- function(compilationType,
                file.path(compilationPaths$compilation_coeff,
                          "data_dictionary_master.xlsx"))
   }
-  write.xlsx(dictionary_file,
-             file.path(compilationPaths$compilation_db,
-                       "Data_dictionary.xlsx"))
-  if(saveXlsx == TRUE){
-    cat(paste(Sys.time(), ": Convert RDS to xlsx.\n", sep = ""))
+  if(saveCSV == TRUE){
+    cat(paste(Sys.time(), ": Convert RDS to csv.\n", sep = ""))
     if(recompile == TRUE){
       fileTable <- rbind(data.table(folderName = compilationPaths$compilation_db,
                                     fileName = gsub(".rds", "",

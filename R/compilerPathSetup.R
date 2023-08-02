@@ -166,6 +166,8 @@ compilerPathSetup <- function(compilationPath = ".",
 #'                              previously.
 #' @param archiveDate character, Defines on which archive date the raw data were downloaded.
 #'                             These raw data will be used for recompilation. Format is YYYYMMDD.
+#' @param forPublish logical, Specifies if compiler produces data for publish for BCGW warehouse.
+#'
 #'
 #' @return Seven paths will be returned as following:
 #' \itemize{
@@ -185,6 +187,8 @@ compilerPathSetup <- function(compilationPath = ".",
 #' \item {compilation_coeff} {Path to archive all coefficients for compilation process.}
 #'
 #' \item {compilation_last} {Path to archive last compilation process.}
+#'
+#' \item {compilation_publish} {Path to publish data.}
 #' }
 #'
 #' @note Could overwrite the existing output folder, depending on user's choise, i.e., yes or no.
@@ -200,7 +204,8 @@ compilerPathSetup_new <- function(compilationPath = ".",
                                   compilationType,
                                   recompile,
                                   download,
-                                  archiveDate){
+                                  archiveDate,
+                                  forPublish){
   if(!dir.exists(compilationPath)){
     dir.create(compilationPath)
   }
@@ -230,6 +235,15 @@ compilerPathSetup_new <- function(compilationPath = ".",
     compilation_map <- file.path(compilationPath, "compilation_map") # this will be same for both psp and vri compiler
     compilation_coeff <- file.path(compilationPath, "compilation_coeff")  # this will be same for both psp and vri compiler
     compilation_report <- file.path(compilationPath, paste0("compilation_", compilationType, "_report"))
+    compilation_publish <- file.path(compilationPath, paste0("compilation_", compilationType, "_publish"))
+    if(dir.exists(compilation_publish)){
+      unlink(compilation_publish, recursive = TRUE)
+    }
+    if(forPublish){
+    dir.create(compilation_publish)
+    } else {
+      compilation_publish <- NULL
+    }
     ## for raw, sa, db, archive and report,
     ## remove the existing ones and create empty folders
 
@@ -307,6 +321,7 @@ compilerPathSetup_new <- function(compilationPath = ".",
               compilation_report = compilation_report,
               compilation_coeff = compilation_coeff,
               compilation_map = compilation_map,
-              compilation_last = last_compilation))
+              compilation_last = last_compilation,
+              compilation_publish = compilation_publish))
 }
 
