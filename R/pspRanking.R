@@ -1,94 +1,67 @@
+# generate ranking matrix
 
-rankingMatrix <- function(my_data_psp_sumry_rating){
 ##
-  rm(list = ls())
-  library(data.table)
-  library(readxl)
-  library(tidyverse)
-  library(openxlsx)
-  library(dplyr)
-  library(reshape)
 
-  # this is a test from yong
-
-  # define wkdir
-  if(Sys.info()[["user"]] == "yluo"){
-    wkdir <- "G:/!Workgrp/Inventory/PSP Height Estimate"
-  } else {
-    wkdir <- "G:\\PSP Height Estimate"
-  }
-
-  sample_sites_org <- readRDS(file.path(wkdir,
-                                 "lastversionSAS",
-                                 "sample_site_header.rds")) %>%
+rankingMatrix <- function(compilationPath){
+  browser()
+  sample_sites_org <- readRDS(file.path(compilationPath,
+                                        "compilation_PSP_db",
+                                        "sample_site_header.rds")) %>%
     data.table
 
   sample_sites <- data.table::copy(sample_sites_org)
-  sample_sites[is.na(BEC_VAR),
-          BEC_VAR := ""]
-  sample_sites[, BECLABEL := paste0(BEC_ZONE, BEC_SBZ, BEC_VAR)]
-  sample_sites[, ':='(TSA_DESC = gsub("TSA", "", TSA_DESC))]
-  sample_sites[, ':='(TSA_DESC = gsub(" ", "", TSA_DESC))]
-  sample_sites[, TSA_DESC := sub("QueenCharlotte", "HaidaGwaii", TSA_DESC)]
 
-  # get mu lookup table, merge to get tfl licensee name
-  mu_tfl <- read.xlsx(file.path(wkdir,
-                                "lastversionSAS",
-                                "tfl_lookup.xlsx")) %>%
+  #-----------------------------------------------------------------#
+  # temporary updates to site access code, from chris and bryce, 2022-feb-11
+  # revised version updated by dan turner 2022feb23
+  update1 <- read.xlsx(file.path(compilationPath,
+                                 "compilation_coeff",
+                                 "Boat Access_Updated_2022Feb24.xlsx")) %>%
     data.table
-  names(mu_tfl) <- toupper(names(mu_tfl))
-  mu_tfl[, TFL := paste0("TFL", as.numeric(TFL))]
-
-  sample_sites <- merge(sample_sites, mu_tfl,
-                   by = "TFL", all.x = TRUE)
-
-  # define management unit (either 1) TFL or 2) remaining TSA outside TFL)
-  sample_sites <- data.table::copy(sample_sites)
-
-  sample_sites[, MGMT_UNIT := ifelse(!is.na(TFL),
-                                     paste0(TFL, "_", TFL_DESC),
-                                     ifelse(!is.na(TSA),
-                                            paste0("TSA", TSA, "_", TSA_DESC),
-                                            NA))]
-  sample_sites[, MGMT_UNIT := gsub(" ", "", MGMT_UNIT)]
-  sample_sites <- sample_sites[, !c("MU")]
+  update1 <- update1[,.(SITE_IDENTIFIER = Sample_ID,
+                        site_access_code_update = gsub(" ", "",
+                                                       toupper(Access.Type)))]
+  update1 <- update1[, .(site_access_code_update = paste0(site_access_code_update,
+                                                          collapse = ", ")),
+                     by = "SITE_IDENTIFIER"]
+  # need site identifier to link with excel workbook listing updated access description
+  sample_sites <- merge(sample_sites, update1,
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
+  sample_sites[!is.na(site_access_code_update),
+               SITE_ACCESS_CODE := site_access_code_update]
+  sample_sites[, site_access_code_update := NULL]
+  sample_sites <- sample_sites[SAMPLE_ESTABLISHMENT_TYPE %in% c("PSP_G", "PSP_R", "CMI", "VRI",
+                                                                "YSM", "NFI", "CMO",
+                                                                "T", "I", "EP", "FLT",
+                                                                "VLT", "SUP"), ]
+  ## this can be achieved in the sample site table
+  sample_sites[!is.na(OWNER) & !is.na(SCHEDULE),
+               OWN_SCHED := paste0(OWNER, "-", SCHEDULE)]
+  sample_sites[, PRIVATE := ifelse(OWN_SCHED %in% c("40-N", "41-N", "52-N", "72-A",
+                                                    "77-A", "79-A"),
+                                   "Y",
+                                   "N")]
+  # for samples that have no ownership code assigned, assign VGIS based samples all as MOF owned
+  sample_sites[, OWNER_org := OWNER]
+  sample_sites[, OWNER := NULL]
+  sample_sites[SAMPLE_ESTABLISHMENT_TYPE %in% c("VRI", "CMI", "NFI", "YSM", "CMO",
+                                                "EP", "FLT", "VLY", "SUP"),
+               OWNER := "MOF"]
+  # for remaining samples with no ownership record, assume MOF
+  sample_sites[is.na(OWNER), OWNER := "MOF"]
 
   #-----------------------------------------------------------#
   # get latest sample_site_visit
-
-  sample_msmt_org <- readRDS(file.path(wkdir,
-                                       "lastversionSAS",
+  sample_msmt_org <- readRDS(file.path(compilationPath,
+                                       "compilation_PSP_db",
                                        "sample_msmt_header.rds")) %>%
     data.table
   sample_msmt_org[, ':='(PROJ_ID = NULL,
-                         SAMP_NO = NULL)]
-  sample_msmt <- merge(sample_msmt_org,
-                        sample_sites,
-                        by = "SITE_IDENTIFIER",
-                        all.x = TRUE)
-  sample_msmt_last <- sample_msmt[MEAS_YR == MEAS_YR_LAST,]
-
-  #-----------------------------------------------------------------#
-
-  # temporary updates to site access code, from chris and bryce, 2022-feb-11
-  # revised version updated by dan turner 2022feb23
-
-  update1 <- read.xlsx(file.path(wkdir,
-                                 "lastversionSAS",
-                                 "Boat Access_Updated_2022Feb24.xlsx")) %>%
-    data.table
-
-  update1 <- update1[,.(SITE_IDENTIFIER = Sample_ID,
-                        site_access_code_update = gsub(" ", "",toupper(Access.Type)))]
-
-  update1 <- update1[, site_access_code_update := paste0(site_access_code_update, collapse = ", "),
-          by = "SITE_IDENTIFIER"]
-
-  # need site identifier to link with excel workbook listing updated access description
-  sample_msmt <- merge(sample_msmt, update1,
-                         by = "SITE_IDENTIFIER", all.x = TRUE)
-  sample_msmt[!is.na(site_access_code_update),
-          SITE_ACCESS_CODE := site_access_code_update]
+                         SAMP_NO = NULL,
+                         PROJ_AGE_1 = NULL,
+                         PROJECTED_DATE = NULL)]
+  sample_msmt <- data.table::copy(sample_msmt_org)
 
   # sample7 <- sample7[, !c('SITE_ACCESS_CODE')]
   # sample7[!is.na(SITE_ACCESS_CODE_UPDATE), SITE_ACCESS_CODE := SITE_ACCESS_CODE_UPDATE]
@@ -100,166 +73,129 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   #-------------------------------------------------------------------#
   # base rating algorithm on psp attributes at the lowest compiled utilization limit
 
+  smry_org <- readRDS(file.path(compilationPath,
+                                "compilation_PSP_db",
+                                "Smries_volume_byCL.rds"))
+  smry_org <- smry_org[, ':='(UTIL_FREQ = length(unique(UTIL)),
+                              UTIL_MIN = min(UTIL)),
+                       by = "CLSTR_ID"]
+  # select summary based on minimum util at each visit
+  smry_all <- unique(smry_org[UTIL == UTIL_MIN,],
+                     by = "CLSTR_ID")
+  smry_all <- merge(smry_all,
+                    sample_msmt,
+                    by = c("CLSTR_ID"),
+                    all.x = TRUE)
+
+  smry_all <- merge(smry_all,
+                    sample_sites[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE,
+                                    BEC_ZONE, BEC_SBZ, BEC_VAR)],
+                    by = "SITE_IDENTIFIER",
+                    all.x = TRUE)
 
 
-  psp_sumry_all2 <- readRDS(file.path(wkdir,
-                                    "lastversionSAS",
-                                    "Smries_volume_byCL.rds"))
-  psp_sumry_all2_new <- data.table::copy(psp_sumry_all2)
-  psp_sumry_all2_new <- merge(psp_sumry_all2_new,
-                              sample_msmt,
-                              by = c("CLSTR_ID"),
-                              all.x = TRUE)
 
-
- # it may come from vol_smry
-  psp_sumry_all2_new[,':='(UTIL_FREQ = length(NO_TREES),
-                               UTIL_MIN = min(UTIL)),
-                            by = "SITE_IDENTIFIER"]
-
-
-
-
-  # temporary fix, to bring back sampletype to those samples that were never in oracle to begin with
-
-  psp_sumry_all2_new[, SAMPLETYPE := substr(SAMPLE_ESTABLISHMENT_TYPE, 5, 5)]
-
-## this can be achieved in the sample site table
-  psp_sumry_all2_new[!is.na(OWNER) & !is.na(SCHEDULE),
-        OWN_SCHED := paste0(OWNER, "-", SCHEDULE)]
-  psp_sumry_all2_new[, PRIVATE := ifelse(OWN_SCHED %in% c("40-N", "41-N", "52-N", "72-A", "77-A", "79-A"),
-                            "Y",
-                            "N")]
-  # deletes records from tsas where no samples are present, these are from null records
-
-  psp_sumry_all2_new <- psp_sumry_all2_new[SAMPLETYPE %in% c("G", "R", "CMI", "VRI",
-                                   "YSM", "NFI", "CMO",
-                                   "T", "I", "EP", "FLT",
-                                   "VLT", "SUP"), ]
-
-  # for samples that have no ownership code assigned, assign VGIS based samples all as MOF owned
-  psp_sumry_all2_new[SAMPLETYPE %in% c("VRI", "CMI", "NFI", "YSM", "CMO",
-                          "EP", "FLT", "VLY", "SUP"),
-        OWNER := "MOF"]
-  # for remaining samples with no ownership record, assume MOF
-  psp_sumry_all2_new[is.na(OWNER), OWNER := "MOF"]
 
   # plot area not populated for some fixed radius sample types
-  # note, for those samples that are made up of multiple plots, eg., 3 * 0.015ha plots on a transect, then the evaluation should be based on the ;
+  # note, for those samples that are made up of multiple plots,
+  # eg., 3 * 0.015ha plots on a transect, then the evaluation should be based on the ;
   # individual plot area, and not the combined area of all plots within a sample id;
-  # this is the area of the individual plot. the total area of all plots in a sample id would be (area_pm * no_plots);
-  samp_plot <- readRDS(file.path(wkdir, "lastversionSAS", "sample_plot_header.rds"))
-  psp1a <- merge(psp_sumry_all2_new,
-                 unique(samp_plot[,.(CLSTR_ID, PLOT_AREA_MAIN)],
-                        by = "CLSTR_ID"),
-                 by = "CLSTR_ID",
-                 all.x = TRUE)
+  # this is the area of the individual plot. the total area of all plots in a sample id
+  # would be (area_pm * no_plots);
+  samp_plot <- readRDS(file.path(compilationPath,
+                                 "compilation_PSP_db",
+                                 "sample_plot_header.rds"))
+  smry_all <- merge(smry_all,
+                    unique(samp_plot[,.(CLSTR_ID, PLOT_AREA_MAIN)],
+                           by = "CLSTR_ID"),
+                    by = "CLSTR_ID",
+                    all.x = TRUE)
 
-  psp1a[, AREA := ifelse(SAMPLETYPE %in% c("CMI", "YSM", "NFI", "CMO", "FLT"),
-                         0.04,
-                         ifelse(SAMPLETYPE == "SUP" & SAMP_TYP == "F",
-                                0.04,
-                                PLOT_AREA_MAIN))]
-
-  psp1a[, DBH_LIMIT_TAG := ifelse(SAMPLETYPE %in% c("CMI", "YSM", "NFI", "CMO","FLT"), 4.0,
-                                 ifelse(SAMPLETYPE == "SUP" & SAMP_TYP == "F",
-                                        4.0,
-                                        DBH_LIMIT_TAG))]
-
-  psp1a[, STEMS_HA_L := STEMS_HA_LS + STEMS_HA_LF] # all live trees regardless of staning or falling
+  smry_all[, AREA := ifelse(SAMPLE_ESTABLISHMENT_TYPE %in% c("CMI", "YSM", "NFI", "CMO", "FLT"),
+                            0.04,
+                            ifelse(SAMPLE_ESTABLISHMENT_TYPE == "SUP" & SAMP_TYP == "F",
+                                   0.04,
+                                   PLOT_AREA_MAIN))]
 
 
-  psp1a[, AREA_PM_MIN := ifelse(round(AREA, digits = 2) >= 0.04 & !is.na(AREA),
-                                "Y", "N")]
+  smry_all[, DBH_LIMIT_TAG := ifelse(SAMPLE_ESTABLISHMENT_TYPE %in% c("CMI", "YSM", "NFI", "CMO","FLT"), 4.0,
+                                     ifelse(SAMPLE_ESTABLISHMENT_TYPE == "SUP" & SAMP_TYP == "F",
+                                            4.0,
+                                            DBH_LIMIT_TAG))]
 
-  # compute an equivalent number of live trees per plot computed at the minimum dbh limit
-  psp1a[, TREE_COUNT := STEMS_HA_L * AREA]
+  smry_all[, STEMS_HA_L := STEMS_HA_LS + STEMS_HA_LF] # all live trees regardless of staning or falling
+
+
+  smry_all[, AREA_PM_MIN := ifelse(round(AREA, digits = 2) >= 0.04 & !is.na(AREA),
+                                   "Y", "N")]
+
+  treelist_org <- readRDS(file.path(compilationPath,
+                                    "compilation_PSP_db",
+                                    "treelist.rds")) %>%
+    data.table
+  # compute an number of live trees per plot computed at the minimum dbh limit
+  tree_count_live <- treelist_org[LV_D == "L",
+                                  .(TREE_COUNT = length(DBH)),
+                                  by = "CLSTR_ID"]
+
+  smry_all <- merge(smry_all,
+                    tree_count_live,
+                    by = "CLSTR_ID",
+                    all.x = TRUE)
+
+
 
   # track calendar year
+  smry_all[, CALEND_YR := as.numeric(substr(MEAS_DT, 1, 4))]
 
-  psp1a[, CALEND_YR := as.numeric(substr(MEAS_DT, 1, 4))]
+  age_smry <- readRDS(file.path(compilationPath,
+                                "compilation_PSP_db",
+                                "Smries_siteAge_byCL.rds"))
 
-  # base rating algorithm on compiled attributes at lowest utilization limit
-
-  psp1a_minutil <- psp1a[UTIL == UTIL_MIN,]
-
-  # # update coordinates with ISMC source, to represent the most up to date information source
-  # # as of ismc prod updates to january 2022
-  #
-  # psp1a[(is.na(UTM_ZONE) & UTM_ZONE_ISMC > 0) |
-  #         (UTM_ZONE > 0 & UTM_ZONE_ISMC > 0 & UTM_ZONE != UTM_ZONE_ISMC) |
-  #         (UTM_NORTHING > 0 & UTM_NORTHING_ISMC > 0 & UTM_NORTHING != UTM_NORTHING_ISMC) |
-  #         (UTM_EASTING > 0 & UTM_EASTING_ISMC > 0 & UTM_EASTING != UTM_EASTING_ISMC),
-  #       ":=" (UTM_SOURCE = UTM_SOURCE_ISMC,
-  #             UTM_VERSION = "ISMC",
-  #             UTM_ZONE = UTM_ZONE_ISMC,
-  #             UTM_NORTHING = UTM_NORTHING_ISMC,
-  #             UTM_EASTING = UTM_EASTING_ISMC)]
-  #
-  # psp1a[, TSA_ISMC := as.numeric(TSA_ISMC)]
-  #
-  # psp1a[TSA != TSA_ISMC & !is.na(TSA_ISMC),
-  #       ":=" (TSA = TSA_ISMC,
-  #             TSA_SOURCE = "ISMC")]
-
-  # use use ismc spatial intersect of bec classification for all psps with values present
-  # that also have coordinates, otherwise use default reg/comp/bec lookup table
-
-  # psp1a[!is.na(BEC_ZONE) & UTM_VERSION == "ISMC",
-  #       ":=" (BGC_ZONE = BEC_ZONE,
-  #             BGC_SBZN = BEC_SBZ,
-  #             BGC_VAR = BEC_VAR,
-  #             BECLABEL = paste0(BEC_ZONE, BEC_SBZ, BEC_VAR),
-  #             BEC_SOURCE = "ISMC")]
-  #
-  # psp1a[, MGMT_UNIT_GYS := MGMT_UNIT]
-  # psp1a[!is.na(MGMT_UNIT_ISMC),
-  #       ":=" (MGMT_UNIT = MGMT_UNIT_ISMC,
-  #             MGMT_UNIT_SOURCE = "ISMC")]
-
-  # delete variables that haven't yet been created
-
-  #psp1a <- psp1a[, !c("RATING",
-  #                    "CALEND_YR_LAST",
-  #                    "CELL_KEY1",
-  #                    "RANK_PSP1",
-  #                    "RANK_ALL1",
-  #                    "MAX_PSP1",
-  #                    "MAX_ALL1",
-  #                    "CELL_COMPLETE")]
-
-  psp1a <- arrange(psp1a, SAMP_ID, MEAS_NO)
-
+  smry_all <- merge(smry_all,
+                    age_smry[,.(CLSTR_ID, TOT_STAND_AGE,
+                                LEAD_SI_FINAL1,
+                                LEAD_SI_FINAL2,
+                                LEAD_SI_FINAL3,
+                                LEAD_HTOP1,
+                                LEAD_HTOP2,
+                                LEAD_HTOP3,
+                                BH_STAND_AGE)],
+                    by = "CLSTR_ID",
+                    all.x = TRUE)
   # some attributes are defined based on first measurement, ie., at establishment
   # ie., species, age class, density, total number of trees.  site index, included here,
   # but not critical, since si was previously assigned based on the measurement closest to 50yr bh age;
   # bec variant and site series included here
 
-  # ------- psp1b codes -------------------------------------------#
-
-  psp1b <- data.table::copy(psp1a)
-
+  # ------- smry_1st codes -------------------------------------------#
   # keep only first measure record
-  psp1b <- psp1b[MEAS_DT == MEAS_DT_FIRST,]
+  smry_1st <- smry_all[FIRST_MSMT == "Y",]
 
   # new 7 class age classes, as per 2019 strategic plan
+  # bring tot stand age
 
-  psp1b[, ":="(TOT_STAND_AGE = as.numeric(TOT_STAND_AGE))]
+  smry_1st[, ":="(TOT_STAND_AGE = as.numeric(TOT_STAND_AGE))]
 
-  psp1b[, AGE_STRATA := as.character(cut(TOT_STAND_AGE,
-                                         breaks = c(seq(0, 240, by = 40), max(as.numeric(TOT_STAND_AGE), na.rm = TRUE)),
-                                         labels = c("001-040YR",
-                                                    "041-080YR",
-                                                    "081_120YR",
-                                                    "121_160YR",
-                                                    "161_200YR",
-                                                    "201_240YR",
-                                                    ">240YR")))]
+  smry_1st[, AGE_STRATA := as.character(cut(TOT_STAND_AGE,
+                                            breaks = c(seq(0, 240, by = 40),
+                                                       max(as.numeric(TOT_STAND_AGE),
+                                                           na.rm = TRUE)),
+                                            labels = c("001-040YR",
+                                                       "041-080YR",
+                                                       "081_120YR",
+                                                       "121_160YR",
+                                                       "161_200YR",
+                                                       "201_240YR",
+                                                       ">240YR")))]
 
-  vol_smry_cs <- readRDS(file.path(wkdir, "lastversionSAS",
+  vol_smry_cs <- readRDS(file.path(compilationPath,
+                                   "compilation_PSP_db",
                                    "Smries_volume_byCLSP.rds"))
   leadingspecies <- vol_smry_cs[order(CLSTR_ID, UTIL, -SP_PCT_BA_LS),
-                                .(CLSTR_ID, UTIL, SPECIES, SP_PCT_BA_LS)]
+                                .(CLSTR_ID, UTIL,
+                                  SPC1 = SPECIES,
+                                  SP_PCT_BA_LS)]
   leadingspecies <- unique(leadingspecies,
                            by = c("CLSTR_ID", "UTIL"))
 
@@ -267,116 +203,114 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   # use 80% species as per 2019 strategic plan
 
   leadingspecies[, SPC_STRATA := ifelse(SP_PCT_BA_LS > 80,
-                             sprintf("%sPURE", SPECIES),
-                             ifelse(SP_PCT_BA_LS >0 & SP_PCT_BA_LS <= 80,
-                                    sprintf("%sMIX", SPECIES),
-                                    NA))]
-  psp1b <- merge(psp1b,
-                 leadingspecies,
-                 by = c("CLSTR_ID", "UTIL"),
-                 all.x = TRUE)
+                                        sprintf("%sPURE", SPC1),
+                                        ifelse(SP_PCT_BA_LS >0 & SP_PCT_BA_LS <= 80,
+                                               sprintf("%sMIX", SPC1),
+                                               NA))]
+  smry_1st <- merge(smry_1st,
+                    leadingspecies,
+                    by = c("CLSTR_ID", "UTIL"),
+                    all.x = TRUE)
   # density strata
-  psp1b[, DEN_STRATA := ifelse(STEMS_HA_L > 5000,
-                             ">5000SPH",
-                             ifelse(STEMS_HA_L > 1000 & STEMS_HA_L <= 5000,
-                                    "1001-5000SPH",
-                                    ifelse(STEMS_HA_L > 0 & STEMS_HA_L <= 1000,
-                                           "<=1000SPH", NA)))]
+  smry_1st[, DEN_STRATA := ifelse(STEMS_HA_L > 5000,
+                                  ">5000SPH",
+                                  ifelse(STEMS_HA_L > 1000 & STEMS_HA_L <= 5000,
+                                         "1001-5000SPH",
+                                         ifelse(STEMS_HA_L > 0 & STEMS_HA_L <= 1000,
+                                                "<=1000SPH", NA)))]
 
   # site index
-  psp1b[, REG := ifelse(BEC_ZONE %in% c("CWH", "CDF", "MH", "CMA"),
-                      "C", "I")]
-
   # decide on source of available site index estimates
- siteage_cs <- readRDS(file.path(wkdir, "lastversionSAS", "Smries_siteAge_byCLSP.rds"))
-  psp1b[, ":="(LEAD_SI1 = as.numeric(LEAD_SI1),
-               LEAD_SI2 = as.numeric(LEAD_SI2),
-               LEAD_SI3 = as.numeric(LEAD_SI3),
-               LEAD_SI4 = as.numeric(LEAD_SI4))]
+  smry_1st[, ":="(LEAD_SI1 = as.numeric(LEAD_SI_FINAL1),
+                  LEAD_SI2 = as.numeric(LEAD_SI_FINAL2),
+                  LEAD_SI3 = as.numeric(LEAD_SI_FINAL3),
+                  LEAD_SI4 = as.numeric(NA))]
 
-  psp1b[, SI_USE := ifelse(LEAD_SI1 < 1 | is.na(LEAD_SI1),
-                           ifelse(LEAD_SI2 < 1 | is.na(LEAD_SI2),
-                                  ifelse(LEAD_SI3 < 1 | is.na(LEAD_SI3),
-                                         ifelse(LEAD_SI4 < 1 | is.na(LEAD_SI4), NA,
-                                                LEAD_SI4),
-                                         LEAD_SI3),
-                                  LEAD_SI2),
-                           LEAD_SI1)]
+  smry_1st[, SI_USE := ifelse(LEAD_SI1 < 1 | is.na(LEAD_SI1),
+                              ifelse(LEAD_SI2 < 1 | is.na(LEAD_SI2),
+                                     ifelse(LEAD_SI3 < 1 | is.na(LEAD_SI3),
+                                            ifelse(LEAD_SI4 < 1 | is.na(LEAD_SI4), NA,
+                                                   LEAD_SI4),
+                                            LEAD_SI3),
+                                     LEAD_SI2),
+                              LEAD_SI1)]
 
-  psp1b[, SI_STRATA := ifelse(SI_USE > 0 & SI_USE <= 12.5, "<=12.5M",
-                              ifelse(SI_USE > 12.5 & SI_USE <= 17.5, "12.6-17.5M",
-                                     ifelse(SI_USE > 17.5 & SI_USE <= 22.5, "17.6-22.5M",
-                                            ifelse(SI_USE > 22.5 & SI_USE <= 27.5, "22.6-27.5M",
-                                                   ifelse(SI_USE > 27.5 & SI_USE <= 32.5, "27.6-32.5M",
-                                                          ifelse(SI_USE > 32.5, ">32.5M", NA))))))]
+  smry_1st[, SI_STRATA := ifelse(SI_USE > 0 & SI_USE <= 12.5, "<=12.5M",
+                                 ifelse(SI_USE > 12.5 & SI_USE <= 17.5, "12.6-17.5M",
+                                        ifelse(SI_USE > 17.5 & SI_USE <= 22.5, "17.6-22.5M",
+                                               ifelse(SI_USE > 22.5 & SI_USE <= 27.5, "22.6-27.5M",
+                                                      ifelse(SI_USE > 27.5 & SI_USE <= 32.5, "27.6-32.5M",
+                                                             ifelse(SI_USE > 32.5, ">32.5M", NA))))))]
 
   # bec strata
   # new bec strata classification based on subzone, as per 2019 strategic plan
-
-  psp1b[, BEC_STRATA := ifelse(!is.na(BEC_ZONE) & !is.na(BEC_SBZ),
-                               paste0(BEC_ZONE, BEC_SBZ), NA)]
-
+  smry_1st[, BEC_STRATA := ifelse(!is.na(BEC_ZONE) & !is.na(BEC_SBZ),
+                                  paste0(BEC_ZONE, BEC_SBZ), NA)]
+  smry_1st[, REG := ifelse(BEC_ZONE %in% c("CWH", "CDF", "MH", "CMA"),
+                           "C", "I")]
   # site series strata
-  psp1b[, SS_STRATA := BGC_SS_GRD]
 
-  psp1b <- psp1b[,.(SITE_IDENTIFIER,
-                    AGE_STRATA,
-                    SPC_STRATA,
-                    DEN_STRATA,
-                    SI_STRATA,
-                    BEC_STRATA,
-                    SS_STRATA,
-                    TREE_COUNT,
-                    SI_USE,
-                    REG,
-                    SPC1,
-                    BGC_SS_GRD)]
+  smry_1st <- smry_1st[,.(SITE_IDENTIFIER,
+                          AGE_STRATA,
+                          SPC_STRATA,
+                          DEN_STRATA,
+                          SI_STRATA,
+                          BEC_STRATA,
+                          TREE_COUNT_FST_MSMT = TREE_COUNT,
+                          SI_USE,
+                          REG,
+                          SPC1)]
+
+  sample_sites <- merge(sample_sites,
+                        smry_1st,
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
+
+  sample_sites[, ':='(SS_STRATA = BGC_SS_GRD,
+                      BGC_SS_GRD_FST_MSMT = BGC_SS_GRD)]
 
   # some attributes are defined based on last measurement only
   # i.e. treatment, disturbance history
-
-  #------- psp1c --------------------------------------------------------#
+  #------- smry_last --------------------------------------------------------#
 
   # keep only last measure
-  psp1c <- psp1a[MEAS_DT == MEAS_DT_LAST,]
-
+  smry_last <- smry_all[LAST_MSMT == "Y",]
+  setnames(smry_last, "CALEND_YR", "CALEND_YR_LAST")
+  smry_last <- smry_last[,.(SITE_IDENTIFIER,
+                            CALEND_YR_LAST,
+                            STEM_MAPPED_SAMPLE,
+                            AREA,
+                            AREA_PM_MIN,
+                            NO_PLOTS,
+                            TOT_STAND_AGE,
+                            LEAD_SI_FINAL1,
+                            LEAD_SI_FINAL2,
+                            LEAD_SI_FINAL3,
+                            LEAD_HTOP1,
+                            LEAD_HTOP2,
+                            LEAD_HTOP3,
+                            BH_STAND_AGE,
+                            TREE_COUNT_LAST_MSMT = TREE_COUNT)]
 
   # treatment strata
-  psp1c[, TRT_STRATA := ifelse(TREATMENT == "THINNED", "T",
-                             "U")]
-
-
+  sample_sites[, TRT_STRATA := ifelse(TREATMENT == "THINNED" & !is.na(TREATMENT), "T",
+                                      "U")]
+  sample_sites <- merge(sample_sites,
+                        smry_last,
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
   # status strata
-  psp1c[, STS_STRATA := ifelse(SITE_STATUS_CODE != "A", "X",
-                                SITE_STATUS_CODE)]
+  sample_sites[, STS_STRATA := ifelse(SITE_STATUS_CODE != "A", "X",
+                                      SITE_STATUS_CODE)]
 
-  setnames(psp1c, "CALEND_YR", "CALEND_YR_LAST")
-  psp1c <- psp1c[,.(SITE_IDENTIFIER,
-                    TRT_STRATA,
-                    STS_STRATA,
-                    CALEND_YR_LAST)]
-
-  # psp1a %<>%
-  #   arrange(SAMP_ID, MEAS_NO) %>%
-  #   distinct()
-  #
-  # psp1b %<>%
-  #   arrange(SAMP_ID) %>%
-  #   distinct()
-  #
-  # psp1c %<>%
-  #   arrange(SAMP_ID) %>%
-  #   distinct()
-  #
   # need to get access note data, as part of assessment of keeping a sample
   # ie., a sample needs to have either a gps coordinate or access notes, otherwise do not keep
-
-
-
-  ac_ismc <- read_rds(file.path(wkdir, "siteaccessnotes.rds"))
+  ac_ismc <- read_rds(file.path(compilationPath,
+                                "compilation_PSP_sa",
+                                "siteaccessnotes.rds"))
   ac1 <- merge(sample_sites,
-                        ac_ismc[,.(SITE_IDENTIFIER, ACCESS_NOTES)],
-                        by = "SITE_IDENTIFIER",
+               ac_ismc[,.(SITE_IDENTIFIER, ACCESS_NOTES)],
+               by = "SITE_IDENTIFIER",
                all.x = TRUE)
 
 
@@ -388,105 +322,97 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   ac1[, ACCESS_NOTE := ifelse(!is.na(ACCESS_NOTES), "Y", "N")]
 
-
-  # ac1[, ACCESS := "N"]
-  # ac1[ACCESS_COORD == "Y" | ACCESS_NOTE == "Y",
-  #     ACCESS := "Y"]
   ac1[, ACCESS := ifelse(ACCESS_COORD == "N" & ACCESS_NOTE == "N",
                          "N",
                          ifelse(ACCESS_COORD == "Y" | ACCESS_NOTE == "Y",
                                 "Y", NA))]
-
   ac1 <- ac1[,.(SITE_IDENTIFIER,
                 ACCESS_COORD,
                 ACCESS_NOTE,
                 ACCESS)]
-  #------------------- psp2a ----------------------#
-
-  psp1a1 <- psp1a[, !c("SAMP_STS", "CALEND_YR_LAST")]
-  setnames(psp1b, c("TREE_COUNT", "BGC_SS_GRD"),
-           c("TREE_COUNT_FST_MSMT", "BGC_SS_GRD_FST_MSMT"))
 
 
-  join_list2 <- list(psp1a1,
-                     psp1b,
-                     psp1c,
-                     ac1)
-  psp2a <- Reduce(function(x,y)
-    merge(x, y, by = "SITE_IDENTIFIER", all = TRUE),
-    join_list2)
+  sample_sites <- merge(sample_sites,
+                        ac1,
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
 
-  #------------------- psp2a cleanup ------------#
 
-  rm(join_list2, psp1a1)
+  #------------------- smry_all cleanup ------------#
+
 
   #-----------------------------------------------#
-
-  psp2 <- data.table::copy(psp2a)
-
   # create cell matrix definitions
-
-  psp2[, CELL_KEY1 := paste(STS_STRATA,
-                            TRT_STRATA,
-                            BEC_STRATA,
-                            SPC_STRATA,
-                            AGE_STRATA,
-                            DEN_STRATA,
-                            SI_STRATA,
-                            sep = "_")]
+  sample_sites[, CELL_KEY := paste(STS_STRATA,
+                                   TRT_STRATA,
+                                   BEC_STRATA,
+                                   SPC_STRATA,
+                                   AGE_STRATA,
+                                   DEN_STRATA,
+                                   SI_STRATA,
+                                   sep = "_")]
 
   # cell completeness flag. samples with incomplete criteria cannot be reasonably assigned a cell class
 
-  psp2[, CELL_COMPLETE := ifelse(is.na(AGE_STRATA) |
-                                   is.na(SPC_STRATA) |
-                                   is.na(DEN_STRATA) |
-                                   is.na(SI_STRATA) |
-                                   is.na(BEC_STRATA),
-                                 "N", "Y")]
+  sample_sites[, CELL_COMPLETE := ifelse(is.na(AGE_STRATA) |
+                                           is.na(SPC_STRATA) |
+                                           is.na(DEN_STRATA) |
+                                           is.na(SI_STRATA) |
+                                           is.na(BEC_STRATA),
+                                         "N", "Y")]
+
+  sample_sites[CELL_COMPLETE == "N",
+               CELL_KEY := "MISS_STRATA"]
 
   # modify access flag, to drop boat access samples
   # and also to drop psps in parks
 
-  psp2[ACCESS == "Y" & OWN_SCHED == "51-N",
-       SITE_ACCESS_CODE := ifelse(!is.na(SITE_ACCESS_CODE),
-                                  paste("NAT_PARK", SITE_ACCESS_CODE, sep = "_"),
-                                  "NAT_PARK")]
+  sample_sites[ACCESS == "Y" & OWN_SCHED == "51-N",
+               SITE_ACCESS_CODE := ifelse(!is.na(SITE_ACCESS_CODE),
+                                          paste("NAT_PARK", SITE_ACCESS_CODE, sep = "_"),
+                                          "NAT_PARK")]
 
-  # psp2[grepl("NAT_PARK", SITE_ACCESS_CODE), ACCESS := "N"]
+  sample_sites[ACCESS == "Y" & OWN_SCHED == "51-N",
+               ACCESS := "N"]
 
-  psp2[ACCESS == "Y" & OWN_SCHED == "51-N",
-       ACCESS := "N"]
-
-  psp2[ACCESS == "Y" &
-         SITE_ACCESS_CODE %in% c("BOAT", "BOAT/HELI") &
-         OWN_SCHED != "51-N",
-       ACCESS := "N"]
+  sample_sites[ACCESS == "Y" &
+                 SITE_ACCESS_CODE %in% c("BOAT", "BOAT/HELI") &
+                 OWN_SCHED != "51-N",
+               ACCESS := "N"]
 
 
   #-------------------------------------#
+  smry_all[, ':='(VHA_WSV_L = VHA_WSV_LF + VHA_WSV_LS,
+                  VHA_MER_L = VHA_MER_LF + VHA_MER_LS)]
 
-  psp2_1 <- psp2[!is.na(MEAS_NO),]
+  mastertable <- unique(smry_all[,.(SITE_IDENTIFIER)])
 
-  mastertable <- unique(psp2_1[,.(SAMP_ID)])
   interestcols <- c("PERIOD", "WSVHA_L", "WSVHA_V",
+                    "TOT_STAND_AGE", "MEAS_YR", "DBH_LIMIT_TAG",
+                    "TREE_COUNT")
+  maxVisit <- max(smry_all$VISIT_NUMBER)
+  # need attention
+  # what is wsvha_l and wsvha_v
+  interestcols <- c("PERIOD", "VHA_WSV_L", # whole stem vol for all live trees
+                    "VHA_MER_L", # merchantable vol for all live trees
                     "TOT_STAND_AGE", "MEAS_YR", "DBH_LIMIT_TAG",
                     "TREE_COUNT")
 
   for (indicolname in interestcols) {
-    indidata <- psp2_1[,c("SAMP_ID", "MEAS_NO", indicolname),
-                     with = FALSE]
+    indidata <- smry_all[,c("SITE_IDENTIFIER", "VISIT_NUMBER", indicolname),
+                         with = FALSE]
 
     indidata %<>%
-      melt(id = c("SAMP_ID", "MEAS_NO")) %>%
-      cast(SAMP_ID~MEAS_NO) %>%
+      melt(id = c("SITE_IDENTIFIER", "VISIT_NUMBER")) %>%
+      cast(SITE_IDENTIFIER~VISIT_NUMBER) %>%
       setDT()
 
     if(indicolname == "PERIOD"){
       prefix <- "MINT_"
-    } else if (indicolname == "WSVHA_L"){
-      prefix <- "WSVL_"
-    } else if (indicolname == "WSVHA_V"){
-      prefix <- "WSVV_"
+    } else if (indicolname == "VHA_WSV_L"){
+      prefix <- "VHA_WSV_L_"
+    } else if (indicolname == "VHA_MER_L"){
+      prefix <- "VHA_MER_L_"
     } else if (indicolname == "TOT_STAND_AGE"){
       prefix <- "TAGE_"
     } else if (indicolname == "MEAS_YR"){
@@ -497,96 +423,73 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
       prefix <- "NTREES_"
     }
 
-    names(indidata)[2:14] <- paste0(prefix, names(indidata)[2:14])
+    names(indidata)[2:(maxVisit+1)] <- paste0(prefix, names(indidata)[2:(maxVisit+1)])
     mastertable <- merge(mastertable,
                          indidata,
-                         by = "SAMP_ID",
+                         by = "SITE_IDENTIFIER",
                          all.x = TRUE)
   }
 
   #-------------------------------------------------------------#
   # get num hts;
 
-  nhts1 <- read.xlsx(file.path(wkdir,
-                               "sasds",
-                               "psp_tree_all_small.xlsx")) %>%
-    data.table
+  # treelist_org <- read.xlsx(file.path(wkdir,
+  #                              "sasds",
+  #                              "psp_tree_all_small.xlsx")) %>%
+  #   data.table
+
+  treelist_org[, HT_SUIT := "Y"] # need attention here, as ht_suit is not in treelist
+  treelist_org[BTOP == "Y", HT_SUIT := "N"]
+  treelist_org[RESIDUAL == "Y", HT_SUIT := "N"]
+  treelist_org[LV_D == "D", HT_SUIT := "N"]
+  treelist_org[S_F == "F", HT_SUIT := "N"]
 
 
+  treelist_nhts <- treelist_org[HT_TOTAL_SOURCE == "Field measured" &
+                                  HT_SUIT == "Y" &
+                                  LV_D == "L",
+                                .(CLSTR_ID, HEIGHT, HT_SUIT, LV_D)]
 
-
-
-  names(nhts1) <- toupper(names(nhts1))
-  # nhts1 <- merge(nhts1,
-  #                sample2[,.(SITE_IDENTIFIER, SAMP_ID)],
-  #                by = "SAMP_ID",
-  #                all.x = TRUE)
-
-
-  nhts1 <- nhts1[HT_MEAS > 0 & HT_SUIT != "N" & LD == "L",
-                 .(SAMP_ID, MEAS_NO, HT_MEAS, HT_SUIT, LD)]
-
-  nhts1 <- arrange(nhts1, SAMP_ID, MEAS_NO) # optional
-
-  nhts2 <- nhts1[, .(SAMP_ID, MEAS_NO, HT_MEAS)]
-  nhts2 %<>%
-    group_by(SAMP_ID, MEAS_NO) %>%
-    summarise(FREQ = n(), NHTS = sum(!is.na(HT_MEAS))) %>%
-    setDT()
-
-  numhts <- nhts2[, .(SAMP_ID, MEAS_NO, NHTS)]
+  treelist_nhts <- merge(treelist_nhts,
+                         sample_msmt[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
+                         by = c("CLSTR_ID"),
+                         all.x = TRUE)
+  numhts <- treelist_nhts[!is.na(HEIGHT),
+                          .(NHTS = length(HEIGHT)),
+                          by = c("SITE_IDENTIFIER", "VISIT_NUMBER")]
   numhts %<>%
-    melt(id = c("SAMP_ID", "MEAS_NO")) %>%
-    cast(SAMP_ID~MEAS_NO) %>%
+    melt(id = c("SITE_IDENTIFIER", "VISIT_NUMBER")) %>%
+    cast(SITE_IDENTIFIER~VISIT_NUMBER) %>%
     setDT()
-  colnames(numhts)[2:9] <- paste0("NHTS_", colnames(numhts)[2:9])
+  colnames(numhts)[2:(maxVisit+1)] <- paste0("NHTS_", colnames(numhts)[2:(maxVisit+1)])
 
-  #---------------------------------------------------------------#
+  mastertable <- merge(mastertable,
+                       numhts,
+                       by = "SITE_IDENTIFIER",
+                       all.x = TRUE)
 
-  # stand attributes at last measurement
-
-  psp3 <- data.table::copy(psp2)
-
-  # psp3[, last_meas_no := max(MEAS_NO), by = "SAMP_ID"]
-  # psp3_yl <- psp3[MEAS_NO == last_meas_no,]
-
-  psp3 <- arrange(psp3, SAMP_ID)
-  psp3 %<>%
-    group_by(SAMP_ID) %>%
-    slice(n()) %>%
-    setDT()
-
-  #-----------------------------------------------------------#
-
-  join_list3 <- list(psp3, numhts, mastertable)
-
-  psp4 <- Reduce(function(x,y)
-    merge(x, y, by = "SAMP_ID", all.x = T),
-    join_list3)
-
-  #-------cleanup data tables used to create psp4-------------#
-
-  rm(indidata, join_list3, nhts1, nhts2, indicolname,
-     interestcols, prefix, psp2_1)
-
-  #-----------------------------------------------------------#
-
+  psp4b <- merge(sample_sites[,.(SITE_IDENTIFIER,
+                                 CALEND_YR_LAST,
+                                 MEAS_YR_LAST,
+                                 NO_MEAS)],
+                 mastertable,
+                 by = "SITE_IDENTIFIER",
+                 all.x = TRUE)
+  #-----------------------------------------------------------#\
   # update ratings with planned remeasures for the upcoming planning season
 
-  psp4[, ":=" (PLAN_YR = as.numeric(PLAN_YR),
-               MEAS_YR_LAST = as.numeric(MEAS_YR_LAST),
-               NO_MEAS = as.numeric(NO_MEAS))]
+  psp4b[, ":=" (PLAN_YR = as.numeric(CALEND_YR_LAST),
+                MEAS_YR_LAST = as.numeric(MEAS_YR_LAST),
+                NO_MEAS = as.numeric(NO_MEAS))]
 
-  psp4b <- data.table::copy(psp4)
-
-  psp4b_simp <- psp4b[, c("SAMP_ID", "PLAN_YR", "MEAS_YR_LAST", "NO_MEAS",
-                          paste0("MINT_", 0:12),
-                          paste0("NTREES_", 0:12),
-                          paste0("NHTS_", 0:7),
-                          paste0("DBHLIM_", 0:12)),
+  psp4b_simp <- psp4b[, c("SITE_IDENTIFIER", "PLAN_YR", "MEAS_YR_LAST", "NO_MEAS",
+                          paste0("MINT_", 1:(maxVisit)),
+                          paste0("NTREES_", 1:(maxVisit)),
+                          paste0("NHTS_", 1:(maxVisit)),
+                          paste0("DBHLIM_", 1:(maxVisit))),
                       with = FALSE]
-  psp4b_simp[, paste0("NHTS_", 8:12) := NA]
-  psp4b_simp[, YR_CALC := as.character(PLAN_YR - MEAS_YR_LAST)]
+
+  psp4b_simp[, YR_CALC := PLAN_YR - MEAS_YR_LAST]
   no_meas_in <- sort(unique(psp4b_simp[PLAN_YR >= 2020, ]$NO_MEAS))
 
   #View(psp4b_simp[SAMP_ID == "01001 G000518", .(SAMP_ID, YR_CALC,
@@ -615,25 +518,32 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   }
 
-  psp4b <- psp4b[, c(paste0("MINT_", 0:12),
-                     paste0("NTREES_", 0:12),
-                     paste0("NHTS_", 0:7),
-                     paste0("DBHLIM_", 0:12)) := NULL]
+  psp4b <- psp4b[, c(paste0("MINT_", 1:maxVisit),
+                     paste0("NTREES_", 1:maxVisit),
+                     paste0("NHTS_", 1:maxVisit),
+                     paste0("DBHLIM_", 1:maxVisit)) := NULL]
 
   psp4b_simp[, ':='(PLAN_YR = NULL,
                     MEAS_YR_LAST = NULL,
                     NO_MEAS = NULL) ]
   psp4b <- merge(psp4b, psp4b_simp,
-                 by = "SAMP_ID")
+                 by = "SITE_IDENTIFIER")
 
   # reassign last measurement year to the planned measurement year
 
-  psp4b[PLAN_YR >= 2020,
-        ":=" (MEAS_YR_LAST = PLAN_YR,
-              CALEND_YR_LAST = PLAN_YR,
-              STEM_MAPPED_IND = "Y")]
+  psp4b[,
+        ":=" (MEAS_YR_LAST = NULL,
+              CALEND_YR_LAST = NULL,
+              NO_MEAS = NULL)]
 
-  psp5 <- data.table::copy(psp4b)
+
+
+  sample_sites <- merge(sample_sites,
+                        psp4b,
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
+
+  psp5 <- data.table::copy(sample_sites)
 
   # assign coefficients
 
@@ -649,8 +559,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   # compute rating components
   # plot size
   # given prism VRI plots a 1.0, as this test is not relevant for prism plots
-
-  psp5[, P1 := ifelse(SAMPLETYPE %in% "VRI", 1.0,
+  psp5[, P1 := ifelse(SAMPLE_ESTABLISHMENT_TYPE %in% "VRI", 1.0,
                       ifelse(AREA > 0 & !is.na(AREA),
                              exp(-exp(a-(b*AREA))),
                              0))]
@@ -664,8 +573,8 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   psp5[, NO_PLOTS := as.numeric(NO_PLOTS)]
 
-  psp5[, P2 := ifelse(NTREES_0 > 0 & !is.na(NTREES_0),
-                      exp(-exp(c-(d*(NTREES_0/NO_PLOTS)))),
+  psp5[, P2 := ifelse(NTREES_1 > 0 & !is.na(NTREES_1),
+                      exp(-exp(c-(d*(NTREES_1/NO_PLOTS)))),
                       0)]
 
   # two of age, htop, si
@@ -682,7 +591,7 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   psp5[, ":=" (TOT_STAND_AGE = as.numeric(TOT_STAND_AGE),
                LEAD_HTOP = as.numeric(LEAD_HTOP),
                BH_STAND_AGE = as.numeric(BH_STAND_AGE),
-               BUFFER_RAD = as.numeric(BUFFER_RAD))]
+               BUFFER_RAD = as.numeric(NA))]
 
   psp5[, P3 := ifelse(BH_STAND_AGE > 0 & LEAD_HTOP > 0
                       & !is.na(BH_STAND_AGE) & !is.na(LEAD_HTOP),
@@ -700,31 +609,25 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
 
   # stem mapping of all trees
 
-  psp5[, P4 := ifelse(STEM_MAPPED_IND == "Y" & !is.na(STEM_MAPPED_IND),
+  psp5[, P4 := ifelse(STEM_MAPPED_SAMPLE == TRUE,
                       1.0, 0)]
 
   # activity status assume missing is "A"
-
-  psp5[, P5 := ifelse(SAMP_STS == "A" | is.na(SAMP_STS),
+  psp5[, P5 := ifelse(SITE_STATUS_CODE == "A" | is.na(SITE_STATUS_CODE),
                       1.0, 0)]
-
   # presence of buffer
   # as per Anya's comment on 2023-04-21
   # buffer is no longer used for ranking process
   psp5[, P6 := 0]
 
   # by measurement ranks
-
-  psp5[, MT := 0]
-  psp5[MINT_0 == 0, MINT_0 := 10]
-
+  psp5[MINT_1 %in% c(0, NA), MINT_1 := 10]
   # for single-measurement samples, need to have a default interval
-
-  psp5_simp <- psp5[,c("SAMP_ID",
-                       paste0("NTREES_", 0:12),
-                       paste0("MINT_", 0:12),
-                       paste0("NHTS_", 0:7),
-                       paste0("DBHLIM_", 0:12),
+  psp5_simp <- psp5[,c("SITE_IDENTIFIER",
+                       paste0("NTREES_", 1:maxVisit),
+                       paste0("MINT_", 1:maxVisit),
+                       paste0("NHTS_", 1:maxVisit),
+                       paste0("DBHLIM_", 1:maxVisit),
                        letters[1:8],
                        paste0("P", 1:6)),
                     with = FALSE]
@@ -732,13 +635,8 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
   psp5_simp[, 2:ncol(psp5_simp)] <- lapply(2:ncol(psp5_simp),
                                            function(x)
                                              as.numeric(psp5_simp[[x]]))
-
-
-  psp5_simp[, paste0("NHTS_", 8:12) := NA]
-
   psp5_simp[, MT := 0]
-
-  for (j in 0:12) {
+  for (j in 1:maxVisit) {
     setnames(psp5_simp,
              paste0(c("NTREES_", "MINT_", "NHTS_", "DBHLIM_"), j),
              c("NTREES", "MINT", "NHTS", "DBHLIM"))
@@ -758,318 +656,82 @@ rankingMatrix <- function(my_data_psp_sumry_rating){
     psp5_simp[NTREES > 0,
               M3 := (exp(h*DBHLIM))]
 
+
     psp5_simp[NTREES > 0,
               MT := MT + (5 * MINT * M1 * M2 * M3)]
 
-    psp5_simp[,c("NTREES", "MINT", "NHTS", "DBHLIM",
+    psp5_simp[,c("NTREES", "MINT", "NHTS", "DBHLIM", "M1",
                  "M2", "M3") := NULL]
 
-    psp5_simp[, RATING := 30*P1 + 30*P2 + 20*P3 + 5*P4 + 5*P5 + 20*P6 + MT]
   }
+
+  psp5_simp[, RATING := round(30*P1 + 30*P2 + 20*P3 + 5*P4 + 5*P5 + 20*P6 + MT,
+                              3)]
 
   psp5 <- merge(psp5,
-                psp5_simp[,.(SAMP_ID, MT, M1, RATING)],
-                by = "SAMP_ID",
+                psp5_simp[,.(SITE_IDENTIFIER, MT, RATING)],
+                by = "SITE_IDENTIFIER",
                 all.x = TRUE)
 
-  #--------------clean up psp5 columns--------------------#
-
-  psp5 <- psp5[, !c(letters[1:8],
-                    paste0("P", 1:6),
-                    paste0("NTREES_", 0:12),
-                    paste0("MINT_", 0:12),
-                    paste0("NHTS_", 0:7),
-                    paste0("DBHLIM_", 0:12),
-                    "MT.x",
-                    "MT.y",
-                    "M1"), with = FALSE]
-
-  #--------------------------------------------------------#
-
-  # redefine last measurement year
-
-  psp6_simp <- psp5[, c("SAMP_ID",
-                        paste0("MEASYR_", 0:12)),
-                    with = FALSE]
-
-  psp6_simp[, LAST_MEAS_YR := 0]
-  psp6_simp[, 2:ncol(psp6_simp)] <- lapply(2:ncol(psp6_simp),
-                                           function(x)
-                                             as.numeric(psp6_simp[[x]]))
-
-  for(i in 0:12){
-    setnames(psp6_simp,
-             paste0("MEASYR_", i),
-             "MEASYR")
-
-    psp6_simp[MEASYR > LAST_MEAS_YR,
-              LAST_MEAS_YR := MEASYR]
-
-    psp6_simp[, "MEASYR" := NULL]
-  }
-
-  psp6 <- data.table::copy(psp5)
-
-  psp6 <- merge(psp6, psp6_simp[, .(SAMP_ID, LAST_MEAS_YR)], by = "SAMP_ID")
-
-  #------------cleanup for-loop process and psp5 -------------#
-
-  rm(psp4b_simp, psp5_simp, psp6_simp, i, j, no_meas_in)
-
   #-------------------------------------------------#
-
   # prep for ranking
   # this will rank only active Growth natural MOF and Industry owned,
   # in crown forest, >=0.04ha, with access info, measured since 1996
-
-  psp6_mofgr <- psp6[SAMPLETYPE %in% c("G", "R") & STS_STRATA == "A" &
-                       PRIVATE == "N" & AREA_PM_MIN == "Y" &
-                       ACCESS == "Y" & MEAS_YR_LAST >= 1996 &
-                       CELL_COMPLETE == "Y", ]
+  # determine priority samples per cell_key for psp growth naturals only samples
+  ranking_psp <- psp5[SAMPLE_ESTABLISHMENT_TYPE %in% c("PSP_G", "PSP_R"),
+                      .(CELL_KEY, CELL_COMPLETE, RATING, SITE_IDENTIFIER,
+                        MGMT_UNIT, OWNER, MEAS_YR_FIRST, MEAS_YR_LAST,
+                        TOTAL_PERIOD, ACCESS, STS_STRATA, OWN_SCHED,
+                        AREA, NO_MEAS)]
+  ranking_psp_proc <- psp5[SAMPLE_ESTABLISHMENT_TYPE %in% c("PSP_G", "PSP_R") &
+                             STS_STRATA == "A" &
+                             PRIVATE == "N" & AREA_PM_MIN == "Y" &
+                             ACCESS == "Y" & MEAS_YR_LAST >= 1996 &
+                             CELL_COMPLETE == "Y",]
+  ranking_psp_proc <- ranking_psp_proc[order(CELL_KEY, -RATING),]
+  ranking_psp_proc[,':='(RANK_PSP = 1:length(RATING),
+                         NO_SITE_PER_CELL_PSP = length(RATING)),
+                   by = "CELL_KEY"]
+  ranking_psp_proc[CELL_COMPLETE == "N",
+                   ':='(RANK_PSP = NA,
+                        NO_SITE_PER_CELL_PSP = NA)]
+  ranking_psp <- merge(ranking_psp,
+                       ranking_psp_proc[,.(SITE_IDENTIFIER, RANK_PSP, NO_SITE_PER_CELL_PSP)],
+                       by = "SITE_IDENTIFIER",
+                       all.x = TRUE)
+  ranking_psp <- ranking_psp[order(CELL_KEY, RANK_PSP),]
 
   # this will rank all PSPs regardless of ownership, in crown forest,
   # >=0.04ha, with access info, measured since 1996
-
-  psp6_all <- psp6[STS_STRATA == "A" & SAMPLETYPE %in% c("G", "R", "VRI",
-                                                         "CMI", "YSM", "CMO",
-                                                         "EP", "FLT", "VLT", "SUP") &
-                     PRIVATE == "N" & (AREA_PM_MIN == "Y" | SAMPLETYPE == "VRI") &
-                     ACCESS == "Y" & MEAS_YR_LAST >= 1996 & CELL_COMPLETE == "Y"]
-
-  #----------------------------------------------------------------#
-
-  # rank by cell_key1
+  # rank by CELL_KEY
   # determine priority samples per cell_key for all samples
-
-  psp6_all <- psp6_all %>%
-    arrange(CELL_KEY1, desc(RATING))
-
-  psp6_all <- psp6_all %>%
-    group_by(CELL_KEY1) %>%
-    mutate(RANK_ALL1 = row_number()) %>%
-    arrange(SAMP_ID) %>%
-    setDT()
-  psp6_all <- psp6_all[,.(SAMP_ID, RANK_ALL1)]
-
-  # determine priority samples per cell_key for psp growth naturals only samples
-
-  psp6_mofgr <- psp6_mofgr %>%
-    arrange(CELL_KEY1, desc(RATING))
-
-  psp6_mofgr <- psp6_mofgr %>%
-    group_by(CELL_KEY1) %>%
-    mutate(RANK_PSP1 = row_number()) %>%
-    arrange(SAMP_ID) %>%
-    setDT()
-  psp6_mofgr <- psp6_mofgr[,.(SAMP_ID, RANK_PSP1)]
-
-  #-----------------------------------------------------------#
-
-  join_list4 <- list(psp6, psp6_all, psp6_mofgr)
-  psp6f <- Reduce(function(x,y)
-    merge(x, y, all.x = T),
-    join_list4)
-
-  #-------cleanup data tables used to create psp6f-------------#
-
-  rm(psp6_all, psp6_mofgr, join_list4)
-
-  #------------------------------------------------------------#
-
-  psp6f[, NUM_TREES_LIV := STEMS_HA_L * as.numeric(AREA_PM)] # need to keep what has been done for this
-
-  psp6f[, ":=" (BGC_ZONE_DUP = BGC_ZONE,
-                STS_STRATA_DUP = STS_STRATA,
-                TRT_STRATA_DUP = TRT_STRATA,
-                BEC_STRATA_DUP = BEC_STRATA,
-                SS_STRATA_DUP = SS_STRATA,
-                SPC_STRATA_DUP = SPC_STRATA,
-                SPC1_DUP = SPC1,
-                AGE_STRATA_DUP = AGE_STRATA,
-                DEN_STRATA_DUP = DEN_STRATA,
-                SI_STRATA_DUP = SI_STRATA,
-                RECON_YR_DUP = RECON_YR,
-                MEAS_YR_LAST_DUP = MEAS_YR_LAST)]
-
-  psp6f[CELL_KEY1 == "MISS_STRATA",
-        ":=" (RANK_ALL1 = NA,
-              RANK_PSP1 = NA)]
-
-  # next, for each matrix cell, identify the maximum number of group samples in each cell
-  # cell_key1
-
-  psp6f <- psp6f %>%
-    arrange(CELL_KEY1)
-
-  max1 <- psp6f[, .(SAMP_ID, CELL_KEY1, RANK_PSP1, RANK_ALL1)]
-
-  max1 <- max1 %>%
-    group_by(CELL_KEY1) %>%
-    summarise(FREQ = n(), MAX_PSP1 = max(RANK_PSP1, na.rm = T),
-              MAX_ALL1 = max(RANK_ALL1, na.rm = T)) %>%
-    setDT()
-
-  max1[MAX_PSP1 == "-Inf", MAX_PSP1 := NA]
-  max1[MAX_ALL1 == "-Inf", MAX_ALL1 := NA]
-
-  psp71 <- merge(psp6f, max1, by = "CELL_KEY1", all = T)
-  psp71 <- arrange(psp71, SAMP_ID)
-
-  #---------------- ownsched -------------------------------#
-
-  own1 <- read.xlsx(file.path(wkdir,
-                              "lastversionSAS",
-                              "own_sched_2018sep26.xlsx")) %>%
-    data.table
-
-  names(own1) <- toupper(names(own1))
-  psp72 <- psp71[, OWN_SCHED_DESCRIP := NULL]
-
-  psp73 <- merge(psp72, own1, by = "OWN_SCHED", all.x = TRUE)
-
-  #-------------------------------------------------------#
-
-  my_data_psp_sumry_rating <- data.table::copy(psp73)
-
-  sumry1 <- my_data_psp_sumry_rating[, .(SITE_IDENTIFIER,
-                                         SAMP_ID,
-                                         PROJ_ID,
-                                         SAMP_NO,
-                                         TYPE_CD,
-                                         SAMPLETYPE,
-                                         OWN_SCHED,
-                                         OWN_SCHED_DESCRIP,
-                                         PRIVATE,
-                                         OWNER,
-                                         OLD_OWNER,
-                                         NEW_OWNER,
-                                         TSA,
-                                         TSA_SOURCE,
-                                         MGMT_UNIT,
-                                         MGMT_UNIT_SOURCE,
-                                         MGMT_UNIT_GYS,
-                                         MGMT_UNIT_ISMC,
-                                         PROJECT,
-                                         BEC_SOURCE,
-                                         BGC_ZONE,
-                                         BECLABEL,
-                                         BECLABEL_GRD,
-                                         BGC_SS_GRD,
-                                         MAP_TILE,
-                                         POLYGON_NO,
-                                         OPENING_NO,
-                                         UTM_VERSION,
-                                         UTM_SOURCE,
-                                         UTM_ZONE,
-                                         UTM_EASTING,
-                                         UTM_NORTHING,
-                                         UTM_SOURCE_ISMC,
-                                         UTM_ZONE_ISMC,
-                                         UTM_EASTING_ISMC,
-                                         UTM_NORTHING_ISMC,
-                                         UTM_SOURCE_GYS,
-                                         UTM_ZONE_GYS,
-                                         UTM_EASTING_GYS,
-                                         UTM_NORTHING_GYS,
-                                         UTM_SOURCE_RECON,
-                                         UTM_ZONE_RECON,
-                                         UTM_EASTING_RECON,
-                                         UTM_NORTHING_RECON,
-                                         UTM_SOURCE_REMEASOP1,
-                                         UTM_ZONE_REMEASOP1,
-                                         UTM_EASTING_REMEASOP1,
-                                         UTM_NORTHING_REMEASOP1,
-                                         UTM_SOURCE_REMEASOP2,
-                                         UTM_ZONE_REMEASOP2,
-                                         UTM_EASTING_REMEASOP2,
-                                         UTM_NORTHING_REMEASOP2,
-                                         BCALB_X,
-                                         BCALB_Y,
-                                         LATITUDE,
-                                         LONGITUDE,
-                                         ASPECT,
-                                         SLOPE,
-                                         SL_POS,
-                                         ELEV,
-                                         SAMP_STS,
-                                         STS_STRATA,
-                                         TRT_STRATA,
-                                         BEC_STRATA,
-                                         SS_STRATA,
-                                         SPC_STRATA,
-                                         AGE_STRATA,
-                                         DEN_STRATA,
-                                         SI_STRATA,
-                                         LANDSAT_DISTURB_YR,
-                                         MEAS_YR_FIRST,
-                                         MEAS_YR_LAST,
-                                         CALEND_YR_LAST,
-                                         CALEND_YR_LAST_HARDY,
-                                         RECON_YR,
-                                         RELEASE,
-                                         NO_PLOTS,
-                                         RATING,
-                                         CELL_KEY1,
-                                         RANK_ALL1,
-                                         RANK_PSP1,
-                                         MAX_PSP1,
-                                         MAX_ALL1,
-                                         AREA_PM,
-                                         AREA_PM_MIN,
-                                         SHP_PM,
-                                         RAD_PM,
-                                         LEN_PM,
-                                         WID_PM,
-                                         AREA,
-                                         NO_MEAS,
-                                         TOT_PERIOD,
-                                         STEMS_HA_L,
-                                         WSVHA_LIV,
-                                         SPC_LABEL_LIVE,
-                                         TOT_STAND_AGE,
-                                         SPC1,
-                                         SAMPLETYPE_DUP,
-                                         BGC_ZONE_DUP,
-                                         STS_STRATA_DUP,
-                                         TRT_STRATA_DUP,
-                                         BEC_STRATA_DUP,
-                                         SS_STRATA_DUP,
-                                         SPC_STRATA_DUP,
-                                         SPC1_DUP,
-                                         AGE_STRATA_DUP,
-                                         DEN_STRATA_DUP,
-                                         SI_STRATA_DUP,
-                                         RECON_YR_DUP,
-                                         MEAS_YR_LAST_DUP,
-                                         ACCESS_COORD,
-                                         ACCESS_NOTE,
-                                         ACCESS,
-                                         SITE_ACCESS_CODE,
-                                         BAF_PM,
-                                         PLOT_TYP,
-                                         FIZ,
-                                         BUFFER_RAD,
-                                         BUFFER_OK,
-                                         STEM_MAPPED_IND,
-                                         STND_ORG,
-                                         STND_STR,
-                                         SEL_LGD,
-                                         TREATMENT,
-                                         TRT_CODE,
-                                         CELL_COMPLETE)]
-
-  sumry2 <- my_data_psp_sumry_rating[, c(paste0("WSVL_", 0:12),
-                                         paste0("TAGE_", 0:12),
-                                         paste0("MEASYR_", 0:12))]
-
-  my_data_psp_sumry_rating <- cbind(sumry1, sumry2)
-
-  my_data_psp_sumry_rating[, ":=" (SS_STRATA = as.numeric(SS_STRATA),
-                                   SS_STRATA_DUP = as.numeric(SS_STRATA_DUP))]
-
-  my_data_psp_sumry_rating <- arrange(my_data_psp_sumry_rating, SAMP_ID)
-
-  return(my_data_psp_sumry_rating)
-
+  ranking_all <- psp5[SAMPLE_ESTABLISHMENT_TYPE %in% c("PSP_G", "PSP_R", "VRI",
+                                                       "CMI", "YSM", "CMO",
+                                                       "EP", "FLT", "VLT", "SUP"),
+                      .(CELL_KEY, CELL_COMPLETE, RATING, SITE_IDENTIFIER,
+                        MGMT_UNIT, OWNER, MEAS_YR_FIRST, MEAS_YR_LAST,
+                        TOTAL_PERIOD, ACCESS, STS_STRATA, OWN_SCHED,
+                        AREA, NO_MEAS)]
+  ranking_all_proc <- psp5[STS_STRATA == "A" &
+                             SAMPLE_ESTABLISHMENT_TYPE %in% c("PSP_G", "PSP_R", "VRI",
+                                                              "CMI", "YSM", "CMO",
+                                                              "EP", "FLT", "VLT", "SUP") &
+                             PRIVATE == "N" & (AREA_PM_MIN == "Y" | SAMPLE_ESTABLISHMENT_TYPE == "VRI") &
+                             ACCESS == "Y" & MEAS_YR_LAST >= 1996 & CELL_COMPLETE == "Y",]
+  ranking_all_proc <- ranking_all_proc[order(CELL_KEY, -RATING),]
+  ranking_all_proc[,':='(RANK_ALL = 1:length(RATING),
+                         NO_SITE_PER_CELL_ALL = length(RATING)),
+                   by = "CELL_KEY"]
+  ranking_all_proc[CELL_COMPLETE == "N",
+                   ':='(RANK_ALL = NA,
+                        NO_SITE_PER_CELL_ALL = NA)]
+  ranking_all <- merge(ranking_all,
+                       ranking_all_proc[,.(SITE_IDENTIFIER, RANK_ALL, NO_SITE_PER_CELL_ALL)],
+                       by = "SITE_IDENTIFIER",
+                       all.x = TRUE)
+  ranking_all <- ranking_all[order(CELL_KEY, RANK_ALL),]
+  return(list(ranking_matrix = psp5,
+              ranking_psp = ranking_psp,
+              ranking_all = ranking_all))
 }
 
