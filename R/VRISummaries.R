@@ -62,11 +62,11 @@ setMethod(
     } else {
       dbhcatlist <- sort(unique(c((1:utilLevel)*5+2.5, as.numeric(weirdUtil))))
     }
-
     volsmy_cs <- volSmry_byCS(treeMC = data.table::copy(allVolumeTrees),
                               utilLevel = utilLevel,
                               weirdUtil = weirdUtil,
                               equation = equation)
+
     # write.csv(volsmy_cs, file.path(r_path, "smy_cs.csv"), row.names = F)
     specieslookup <- unique(lookup_species()[,.(SPECIES, SP0)], by = "SPECIES")
     volsmy_cs <- merge(volsmy_cs,
@@ -232,7 +232,8 @@ setMethod(
                   "SP0", "SA_VEGCOMP") := NULL]
     volsmy_c[, c(paste0("DBH2", c("_LS", "_LF", "_DS", "_DF")),
                  paste0("QMD", c("_LF", "_DF"))) := NULL]
-    return(list(vol_bycs = volsmy_cs, vol_byc = volsmy_c,
+    return(list(vol_bycs = volsmy_cs,
+                vol_byc = volsmy_c,
                 heightsmry_byc = heightsmry_c,
                 compositionsmry_byc = cl_spc))
   })

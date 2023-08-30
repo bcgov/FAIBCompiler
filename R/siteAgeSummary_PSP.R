@@ -155,40 +155,6 @@ siteAgeSummary_PSP <- function(cpldSiteAgeData,
                                  "VISIT_NUMBER"),
                           all.x = TRUE)
 
-  ## to define suitable for si
-  # 1. use what database has
-  treelist_whole[, SUIT_SI_org := SUIT_SI]
-  treelist_whole[RESIDUAL == "Y" | LV_D == "D",
-                 SUIT_SI := "N"]
-  # 2. if suit_si missing, use original sas codes to define suit_si
-  # *define a site tree suitability flag, based on a selection of damage codes,
-  # suitability for taking heights;
-  # *cores with pith reached or pith estimated, and assessment of age suppression;
-  # *for site tree screening, the sisuitability flag is used, modified under age2 dataset based on additional criteria;
-  # *conversation with khardy 2013-mar-26, ;
-  # if top_damage = "Y" or tree_suitable_for_ht = "N" or pith_code in ("R") or
-  # suppression_ind in ("Y") or tr_class in (5,6) then do;
-  # *for this definition, if not suitable for si, then also not suitable for ht, if missing;
-  # sitree_suit = "N";
-  # if tree_suitable_for_ht = "" then tree_suitable_for_ht = "N";
-  # end;
-  # else do;
-  # *for this definition, if suitable for si, and htsuit flag is missing,
-  # then assume also suitable for ht;
-  # sitree_suit = "Y";
-  # if tree_suitable_for_ht = "" then tree_suitable_for_ht = "Y";
-  # end;
-  treelist_whole[is.na(SUIT_SI) & (BTOP == "Y" | SUIT_HT == "N" | substr(AGE_MEASURE_CODE, 1, 1) %in% c("R", "C") |
-                                     TREE_SUPPRESSION_CODE == "Y" | TREE_CLASS_CODE %in% c(5, 6)),
-                 SUIT_SI := "N"]
-  treelist_whole[is.na(SUIT_SI_org) & SUIT_SI == "N" & is.na(SUIT_HT),
-                 SUIT_HT := "N"]
-  treelist_whole[is.na(SUIT_SI), ':='(SUIT_SI = "Y")]
-  treelist_whole[is.na(SUIT_HT), ':='(SUIT_HT = "Y")]
-
-
-  treelist_whole[CROWN_CLASS_CODE %in% c("S", "I"),
-                 SUIT_SI := "N"]
   treelist_whole[AGE_BH < 20 & HT_TOTAL_SOURCE == "Estimated based on DBH",
                  SUIT_SI := "N"]
 

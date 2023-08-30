@@ -177,7 +177,8 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
 
   if(dir(mapPath, pattern = "TFL_") %in% previousMapVer$mapFile){ # tfl map does not change
     samples_skip_tfl <- samples_skip[,.(SITE_IDENTIFIER,
-                                        TFL = TFL_prev)]
+                                        TFL = TFL_prev,
+                                        TFL_LICENCEE = TFL_LICENCEE_prev)]
     if(nrow(samples_proc) > 0){
       tflmap <- readRDS(dir(mapPath, "TFL_", full.names = TRUE))
       samplesites_loc_tfl <- FAIBBase::getSpatial(pointID = samples_proc$SITE_IDENTIFIER,
@@ -186,7 +187,7 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                                   easting = samples_proc$IP_EAST,
                                                   spatialMap = tflmap$map,
                                                   spatialAttribute = "tfl")
-      names(samplesites_loc_tfl) <- c("SITE_IDENTIFIER", "TFL")
+      names(samplesites_loc_tfl) <- c("SITE_IDENTIFIER", "TFL", "TFL_LICENCEE")
       samples_skip_tfl <- rbind(samples_skip_tfl, samplesites_loc_tfl)
     }
     samplesites <- merge(samplesites, samples_skip_tfl,
@@ -199,7 +200,7 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                                 easting = samples_proc_all$IP_EAST,
                                                 spatialMap = tflmap$map,
                                                 spatialAttribute = "tfl")
-    names(samplesites_loc_tfl) <- c("SITE_IDENTIFIER", "TFL")
+    names(samplesites_loc_tfl) <- c("SITE_IDENTIFIER", "TFL", "TFL_LICENCEE")
     samplesites <- merge(samplesites, samplesites_loc_tfl,
                          by = "SITE_IDENTIFIER", all.x = TRUE)
   }
@@ -207,7 +208,8 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
   if(dir(mapPath, pattern = "Ownership_") %in% previousMapVer$mapFile){ # owner map does not change
     samples_skip_own <- samples_skip[,.(SITE_IDENTIFIER,
                                         OWNER = OWNER_prev,
-                                        SCHEDULE = SCHEDULE_prev)]
+                                        SCHEDULE = SCHEDULE_prev,
+                                        OWNERSHIP_DESCRIPTION = OWNERSHIP_DESCRIPTION_prev)]
     if(nrow(samples_proc) > 0){
       ownermap <- readRDS(dir(mapPath, "Ownership_", full.names = TRUE))
       samplesites_loc_own <- FAIBBase::getSpatial(pointID = samples_proc$SITE_IDENTIFIER,

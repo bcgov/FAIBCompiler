@@ -7,7 +7,7 @@ writeOutputs <- function(fileTable,
   for (indirow in 1:nrow(fileTable)) {
     thedata <- readRDS(file.path(fileTable$folderName[indirow],
                                  paste0(fileTable$fileName[indirow], ".rds")))
-    write.csv(thedata,
+    fwrite(thedata,
               file.path(fileTable$folderName[indirow],
                         paste0(fileTable$fileName[indirow], ".csv")),
               na = "",

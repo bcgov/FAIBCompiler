@@ -9,7 +9,8 @@
 #' @param coeffPath character, Specifies the path dependent coeffs are stored.
 #' @param bcgwUserName character, User name to access to bcgw database.
 #' @param bcgwPassword character, Password to access to bcgw database.
-#' @param sampleSites data.table, A data table must contain site_identifier, bc albers coordinates.
+#' @param sampleSites data.table, sample sites A data table must contain site_identifier, bc albers coordinates.
+#' @param sampleMsmts data.table, sample measurements A data table must contain site_identifier, bc albers coordinates.
 #' @return A data table with feature_id, proj_age_1 and projected_date.
 #'
 #' @importFrom data.table ':='
@@ -26,7 +27,8 @@ updateSA_vegcomp <- function(compilationType,
                              coeffPath,
                              bcgwUserName,
                              bcgwPassword,
-                             sampleSites){
+                             sampleSites,
+                             sampleMsmts){
   need_extract <- FALSE
   additional <- FALSE
   vegcompversion <- projDate_rank1Layer(bcgwUserName = bcgwUserName,
@@ -92,7 +94,21 @@ updateSA_vegcomp <- function(compilationType,
                       paste0("SA_VEGCOMP_", compilationType, ".rds")))
     rm(sampleSites_valid, vegcompversion)
   }
-return(sampleSites)
+
+  sampleMsmts <- merge(sampleMsmts,
+                       sampleSites[,.(SITE_IDENTIFIER,
+                                         PROJ_AGE_1, PROJECTED_DATE)],
+                   by = "SITE_IDENTIFIER",
+                   all.x = TRUE)
+  sampleMsmts[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
+  sampleMsmts[,':='(sa_ref = PROJ_AGE_1,
+                year_ref = as.numeric(substr(PROJECTED_DATE, 1, 4)))]
+  sampleMsmts[, SA_VEGCOMP := sa_ref - (year_ref - measYear)]
+  sampleMsmts[, ':='(sa_ref = NULL,
+                 year_ref = NULL,
+                 measYear = NULL)]
+return(list(sampleSites = sampleSites,
+            sampleMsmts = sampleMsmts))
 }
 
 

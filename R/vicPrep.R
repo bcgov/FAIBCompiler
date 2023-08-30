@@ -40,7 +40,7 @@ vicPrep<- function(compilationType,
   vi_c <- vi_c[clusterPlot %in% unique(clusterplotHeader$clusterPlot), ]
   vi_c[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
   # remove get_vars function as SP0 remains same as that in vi_pc table
-  vi_c[DBH == 0, ':='(SP0 = NA, BA_TREE = NA)]
+  vi_c[DBH == 0, ':='(BA_TREE = 0)]
   vi_c[, TREE_WT := 1]
   if(compilationType == "nonPSP"){
     if(walkThru){
@@ -50,6 +50,7 @@ vicPrep<- function(compilationType,
   }
   vi_c <- FAIBBase::merge_dupUpdate(vi_c,
                                     unique(clusterplotHeader[,.(clusterPlot, SAMP_TYP,
+                                                                BEC_ZONE, BEC_SBZ, BEC_VAR,
                                                                 PLOT_WT, BLOWUP_MAIN, BLOWUP_SUBPLOT,
                                                                 FIZ, TYPE_CD,
                                                                 SAMPLE_ESTABLISHMENT_TYPE,
@@ -97,7 +98,7 @@ vicPrep<- function(compilationType,
     vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT,
                                                   BEC_ZONE, BEC_SBZ, BEC_VAR, FIZ,
                                                   TYPE_CD, TREE_NO,
-                                                  SPECIES, SPECIES_ORG,
+                                                  SPECIES,
                                                   LV_D, S_F, NO_LOGS = 1,
                                                   TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,
                                                   HEIGHT = TREE_LEN, BARK_PER,
@@ -114,7 +115,7 @@ vicPrep<- function(compilationType,
     vi_c <- vi_c[order(CLSTR_ID, PLOT, TREE_NO),.(CLSTR_ID, PLOT,
                                                   BEC_ZONE, BEC_SBZ, BEC_VAR, FIZ,
                                                   TYPE_CD, TREE_NO,
-                                                  SPECIES, SPECIES_ORG,
+                                                  SPECIES,
                                                   LV_D, S_F, NO_LOGS,
                                                   TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,
                                                   HEIGHT = TREE_LEN, BARK_PER,

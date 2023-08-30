@@ -35,6 +35,7 @@ viiPrep<- function(compilationType,
     vi_i[, TREE_WT := 1]
     vi_i[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
     vi_i <- FAIBBase::merge_dupUpdate(vi_i, clusterplotHeader[, .(clusterplot, SAMP_TYP,
+                                                                  BEC_ZONE, BEC_SBZ, BEC_VAR,
                                                                   BLOWUP_MAIN, BLOWUP_SUBPLOT,
                                                                   SAMPLE_BREAK_POINT,
                                                                   DBH_LIMIT_TAG,
@@ -68,7 +69,7 @@ viiPrep<- function(compilationType,
                                                treeWeight = TREE_WT, plotWeight = 1,
                                                treeBasalArea = BA_TREE)]
     }
-    return(vi_i[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, TREE_NO, SPECIES_ORG, SPECIES, SP0,
+    return(vi_i[,.(CLSTR_ID, BEC_ZONE, BEC_SBZ, BEC_VAR, PLOT, TREE_NO, SPECIES, SP0,
                    DBH, BA_TREE,
                    PHF_TREE, LV_D,
                    MEASUREMENT_ANOMALY_CODE,

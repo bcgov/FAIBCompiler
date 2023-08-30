@@ -10,7 +10,8 @@ updateSA_vegcomp(
   coeffPath,
   bcgwUserName,
   bcgwPassword,
-  sampleSites
+  sampleSites,
+  sampleMsmts
 )
 }
 \arguments{
@@ -24,7 +25,9 @@ is consistent with VRI compiler.}
 
 \item{bcgwPassword}{character, Password to access to bcgw database.}
 
-\item{sampleSites}{data.table, A data table must contain site_identifier, bc albers coordinates.}
+\item{sampleSites}{data.table, sample sites A data table must contain site_identifier, bc albers coordinates.}
+
+\item{sampleMsmts}{data.table, sample measurements A data table must contain site_identifier, bc albers coordinates.}
 }
 \value{
 A data table with feature_id, proj_age_1 and projected_date.

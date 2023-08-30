@@ -20,386 +20,18 @@
 #' @importFrom parallel detectCores makeCluster clusterExport parLapply stopCluster
 #' @export
 #' @docType methods
-#' @rdname ISMCDataPrep
+#' @rdname dataPrepTree
 #' @author Yong Luo
-ISMCDataPrep <- function(compilationType,
+dataPrepTree <- function(compilationType,
                          inputPath,
                          outputPath,
-                         coeffPath){
-  sitenavigation <- readRDS(dir(inputPath, pattern = "SiteNavigation.rds", full.names = TRUE)) %>%
-    data.table
-  sitenavigation <- sitenavigation[!is.na(UTM_ZONE) &
-                                     !is.na( UTM_EASTING) &
-                                     !is.na(UTM_NORTHING),]
-  sitenavigation[, lastvisit := max(VISIT_NUMBER),
-                 by = "SITE_IDENTIFIER"]
-  actualcoord <- sitenavigation[VISIT_NUMBER == lastvisit,
-                                .(SITE_IDENTIFIER,
-                                  UTM_ZONE_act = UTM_ZONE,
-                                  UTM_EASTING_act = UTM_EASTING,
-                                  UTM_NORTHING_act = UTM_NORTHING,
-                                  ELEVATION_act = ELEVATION,
-                                  source_act = POINT_LOCATION_TYPE_CODE)]
-
-  samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
-    data.table
-
-  samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
-                                IP_UTM, IP_EAST, IP_NRTH,
-                                UTM_SOURCE = COORDINATE_SOURCE_CODE,
-                                CORRDINATE_SOURCE = POINT_LOCATION_TYPE_CODE,
-                                IP_ELEV,
-                                SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
-                                FOREST_INVENTORY_ZONE_CD, STAND_ORIGIN_CODE,
-                                SITE_STATUS_CODE, SITE_CONDITION_CODE,
-                                PSP_TYPE = PSP_SAMPLE_SITE_TYPE_CODE,
-                                BGC_SS_GRD = SITE_SERIES)]
-  samplesites <- merge(samplesites,
-                       actualcoord,
-                       by = "SITE_IDENTIFIER",
-                       all.x = TRUE)
-  samplesites[!is.na(UTM_ZONE_act) &
-                !is.na(UTM_EASTING_act) &
-                !is.na(UTM_NORTHING_act),
-              ':='(IP_UTM = UTM_ZONE_act,
-                   IP_EAST = UTM_EASTING_act,
-                   IP_NRTH = UTM_NORTHING_act,
-                   IP_ELEV = ELEVATION_act,
-                   CORRDINATE_SOURCE = source_act)]
-  samplesites[,':='(UTM_ZONE_act = NULL,
-                    UTM_EASTING_act = NULL,
-                    UTM_NORTHING_act = NULL,
-                    ELEVATION_act = NULL,
-                    source_act = NULL)]
-  # for PSP, the I samples should be removed from compilation
-  if(compilationType == "PSP"){
-    samplesites <- samplesites[!(PSP_TYPE %in% c("I", "T")),] #
-    ## see Rene's email on Nov. 22, 2022
-  }
-
-  if(nrow(samplesites) != length(unique(samplesites$SITE_IDENTIFIER))){
-    warning("samplesites file: SITE_IDENTIFIER is not unique.")
-  }
-  siteaccessnotes <- readRDS(dir(inputPath, pattern = "AccessNotes.rds",
-                                 full.names = TRUE)) %>%
-    data.table
-  siteaccessnotes <- siteaccessnotes[order(SITE_IDENTIFIER, ODOMETER_READING),]
-  siteaccessnotes[, changepointaction := paste0("[@", ODOMETER_READING, "km] ",
-                                                REMARKS)]
-  siteaccessnotes <- siteaccessnotes[,.(ACCESS_NOTES = paste(changepointaction, collapse = ", ")),
-                                     by = "SITE_IDENTIFIER"]
-  saveRDS(siteaccessnotes,
-          file.path(outputPath, "siteaccessnotes.rds"))
-
-  SampleSiteVisits <- readRDS(dir(inputPath, pattern = "SampleSiteVisits.rds",
-                                  full.names = TRUE)) %>%
-    data.table
-  SampleSiteVisits[, newMD := SAMPLE_SITE_VISIT_START_DATE + 60*60]
-  # for nonPSP
-  # extract suit_si from notes there are 7912 observations found, with 7900 have valid suit_si code, i.e., yes or no
-  if(compilationType == "nonPSP"){
-    samplesitevisitenotes <- SampleSiteVisits[,.(SITE_IDENTIFIER, VISIT_NUMBER, SAMPLE_SITE_VISIT_COMMENT)]
-    samplesitevisitenotes[, SAMPLE_SITE_VISIT_COMMENT := toupper(gsub(" ", "", SAMPLE_SITE_VISIT_COMMENT))]
-    samplesitevisitenotes <- samplesitevisitenotes[grepl("SITEINDEXTREESUITABILITY", SAMPLE_SITE_VISIT_COMMENT, fixed = TRUE), ]
-    suit_si_from_notes <- NULL
-    for(indirow in 1:nrow(samplesitevisitenotes)){
-      indipositiontable <- data.table(start_position = as.numeric(gregexpr("SITEINDEXTREESUITABILITY",
-                                                                           samplesitevisitenotes$SAMPLE_SITE_VISIT_COMMENT[indirow])[[1]]))
-
-      indipositiontable[,':='(SITE_IDENTIFIER = samplesitevisitenotes$SITE_IDENTIFIER[indirow],
-                              VISIT_NUMBER = samplesitevisitenotes$VISIT_NUMBER[indirow],
-                              SAMPLE_SITE_VISIT_COMMENT = samplesitevisitenotes$SAMPLE_SITE_VISIT_COMMENT[indirow])]
-
-      suit_si_from_notes <- rbind(suit_si_from_notes, indipositiontable)
-    }
-    suit_si_from_notes[, firstcut := substr(SAMPLE_SITE_VISIT_COMMENT, start_position+24, start_position+30)]
-    suit_si_from_notes[, yesposition := unlist(lapply(firstcut, function(x){as.numeric(gregexpr("YES", x)[[1]])}))]
-    suit_si_from_notes[, noposition := unlist(lapply(firstcut, function(x){as.numeric(gregexpr("NO", x)[[1]][1])}))]
-    suit_si_from_notes[yesposition > 0, TREE_NO_yes := as.numeric(substr(firstcut, 1, yesposition-1))]
-    suit_si_from_notes[noposition > 0, TREE_NO_no := as.numeric(substr(firstcut, 1, noposition-1))]
-    suit_si_from_notes[(!is.na(TREE_NO_yes) & is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_yes,
-                                                                       SUIT_SI_temp = "Y")]
-    suit_si_from_notes[(is.na(TREE_NO_yes) & !is.na(TREE_NO_no)), ':='(TREE_NUMBER = TREE_NO_no,
-                                                                       SUIT_SI_temp = "N")]
-    suit_si_from_notes <- suit_si_from_notes[!is.na(TREE_NUMBER),.(SITE_IDENTIFIER, VISIT_NUMBER, TREE_NUMBER, SUIT_SI_temp)]
-  }
-  vi_a <- unique(SampleSiteVisits[,.(CLSTR_ID = NA,
-                                     SITE_IDENTIFIER, PROJ_ID = PROJECT_NAME,
-                                     PROJECT_DESCRIPTOR,
-                                     STAND_DISTURBANCE_CODE, STAND_STRUCTURE_CODE,
-                                     SAMPLE_BREAK_POINT, SAMPLE_BREAK_POINT_TYPE,
-                                     STEM_MAP_REQD_IND,
-                                     SELECTIVELY_LOGGED_IND,
-                                     SAMP_NO = PROJECT_NUMBER, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
-                                     VISIT_NUMBER,
-                                     SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
-                                     MEAS_DT = substr(newMD, 1, 10),
-                                     IP_AZ_PN = NA,
-                                     IP_DT_PN = NA, IP_AZ_GP = NA, IP_DT_GP = NA, IP_GPSID = NA)],
-                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
-
-  # manually correct measurement date
-  ### for the sample site 4016893 and visit 3,
-  ### the sample date is 2008-04-01 based on Chris
-  ### see email on 2021-08-26
-  vi_a[SITE_IDENTIFIER == 4016893 &
-         VISIT_NUMBER == 3,
-       MEAS_DT := "2008-04-01"]
-  vi_a <- vi_a[SITE_IDENTIFIER %in% samplesites$SITE_IDENTIFIER,]
-  vi_a <- merge(vi_a, samplesites,
-                by = "SITE_IDENTIFIER",
-                all.x = TRUE)
-  ### for some sites, there are two sample site access codes (see emails on 2023-01-11)
-  ### we need to combine access codes into one
-  siteaccess <- SampleSiteVisits[!is.na(SITE_ACCESS_CODE),.(SITE_IDENTIFIER,
-                                                            SITE_ACCESS_CODE, DESCRIPTION)]
-  siteaccess_new <- siteaccess[, .(SITE_ACCESS_CODE = paste0(SITE_ACCESS_CODE, collapse = ", "),
-                                   DESCRIPTION = paste0(DESCRIPTION, collapse = ", ")),
-                               by = "SITE_IDENTIFIER"]
-  vi_a <- merge(vi_a, siteaccess_new,
-                by = "SITE_IDENTIFIER",
-                all.x = TRUE)
-  rm(samplesites, SampleSiteVisits, siteaccess_new, siteaccess)
-  gc()
-  vi_a[,CLSTR_ID := paste(SITE_IDENTIFIER, paste0(TYPE_CD, VISIT_NUMBER), sep = "-")]
-  vi_a <- unique(vi_a)
-
-  ## collect dbh_tagging_limit from sample measurement table
-  samplemeasurement <- readRDS(dir(inputPath, pattern = "SampleMeasurements.rds",
-                                   full.names = TRUE))
-  samplemeasurement <- unique(samplemeasurement[!is.na(DBH_TAGGING_LIMIT), .(SITE_IDENTIFIER,
-                                                                             VISIT_NUMBER,
-                                                                             DBH_TAGGING_LIMIT)],
-                              by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
-  vi_a <- merge(vi_a,
-                samplemeasurement,
-                by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
-                all.x = TRUE)
-  # ## assign dbh_tagging_limit for NAs
-  # ## 1) 9.1cm for measurement year < 1980
-  # ## 2) 7.5cm for measurement 1980<=year<=1990
-  # ## 2) 4cm for measurement 1990 < year
-  # ## based on Rene's previous compiler
-  # vi_a[, DBH_TAGGING_LIMIT_org := DBH_TAGGING_LIMIT]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) < 1980,
-  #      DBH_TAGGING_LIMIT := 9.1]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) >= 1980 &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) <= 1990,
-  #      DBH_TAGGING_LIMIT := 7.5]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) > 1990 &
-  #        SAMPLE_BREAK_POINT == 2,
-  #      DBH_TAGGING_LIMIT := 2]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) > 1990,
-  #      DBH_TAGGING_LIMIT := 4]
-  ## hard code fix for site = 4042369 visit 3, the break point should be 4
-  vi_a[SITE_IDENTIFIER == 4042369 & VISIT_NUMBER == 3,
-       SAMPLE_BREAK_POINT := 4]
-  ## hard code to fill missing samplebreak point
-  vi_a[substr(MEAS_DT, 1, 4) >= 2020 &
-         is.na(SAMPLE_BREAK_POINT),
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-  vi_a[SITE_IDENTIFIER == 4002144 &
-         VISIT_NUMBER == 1,
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-  vi_a[SITE_IDENTIFIER == 4044744 &
-         VISIT_NUMBER == 2,
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-  vi_a[SITE_IDENTIFIER == 4001722 &
-         VISIT_NUMBER == 3,
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-
-  ## see communications between Dan and I on March 07, 2023
-  vi_a[, DBH_TAGGING_LIMIT_org := DBH_TAGGING_LIMIT]
-  if(compilationType == "PSP"){
-    vi_a[is.na(DBH_TAGGING_LIMIT),
-         DBH_TAGGING_LIMIT := 2]
-    vi_a[SAMPLE_BREAK_POINT < DBH_TAGGING_LIMIT,
-         ':='(SAMPLE_BREAK_POINT = 4)]
-  } else {
-    vi_a[, DBH_TAGGING_LIMIT := 4]
-    vi_a[, SAMPLE_BREAK_POINT := 9] # trees between 4 and 8.9 are in subplot
-  }
-
-  saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
-  plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
-                             full.names = TRUE))
-
-  plotdetails <- merge(plotdetails, vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
-                                            CLSTR_ID)],
-                       by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
-                       all.x = TRUE)
-  plotdetails <- plotdetails[!is.na(CLSTR_ID),]
-  # for nonPSP, a sample may contain multiple plots,
-  # which is flagged in plot_category code,
-  # for the psp, a sample also may contain multiple plots
-  # which is flagged in plot number
-  if(compilationType == "nonPSP"){
-    vi_b <- plotdetails[PLOT_CATEGORY_CODE %in% c("IPC TD", "AUX S", "AUX W",
-                                                  "AUX N", "AUX E"),
-                        .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
-                          PLOT = PLOT_CATEGORY_CODE,
-                          V_BAF = VARIABLE_BAF, F_RAD = PLOT_RADIUS,
-                          PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
-                          PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
-                          PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                          PLOT_SHAPE_CODE,
-                          SMALL_TREE_SUBPLOT_RADIUS)]
-    vi_b[PLOT == "IPC TD", PLOT := "I"]
-    vi_b[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
-  } else {
-    vi_b <- plotdetails[PLOT_CATEGORY_CODE %in% c("IPC TD", "AUX S", "AUX W",
-                                                  "AUX N", "AUX E") &
-                          PLOT_NUMBER != 0, # 0 plot_number may be a mistake, remove it
-                        .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
-                          PLOT = PLOT_NUMBER,
-                          V_BAF = VARIABLE_BAF, F_RAD = PLOT_RADIUS,
-                          PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
-                          PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
-                          PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                          PLOT_SHAPE_CODE,
-                          SMALL_TREE_SUBPLOT_RADIUS)]
-  }
-  vi_b_master <- unique(vi_b[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
-                                PLOT, V_BAF, F_RAD,
-                                PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
-                                PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                                PLOT_SHAPE_CODE, SMALL_TREE_SUBPLOT_RADIUS)],
-                        by = c("CLSTR_ID", "PLOT"))
-  fixplots <- vi_b[!is.na(F_RAD),]
-  vi_b_master <- merge(vi_b_master,
-                       fixplots[PARTIAL_PLOT_REASON_CODE == "BOUNDARY",
-                                .(CLSTR_ID, PLOT, F_BDRY = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       fixplots[PARTIAL_PLOT_REASON_CODE == "SPLIT",
-                                .(CLSTR_ID, PLOT, F_SPLT = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       fixplots[PLOT_SEGMENT_CODE == "FULL",
-                                .(CLSTR_ID, PLOT, F_FULL = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       fixplots[PLOT_SEGMENT_CODE == "HALF",
-                                .(CLSTR_ID, PLOT, F_HALF = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       fixplots[PLOT_SEGMENT_CODE == "QTR",
-                                .(CLSTR_ID, PLOT, F_QRTR = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  varplots <- vi_b[!is.na(V_BAF),]
-  vi_b_master <- merge(vi_b_master,
-                       varplots[PARTIAL_PLOT_REASON_CODE == "BOUNDARY",
-                                .(CLSTR_ID, PLOT, V_BDRY = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       varplots[PARTIAL_PLOT_REASON_CODE == "SPLIT",
-                                .(CLSTR_ID, PLOT, V_SPLT = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       varplots[PLOT_SEGMENT_CODE == "FULL",
-                                .(CLSTR_ID, PLOT, V_FULL = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       varplots[PLOT_SEGMENT_CODE == "HALF",
-                                .(CLSTR_ID, PLOT, V_HALF = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  vi_b_master <- merge(vi_b_master,
-                       varplots[PLOT_SEGMENT_CODE == "QTR",
-                                .(CLSTR_ID, PLOT, V_QRTR = TRUE)],
-                       by = c("CLSTR_ID", "PLOT"),
-                       all.x = TRUE)
-  rm(fixplots, varplots)
-  vi_b_master[TYPE_CD %in% c("M", "Y", "F") &
-                (F_HALF == TRUE | F_QRTR == TRUE),
-              ':='(F_FULL = TRUE,
-                   F_HALF = NA,
-                   F_QRTR = NA)]
-  vi_b_master[CLSTR_ID %in% vi_a[SAMPLE_BREAK_POINT == DBH_TAGGING_LIMIT]$CLSTR_ID,
-              SMALL_TREE_SUBPLOT_RADIUS := 0]
-  # since 2021, if subplot area is missing and plot is either sq or rectangle,
-  # a 5.64 circle subplot will be used, as per communications with Chris on 2023-03-13
-  vi_b_master[CLSTR_ID %in% vi_a[substr(MEAS_DT, 1, 4) > 2020,]$CLSTR_ID &
-                !is.na(PLOT_WIDTH) &
-                is.na(SMALL_TREE_SUBPLOT_RADIUS),
-              SMALL_TREE_SUBPLOT_RADIUS := 5.64]
-
-  ## use subplot area lookup table to populate subplot area when it is missing
-  if(compilationType == "PSP"){
-    subplotarea_lookup <- read.csv(file.path(coeffPath, "area_subplot_lookup.csv"))
-    vi_b_master <- merge(vi_b_master,
-                         subplotarea_lookup,
-                         by = c("CLSTR_ID", "PLOT"),
-                         all.x = TRUE)
-  } else {
-    vi_b_master[, AREA_PS := as.numeric(NA)]
-  }
-  saveRDS(vi_b_master, file.path(outputPath, "vi_b.rds"))
-
-  vi_e <- unique(plotdetails[PLOT_CATEGORY_CODE %in% c("IPC SM",  "IPC ST"),
-                             .(CLSTR_ID, PLOT = "I", F_RAD = PLOT_RADIUS, PLOT_CATEGORY_CODE)],
-                 by = c("CLSTR_ID",  "PLOT_CATEGORY_CODE"))
-
-  vi_e <- merge(vi_e,
-                plotdetails[PARTIAL_PLOT_REASON_CODE == "BOUNDARY",
-                            .(CLSTR_ID, PLOT_CATEGORY_CODE,
-                              F_BDRY = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
-                all.x = TRUE)
-  vi_e <- merge(vi_e,
-                plotdetails[PARTIAL_PLOT_REASON_CODE == "SPLIT",
-                            .(CLSTR_ID, PLOT_CATEGORY_CODE,
-                              F_SPLT = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
-                all.x = TRUE)
-  vi_e <- merge(vi_e,
-                plotdetails[PLOT_SEGMENT_CODE == "FULL",
-                            .(CLSTR_ID, PLOT_CATEGORY_CODE,
-                              F_FULL = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
-                all.x = TRUE)
-  vi_e <- merge(vi_e,
-                plotdetails[PLOT_SEGMENT_CODE == "HALF",
-                            .(CLSTR_ID, PLOT_CATEGORY_CODE,
-                              F_HALF = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
-                all.x = TRUE)
-  vi_e <- merge(vi_e,
-                plotdetails[PLOT_SEGMENT_CODE == "QTR",
-                            .(CLSTR_ID, PLOT_CATEGORY_CODE,
-                              F_QRTR = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
-                all.x = TRUE)
-  vi_e[PLOT_CATEGORY_CODE == "IPC SM", PL_ORIG := "SML_TR"]
-  vi_e[PLOT_CATEGORY_CODE == "IPC ST", PL_ORIG := "STUMP"]
-  vi_e[F_FULL == "X", PLOT_WT := 1]
-  vi_e[F_HALF == "X", PLOT_WT := 2]
-  vi_e[F_QRTR == "X", PLOT_WT := 4]
-  vi_e[,PLOT_CATEGORY_CODE := NULL]
-  rm(plotdetails)
-  saveRDS(vi_e, file.path(outputPath, "vi_e.rds"))
-
+                         coeffPath,
+                         sampleMsmts){
 
   treemeasurements <- readRDS(dir(inputPath, "TreeMeasurements.rds",
                                   full.names = TRUE)) %>%
     data.table
-  treemeasurements <- treemeasurements[SITE_IDENTIFIER %in% unique(vi_a$SITE_IDENTIFIER),]
+  treemeasurements <- treemeasurements[SITE_IDENTIFIER %in% unique(sampleMsmts$SITE_IDENTIFIER),]
   #to write
   if(compilationType == "PSP"){
     treemeasurements[, PLOT := PLOT_NUMBER]
@@ -428,7 +60,7 @@ ISMCDataPrep <- function(compilationType,
                          LEANING_TREE_BEARING = NULL,
                          SPECIES_CHANGE_IND = NULL)]
   gc()
-  allsites <- unique(vi_a$SITE_IDENTIFIER)
+  allsites <- unique(sampleMsmts$SITE_IDENTIFIER)
   numCore <- as.integer(0.5*detectCores())
   clusterInFunction <- makeCluster(numCore)
   numofrow <- as.integer(length(allsites)/numCore)
@@ -440,11 +72,11 @@ ISMCDataPrep <- function(compilationType,
       indisites <- allsites[((indicore-1)*numofrow+1):(length(allsites))]
     }
     indi_treemsmt <- treemeasurements[SITE_IDENTIFIER %in% indisites,]
-    indi_vi_a <- unique(vi_a[SITE_IDENTIFIER %in% indisites,
-                             .(SITE_IDENTIFIER, VISIT_NUMBER)])
+    indi_sampleMsmts <- unique(sampleMsmts[SITE_IDENTIFIER %in% indisites,
+                                           .(SITE_IDENTIFIER, VISIT_NUMBER)])
     inputdata_list[[indicore]] <- list("treemeasurements" = indi_treemsmt,
-                                       "sitevisits" = indi_vi_a)
-    rm(indi_treemsmt, indisites, indi_vi_a)
+                                       "sitevisits" = indi_sampleMsmts)
+    rm(indi_treemsmt, indisites, indi_sampleMsmts)
   }
   rm(treemeasurements)
   gc()
@@ -482,35 +114,201 @@ ISMCDataPrep <- function(compilationType,
                    PRORATE_RING_COUNT := ifelse(!is.na(MICROSCOPE_AGE), MICROSCOPE_AGE,
                                                 BORING_AGE)]
 
-  # JD = common juniper
-  # My guess is we consider Juniper spp as shrubs, not trees.
-  # And as a shrub, we would ignore in our compilation.
-  # Rene's email on 2022-09-09
 
-  treemeasurements <- treemeasurements[TREE_SPECIES_CODE != "JD",]
   treemeasurements <- merge(treemeasurements,
-                            unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
-                                           CLSTR_ID, MEAS_DT,
-                                           DBH_TAGGING_LIMIT,
-                                           SAMPLE_BREAK_POINT)],
+                            unique(sampleMsmts[,.(SITE_IDENTIFIER, VISIT_NUMBER,
+                                                  CLSTR_ID)],
                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                             all.x = TRUE)
   treemeasurements <- treemeasurements[!is.na(CLSTR_ID),]
+  SmallLiveTreeTallies <- readRDS(dir(inputPath,
+                                      pattern =  "SmallLiveTreeTallies.rds",
+                                      full.names = TRUE))
+  SmallLiveTreeTallies <- merge(SmallLiveTreeTallies,
+                                unique(sampleMsmts[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
+                                       by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
+                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
+                                all.x = TRUE)
+  SmallLiveTreeTallies <- SmallLiveTreeTallies[!is.na(CLSTR_ID),]
+  SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE)]
+  if(compilationType == "PSP"){
+    treeno_max <- treemeasurements[PLOT == 1,
+                                   .(TREE_NO_max = max(TREE_NUMBER)),
+                                   by = "CLSTR_ID"]
+    smalltrees_forvol <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE %in% 5:7,]
+    smalltrees_forvol <- merge(smalltrees_forvol,
+                               sampleMsmts[,.(CLSTR_ID, DBH_LIMIT_TAG)],
+                               by = "CLSTR_ID")
+    # remove tally trees that do not make sense
+    # 1. for DBH_LIMIT_TAG = 2
+    smalltrees_forvol <- smalltrees_forvol[DBH_LIMIT_TAG != 2]
+    # 2. for DBH_LIMIT_TAG = 4, and tally_class = 6 and 7
+    smalltrees_forvol <- smalltrees_forvol[!(DBH_LIMIT_TAG == 4 & SMALL_TREE_TALLY_CLASS_CODE %in% c(6, 7)),]
+    # 3. for DBH_LIMIT_TAG = 6.5 and tally_class = 7
+    smalltrees_forvol <- smalltrees_forvol[!(DBH_LIMIT_TAG == 6.5 & SMALL_TREE_TALLY_CLASS_CODE %in% c(7)),]
+    # 4. for DBH_LIMIT_TAG = 7.5 and tally_class = 7
+    # prorate number_of_tree by multiplying by 0.4, which is derived using (7.5-6.5)/(9-6.5)
+    # assign a dummy class code 8 for them
+    smalltrees_forvol[DBH_LIMIT_TAG == 7.5 &
+                        SMALL_TREE_TALLY_CLASS_CODE == 7,
+                      ':='(SMALL_TREE_TALLY_CLASS_CODE = 8,
+                           NUMBER_OF_TREES = round(NUMBER_OF_TREES * 0.4))]
+    smalltrees_forvol <- smalltrees_forvol[NUMBER_OF_TREES > 0,]
+    small_tree_full <- NULL
+    NUMBER_OF_TREES_uni <- unique(smalltrees_forvol$NUMBER_OF_TREES)
+    for(indinumboftrees in NUMBER_OF_TREES_uni){
+      indismalltrees <- smalltrees_forvol[NUMBER_OF_TREES == indinumboftrees,]
+      small_tree_full_indi <- data.table(expand.grid(CLSTR_ID = unique(indismalltrees$CLSTR_ID),
+                                                     SMALL_TREE_TALLY_CLASS_CODE = as.character(5:7),
+                                                     TREE_SPECIES_CODE = unique(indismalltrees$TREE_SPECIES_CODE),
+                                                     TREE_NO_temp = 1:indinumboftrees))
+      small_tree_full_indi <- merge(small_tree_full_indi,
+                                    indismalltrees[,.(CLSTR_ID, SMALL_TREE_TALLY_CLASS_CODE,
+                                                      TREE_SPECIES_CODE)],
+                                    by = c("CLSTR_ID", "SMALL_TREE_TALLY_CLASS_CODE",
+                                           "TREE_SPECIES_CODE"))
+      small_tree_full <- rbind(small_tree_full,
+                               small_tree_full_indi)
+      rm(indismalltrees, small_tree_full_indi)
+    }
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 5,
+                    DBH := (1.5+3.9)/2] # trees with dbh between 1.5 and 3.9
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 6,
+                    DBH := (4.0+6.4)/2] # trees with dbh between 4 and 6.4
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 7,
+                    DBH := (6.5+9)/2] # trees with dbh between 6.5 and 9
+    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 8,
+                    DBH := (6.5+7.4)/2] # trees with dbh between 6.5 and 7.4
+
+    dbhlimit_count <- small_tree_full[,.(tally_class_min = min(SMALL_TREE_TALLY_CLASS_CODE)),
+                                      by = "CLSTR_ID"]
+    dbhlimit_count[tally_class_min == 5,
+                   DBHLIMIT_COUNT := 1.5]
+    dbhlimit_count[tally_class_min == 6,
+                   DBHLIMIT_COUNT := 4]
+    dbhlimit_count[is.na(DBHLIMIT_COUNT),
+                   DBHLIMIT_COUNT := 6.5]
+    sampleMsmts <- merge(sampleMsmts,
+                         dbhlimit_count[,.(CLSTR_ID, DBHLIMIT_COUNT)],
+                         by = "CLSTR_ID",
+                         all.x = TRUE)
+    small_tree_full <- merge(small_tree_full,
+                             treeno_max,
+                             by = "CLSTR_ID",
+                             all.x = TRUE)
+    small_tree_full[is.na(TREE_NO_max),
+                    TREE_NO_max := 0]
+    small_tree_full <- small_tree_full[order(CLSTR_ID, SMALL_TREE_TALLY_CLASS_CODE,
+                                             TREE_SPECIES_CODE),]
+    small_tree_full[, temp_treeno := 1:length(TREE_NO_temp),
+                    by = "CLSTR_ID"]
+    small_tree_full[, TREE_NO := TREE_NO_max + temp_treeno]
+    small_tree_full <- small_tree_full[,.(CLSTR_ID, PLOT = 1,
+                                          TREE_NUMBER = TREE_NO,
+                                          TREE_SPECIES_CODE,
+                                          DIAMETER = DBH,
+                                          TREE_EXTANT_CODE = "L",
+                                          TREE_STANCE_CODE = "S",
+                                          DIAMETER_MEASMT_HEIGHT = 1.3,
+                                          BROKEN_TOP_IND = "N",
+                                          MEASUREMENT_ANOMALY_CODE = "PSP-TALLY",
+                                          TREE_CLASS_CODE = 1,
+                                          OUT_OF_PLOT_IND = "N")]
+    small_tree_full <- merge(small_tree_full,
+                             sampleMsmts[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
+                             by = "CLSTR_ID",
+                             all.x = TRUE)
+
+    treemeasurements <- rbind(treemeasurements, small_tree_full, fill = TRUE)
+    rm(small_tree_full)
+    gc()
+  } else {
+    sampleMsmts[, DBHLIMIT_COUNT := NA]
+  }
+  vi_f <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE < 5,
+                               .(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
+                                 low_bnd, TOTAL = NUMBER_OF_TREES)]
+  vi_f <- vi_f[,.(TOTAL = sum(TOTAL)),
+               by = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE", "low_bnd")]
+
+  vi_f <- reshape(data = vi_f,
+                  v.names = "TOTAL",
+                  timevar = "low_bnd",
+                  idvar = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE"),
+                  direction = "wide",
+                  sep = "")
+  totalnames <- names(vi_f)
+  totalnames <- totalnames[substr(totalnames, 1, 5) == "TOTAL"]
+  for (indiname in totalnames) {
+    setnames(vi_f, indiname, "tempname")
+    vi_f[is.na(tempname), tempname := 0]
+    setnames(vi_f, "tempname", indiname)
+  }
+  vi_f <- merge(vi_f,
+                unique(sampleMsmts[,.(CLSTR_ID,
+                                      BEC_ZONE, BEC_SBZ)],
+                       by = c("CLSTR_ID")),
+                by = c("CLSTR_ID"),
+                all.x = TRUE)
+
+  vi_f[, SPECIES := speciesCorrection(TREE_SPECIES_CODE,
+                                      BEC_ZONE,
+                                      BEC_SBZ)]
+  vi_f[, TREE_SPECIES_CODE := NULL]
+  saveRDS(vi_f, file.path(outputPath, "vi_f.rds"))
+  rm(vi_f, dbhlimit_count, indiname, indinumboftrees,
+     NUMBER_OF_TREES_uni, SmallLiveTreeTallies, smalltrees_forvol,
+     totalnames, treeno_max)
+  # JD = common juniper
+  # My guess is we consider Juniper spp as shrubs, not trees.
+  # And as a shrub, we would ignore in our compilation.
+  # Rene's email on 2022-09-09
+  treemeasurements <- treemeasurements[TREE_SPECIES_CODE != "JD",]
+
+
+  treemeasurements <- merge(treemeasurements,
+                            unique(sampleMsmts[,.(TYPE_CD,
+                                                  CLSTR_ID, MEAS_DT,
+                                                  DBH_LIMIT_TAG,
+                                                  SAMPLE_BREAK_POINT,
+                                                  BEC_ZONE, BEC_SBZ, BEC_VAR)],
+                                   by = c("CLSTR_ID")),
+                            by = c("CLSTR_ID"),
+                            all.x = TRUE)
+
+
+  treemeasurements[, SPECIES_ORG := TREE_SPECIES_CODE]
+  treemeasurements[, SPECIES := speciesCorrection(TREE_SPECIES_CODE,
+                                                  BEC_ZONE,
+                                                  BEC_SBZ)]
+  treemeasurements[SPECIES_ORG != SPECIES & is.na(SP_EDIT),
+                   SP_EDIT := "Corrected based on BEC"]
+  treemeasurements[SPECIES_ORG != SPECIES & SP_EDIT == "Species changed based on last msmt",
+                   SP_EDIT := paste0(SP_EDIT, ", Corrected based on BEC")]
+  treemeasurements[TREE_SPECIES_CODE != SPECIES,
+                   TREE_SPECIES_CODE := SPECIES]
+  treemeasurements[, ':='(SPECIES = NULL)]
+
 
   ## adjust dbh if a tree is from main plot to subplot if the sample break point does not change
   ## based on rene's suggestions on March 14
   treemeasurements_simp <- treemeasurements[!is.na(DIAMETER),.(SITE_IDENTIFIER, PLOT,
                                                                TREE_NUMBER, VISIT_NUMBER,
                                                                DIAMETER,
-                                                               DBH_TAGGING_LIMIT,
+                                                               DBH_LIMIT_TAG,
                                                                SAMPLE_BREAK_POINT)]
+
+
+
+
+
 
   treemeasurements_simp <- treemeasurements_simp[order(SITE_IDENTIFIER, PLOT, TREE_NUMBER,
                                                        VISIT_NUMBER),]
   needadjust <- NULL
   for(i in 1:(max(treemeasurements_simp$VISIT_NUMBER)-1)){
-    treemeasurements_simp[DIAMETER %<<% DBH_TAGGING_LIMIT,
+    treemeasurements_simp[DIAMETER %<<% DBH_LIMIT_TAG,
                           plot_crt := "L"] # a tree should not be tagged
     treemeasurements_simp[DIAMETER %>=% SAMPLE_BREAK_POINT,
                           plot_crt := "M"]
@@ -520,7 +318,7 @@ ISMCDataPrep <- function(compilationType,
                           by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER")]
     treemeasurements_simp[, breakpoint_first := shift(SAMPLE_BREAK_POINT, type = "lag"),
                           by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER")]
-    treemeasurements_simp[, taggingdbh_first := shift(DBH_TAGGING_LIMIT, type = "lag"),
+    treemeasurements_simp[, taggingdbh_first := shift(DBH_LIMIT_TAG, type = "lag"),
                           by = c("SITE_IDENTIFIER", "PLOT", "TREE_NUMBER")]
 
     treemeasurements_simp[!is.na(plot_first), ':='(change = paste0(plot_first, "-", plot_crt))]
@@ -531,10 +329,10 @@ ISMCDataPrep <- function(compilationType,
                           ':='(dbh_new = SAMPLE_BREAK_POINT,
                                DIAMETER = SAMPLE_BREAK_POINT)]
     treemeasurements_simp[change == "S-L" &
-                            DBH_TAGGING_LIMIT %==% taggingdbh_first &
+                            DBH_LIMIT_TAG %==% taggingdbh_first &
                             VISIT_NUMBER == (i+1),
-                          ':='(dbh_new = DBH_TAGGING_LIMIT,
-                               DIAMETER = DBH_TAGGING_LIMIT)]
+                          ':='(dbh_new = DBH_LIMIT_TAG,
+                               DIAMETER = DBH_LIMIT_TAG)]
     needadjust <- rbind(needadjust,
                         treemeasurements_simp[!is.na(dbh_new),
                                               .(SITE_IDENTIFIER, PLOT,
@@ -542,7 +340,7 @@ ISMCDataPrep <- function(compilationType,
     treemeasurements_simp <- treemeasurements_simp[VISIT_NUMBER != i,.(SITE_IDENTIFIER, PLOT,
                                                                        TREE_NUMBER, VISIT_NUMBER,
                                                                        DIAMETER,
-                                                                       DBH_TAGGING_LIMIT,
+                                                                       DBH_LIMIT_TAG,
                                                                        SAMPLE_BREAK_POINT)]
   }
   treemeasurements <- merge(treemeasurements,
@@ -552,10 +350,10 @@ ISMCDataPrep <- function(compilationType,
                             all.x = TRUE)
   treemeasurements[!is.na(dbh_new),
                    DIAMETER := dbh_new]
-  treemeasurements[,':='(DBH_TAGGING_LIMIT = NULL,
+  treemeasurements[,':='(DBH_LIMIT_TAG = NULL,
                          SAMPLE_BREAK_POINT = NULL,
                          dbh_new = NULL)]
-  rm(treemeasurements_simp, needadjust)
+  rm(treemeasurements_simp, needadjust, i)
   gc()
   # for nonPSP
   if(compilationType == "nonPSP"){
@@ -581,6 +379,8 @@ ISMCDataPrep <- function(compilationType,
                           MEASUREMENT_ANOMALY_CODE = paste0(MEASUREMENT_ANOMALY_CODE,
                                                             "-SizeMOD"))]
     # merge suit_si_from_notes to all tree measurements
+    suit_si_from_notes <- readRDS(file.path(outputPath,
+                                            "suit_si_from_notes.rds"))
     treemeasurements <- merge(treemeasurements, suit_si_from_notes,
                               by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "TREE_NUMBER"),
                               all.x = TRUE)
@@ -606,6 +406,9 @@ ISMCDataPrep <- function(compilationType,
     treemeasurements[!is.na(TREE_NUMBER_future),
                      TREE_NUMBER := TREE_NUMBER_future]
     treemeasurements[, TREE_NUMBER_future := NULL]
+    treemeasurements[, ':='(SUIT_HT_EDIT = as.character(NA),
+                            SUIT_SI_EDIT = as.character(NA),
+                            LAB_AGE_EDIT = as.character(NA))]
   } else {
     # for PSP
     treemeasurements[, TREE_DETAIL_COMMENT := NULL]
@@ -623,6 +426,39 @@ ISMCDataPrep <- function(compilationType,
                      ':='(MICROSCOPE_AGE = NEW_AGE,
                           LAB_AGE_EDIT = "Replaced with new_age")]
   }
+  specieslookup <- lookup_species()
+  treemeasurements <- merge(treemeasurements,
+                            unique(specieslookup[,.(TREE_SPECIES_CODE = SPECIES, SP0)],
+                                   by = "TREE_SPECIES_CODE"),
+                            by = "TREE_SPECIES_CODE",
+                            all.x = TRUE)
+
+  # summarize stem mapping information by clster
+  treemsmt_live_inplot <- treemeasurements[TREE_EXTANT_CODE == "L" &
+                                             OUT_OF_PLOT_IND == "N" &
+                                             !(MEASUREMENT_ANOMALY_CODE %in% c("Z", "D",
+                                                                               "PSP-TALLY")),
+                                           .(CLSTR_ID, TREE_NUMBER,
+                                             STEM_MAP_BEARING, STEM_MAP_DISTANCE,
+                                             MEASUREMENT_ANOMALY_CODE)]
+  treemsmt_live_inplot[!is.na(STEM_MAP_BEARING) & !is.na(STEM_MAP_DISTANCE),
+                       stem_mapped := TRUE]
+  treemsmt_live_inplot[is.na(stem_mapped),
+                       stem_mapped := FALSE]
+
+  stem_mapped_smry_live <- treemsmt_live_inplot[,
+                                                .(NO_LIVE_TREE_MAPPED = sum(stem_mapped),
+                                                  NO_TOTAL_LIVE_TREE = length(stem_mapped)),
+                                                by = c("CLSTR_ID")] # the summary is conducted for live trees
+  stem_mapped_smry_live[NO_LIVE_TREE_MAPPED/NO_TOTAL_LIVE_TREE > 0.75,
+                        STEM_MAPPED_SAMPLE := TRUE]
+  stem_mapped_smry_live[is.na(STEM_MAPPED_SAMPLE),
+                        STEM_MAPPED_SAMPLE := FALSE]
+  sampleMsmts <- merge(sampleMsmts,
+                       stem_mapped_smry_live,
+                       by = c("CLSTR_ID"),
+                       all.x = TRUE)
+  rm(treemsmt_live_inplot, stem_mapped_smry_live)
   saveRDS(treemeasurements, file.path(outputPath, "treemeasurements.rds"))
 
   # specieslookup <- lookup_species()
@@ -639,7 +475,7 @@ ISMCDataPrep <- function(compilationType,
                              (MEASUREMENT_ANOMALY_CODE %in% c(NA, "M", "D", "F", "H", "N") |
                                 grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE)), ## non tally tree, can not used for volume, see scott's comments
                            .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
-                             TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE,
+                             TREE_NO = TREE_NUMBER, SPECIES = TREE_SPECIES_CODE, SP0,
                              DBH = DIAMETER, BROKEN_TOP_IND, DIAM_BTP = BROKEN_TOP_DIAMETER,
                              HEIGHT_TO_BREAK, TREE_PLANTED_IND,
                              CR_CL = CROWN_CLASS_CODE, TREE_LEN = LENGTH,
@@ -664,7 +500,7 @@ ISMCDataPrep <- function(compilationType,
                            full.names = TRUE)) %>%
       data.table
     treelog <- merge(treelog,
-                     unique(vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID)],
+                     unique(sampleMsmts[,.(SITE_IDENTIFIER, VISIT_NUMBER, CLSTR_ID)],
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                      by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                      all.x = TRUE)
@@ -757,7 +593,7 @@ ISMCDataPrep <- function(compilationType,
                   by = "unitreeid")
     vi_h <- vi_h[,
                  .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
-                   TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,
+                   TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,  SP0,
                    CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
                    BORE_AGE_FLD = BORING_AGE + AGE_CORE_MISSED_YEARS_FIELD,
                    BORE_AGE_LAB = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS_LAB,
@@ -779,7 +615,7 @@ ISMCDataPrep <- function(compilationType,
   } else {
     vi_h <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
                              .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
-                               TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,
+                               TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,  SP0,
                                CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
                                BORE_AGE_FLD = BORING_AGE + AGE_CORE_MISSED_YEARS_FIELD,
                                BORE_AGE_LAB = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS_LAB,
@@ -871,7 +707,7 @@ ISMCDataPrep <- function(compilationType,
                 BORED_HT_pre = NULL)]
     vi_h[is.na(BORED_HT), BORED_HT := 1.3] # temporary fix for the bored trees with bored height
     vi_h <- merge(vi_h,
-                  unique(vi_a[,.(CLSTR_ID, MEAS_DT)],
+                  unique(sampleMsmts[,.(CLSTR_ID, MEAS_DT)],
                          by = "CLSTR_ID"),
                   by = "CLSTR_ID",
                   all.x = TRUE)
@@ -902,7 +738,7 @@ ISMCDataPrep <- function(compilationType,
     vi_i <- treemeasurements[DIAMETER_MEASMT_HEIGHT == 1.3 & is.na(LENGTH) &
                                OUT_OF_PLOT_IND == "N",
                              .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
-                               SPECIES = TREE_SPECIES_CODE,
+                               SPECIES = TREE_SPECIES_CODE,  SP0,
                                DBH = DIAMETER,
                                LV_D = TREE_EXTANT_CODE,
                                S_F = TREE_STANCE_CODE,
@@ -911,14 +747,13 @@ ISMCDataPrep <- function(compilationType,
                                TAGGING_SECTOR_NO = TAGGING_SECTOR_NUMBER,
                                SITE_SECTOR_NO = SITE_SECTOR_NUMBER,
                                RESIDUAL = RESIDUAL_IND)]
-    saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
-    rm(vi_i)
   } else {
     vi_i <- treemeasurements[!is.na(DIAMETER) & is.na(LENGTH) &
                                OUT_OF_PLOT_IND == "N",
                              .(CLSTR_ID, PLOT,
                                TREE_NO = TREE_NUMBER,
                                SPECIES = TREE_SPECIES_CODE,
+                               SP0,
                                DBH = DIAMETER,
                                LV_D = TREE_EXTANT_CODE,
                                S_F = TREE_STANCE_CODE,
@@ -932,10 +767,12 @@ ISMCDataPrep <- function(compilationType,
                                SITE_SECTOR_NO = SITE_SECTOR_NUMBER,
                                RESIDUAL = RESIDUAL_IND)]
   }
+  saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
+  rm(vi_i)
   treeloss <- readRDS(dir(inputPath, "TreeLossIndicators.rds",
                           full.names = TRUE)) %>%
     data.table
-  treeloss <- treeloss[SITE_IDENTIFIER %in% vi_a$SITE_IDENTIFIER,]
+  treeloss <- treeloss[SITE_IDENTIFIER %in% sampleMsmts$SITE_IDENTIFIER,]
   if(compilationType == "nonPSP"){
     treeloss[PLOT_CATEGORY_CODE == "IPC TD", PLOT := "I"]
     treeloss[PLOT_CATEGORY_CODE != "IPC TD",
@@ -1040,7 +877,7 @@ ISMCDataPrep <- function(compilationType,
   rm(treeloss, treedamage, maxneworder)
   vi_d <- merge(vi_d[, ind := TRUE],
                 treemeasurements[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
-                                    TREE_NUMBER, SPECIES = TREE_SPECIES_CODE,
+                                    TREE_NUMBER, SPECIES = TREE_SPECIES_CODE,  SP0,
                                     DISTANCE = STEM_MAP_DISTANCE, AZIMUTH = STEM_MAP_BEARING,
                                     OUT_OF_PLOT_IND, MEASUREMENT_ANOMALY_CODE)],
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT", "TREE_NUMBER"),
@@ -1058,141 +895,26 @@ ISMCDataPrep <- function(compilationType,
   rm(vi_d)
   gc()
 
-  SmallLiveTreeTallies <- readRDS(dir(inputPath,
-                                      pattern =  "SmallLiveTreeTallies.rds",
-                                      full.names = TRUE))
-  SmallLiveTreeTallies <- merge(SmallLiveTreeTallies,
-                                unique(vi_a[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
-                                       by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
-                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
-                                all.x = TRUE)
-  SmallLiveTreeTallies <- SmallLiveTreeTallies[!is.na(CLSTR_ID),]
-  SmallLiveTreeTallies[, low_bnd := as.numeric(SMALL_TREE_TALLY_CLASS_CODE)]
-  if(compilationType == "PSP"){
-    treeno_max <- treemeasurements[PLOT == 1,
-                                   .(TREE_NO_max = max(TREE_NUMBER)),
-                                   by = "CLSTR_ID"]
-    smalltrees_forvol <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE %in% 5:7,]
-    smalltrees_forvol <- merge(smalltrees_forvol,
-                               vi_a[,.(CLSTR_ID, DBH_TAGGING_LIMIT)],
-                               by = "CLSTR_ID")
-    # remove tally trees that do not make sense
-    # 1. for dbh_tagging_limit = 2
-    smalltrees_forvol <- smalltrees_forvol[DBH_TAGGING_LIMIT != 2]
-    # 2. for dbh_tagging_limit = 4, and tally_class = 6 and 7
-    smalltrees_forvol <- smalltrees_forvol[!(DBH_TAGGING_LIMIT == 4 & SMALL_TREE_TALLY_CLASS_CODE %in% c(6, 7)),]
-    # 3. for dbh_tagging_limit = 6.5 and tally_class = 7
-    smalltrees_forvol <- smalltrees_forvol[!(DBH_TAGGING_LIMIT == 6.5 & SMALL_TREE_TALLY_CLASS_CODE %in% c(7)),]
-    # 4. for dbh_tagging_limit = 7.5 and tally_class = 7
-    # prorate number_of_tree by multiplying by 0.4, which is derived using (7.5-6.5)/(9-6.5)
-    # assign a dummy class code 8 for them
-    smalltrees_forvol[DBH_TAGGING_LIMIT == 7.5 &
-                        SMALL_TREE_TALLY_CLASS_CODE == 7,
-                      ':='(SMALL_TREE_TALLY_CLASS_CODE = 8,
-                           NUMBER_OF_TREES = round(NUMBER_OF_TREES * 0.4))]
-    smalltrees_forvol <- smalltrees_forvol[NUMBER_OF_TREES > 0,]
-    small_tree_full <- NULL
-    NUMBER_OF_TREES_uni <- unique(smalltrees_forvol$NUMBER_OF_TREES)
-    for(indinumboftrees in NUMBER_OF_TREES_uni){
-      indismalltrees <- smalltrees_forvol[NUMBER_OF_TREES == indinumboftrees,]
-      small_tree_full_indi <- data.table(expand.grid(CLSTR_ID = unique(indismalltrees$CLSTR_ID),
-                                                     SMALL_TREE_TALLY_CLASS_CODE = as.character(5:7),
-                                                     TREE_SPECIES_CODE = unique(indismalltrees$TREE_SPECIES_CODE),
-                                                     TREE_NO_temp = 1:indinumboftrees))
-      small_tree_full_indi <- merge(small_tree_full_indi,
-                                    indismalltrees[,.(CLSTR_ID, SMALL_TREE_TALLY_CLASS_CODE,
-                                                      TREE_SPECIES_CODE)],
-                                    by = c("CLSTR_ID", "SMALL_TREE_TALLY_CLASS_CODE",
-                                           "TREE_SPECIES_CODE"))
-      small_tree_full <- rbind(small_tree_full,
-                               small_tree_full_indi)
-      rm(indismalltrees, small_tree_full_indi)
-    }
-    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 5,
-                    DBH := (1.5+3.9)/2] # trees with dbh between 1.5 and 3.9
-    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 6,
-                    DBH := (4.0+6.4)/2] # trees with dbh between 4 and 6.4
-    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 7,
-                    DBH := (6.5+9)/2] # trees with dbh between 6.5 and 9
-    small_tree_full[SMALL_TREE_TALLY_CLASS_CODE == 8,
-                    DBH := (6.5+7.4)/2] # trees with dbh between 6.5 and 7.4
-
-    dbhlimit_count <- small_tree_full[,.(tally_class_min = min(SMALL_TREE_TALLY_CLASS_CODE)),
-                                      by = "CLSTR_ID"]
-    dbhlimit_count[tally_class_min == 5,
-                   DBHLIMIT_COUNT := 1.5]
-    dbhlimit_count[tally_class_min == 6,
-                   DBHLIMIT_COUNT := 4]
-    dbhlimit_count[is.na(DBHLIMIT_COUNT),
-                   DBHLIMIT_COUNT := 6.5]
-    vi_a_temp <- readRDS(file.path(outputPath, "vi_a.rds"))
-    vi_a_temp <- merge(vi_a_temp,
-                       dbhlimit_count[,.(CLSTR_ID, DBHLIMIT_COUNT)],
-                       by = "CLSTR_ID",
-                       all.x = TRUE)
-    saveRDS(vi_a_temp, file.path(outputPath, "vi_a.rds"))
-    small_tree_full <- merge(small_tree_full,
-                             treeno_max,
-                             by = "CLSTR_ID",
-                             all.x = TRUE)
-    small_tree_full <- small_tree_full[order(CLSTR_ID, SMALL_TREE_TALLY_CLASS_CODE,
-                                             TREE_SPECIES_CODE),]
-    small_tree_full[, temp_treeno := 1:length(TREE_NO_temp),
-                    by = "CLSTR_ID"]
-    small_tree_full[, TREE_NO := TREE_NO_max + temp_treeno]
-    small_tree_full <- small_tree_full[,.(CLSTR_ID, PLOT = 1,
-                                          TREE_NO, SPECIES = TREE_SPECIES_CODE,
-                                          DBH, LV_D = "L", S_F = "S",
-                                          BROKEN_TOP_IND = "N",
-                                          MEASUREMENT_ANOMALY_CODE = "PSP-TALLY",
-                                          TREE_CLASS_CODE = 1)]
-    vi_i <- rbind(vi_i, small_tree_full, fill = TRUE)
-    saveRDS(vi_i, file.path(outputPath, "vi_i.rds"))
-    rm(vi_i, small_tree_full)
-  } else {
-    vi_a_temp <- readRDS(file.path(outputPath, "vi_a.rds"))
-    vi_a_temp[, DBHLIMIT_COUNT := NA]
-    saveRDS(vi_a_temp, file.path(outputPath, "vi_a.rds"))
-  }
-  vi_f <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE < 5,
-                               .(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
-                                 low_bnd, TOTAL = NUMBER_OF_TREES)]
-  vi_f <- vi_f[,.(TOTAL = sum(TOTAL)),
-               by = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE", "low_bnd")]
-
-  vi_f <- reshape(data = vi_f,
-                  v.names = "TOTAL",
-                  timevar = "low_bnd",
-                  idvar = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE"),
-                  direction = "wide",
-                  sep = "")
-  totalnames <- names(vi_f)
-  totalnames <- totalnames[substr(totalnames, 1, 5) == "TOTAL"]
-  for (indiname in totalnames) {
-    setnames(vi_f, indiname, "tempname")
-    vi_f[is.na(tempname), tempname := 0]
-    setnames(vi_f, "tempname", indiname)
-  }
-  # vi_f <- merge(vi_f, specieslookup,
-  #               by = "TREE_SPECIES_CODE", all.x = TRUE)
-  setnames(vi_f, "TREE_SPECIES_CODE", "SPECIES")
-  saveRDS(vi_f, file.path(outputPath, "vi_f.rds"))
-
   stumptallies <- readRDS(dir(inputPath, pattern = "StumpTallies.rds",
                               full.names = TRUE))
   stumptallies <- merge(stumptallies,
-                        unique(vi_a[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
+                        unique(sampleMsmts[,.(CLSTR_ID, SITE_IDENTIFIER,
+                                              VISIT_NUMBER, BEC_ZONE, BEC_SBZ)],
                                by = c("SITE_IDENTIFIER", "VISIT_NUMBER")),
                         by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                         all.x = TRUE)
   stumptallies <- stumptallies[!is.na(CLSTR_ID),]
-  vi_g <- stumptallies[,.(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
+
+  stumptallies[, SPECIES := speciesCorrection(TREE_SPECIES_CODE,
+                                              BEC_ZONE,
+                                              BEC_SBZ)]
+  stumptallies[, TREE_SPECIES_CODE := NULL]
+  vi_g <- stumptallies[,.(CLSTR_ID, PLOT = "I", SPECIES,
                           FREQ = STUMP_OCCURRENCE_FREQUENCY, DIB = DIAMETER_INSIDE_BARK,
                           HEIGHT = STUMP_HEIGHT, PCT_SND = SOUND_WOOD_PERCENT,
                           WL_USE = WILDLIFE_USE_CODE, WL_WOOD = WOOD_CONDITION_CODE,
                           BARK_RET = BARK_RETENTION_CODE, ROOT_ROT = DAMAGE_AGENT_CODE)]
-  # vi_g <- merge(vi_g, specieslookup,
-  #               by = "TREE_SPECIES_CODE", all.x = TRUE)
-  setnames(vi_g, "TREE_SPECIES_CODE", "SPECIES")
   saveRDS(vi_g, file.path(outputPath, "vi_g.rds"))
+
+  return(sampleMsmts)
 }

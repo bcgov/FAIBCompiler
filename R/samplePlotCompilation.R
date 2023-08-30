@@ -25,6 +25,7 @@ samplePlotCompilation <- function(compilationType,
                                   mapPath,
                                   coeffPath){
   vi_a <- readRDS(file.path(dataSourcePath, "vi_a.rds"))
+  sites_treated <- unique(vi_a[SELECTIVELY_LOGGED_IND == "Y"]$SITE_IDENTIFIER)
   vi_a <- vi_a[substr(PROJ_ID, 1, 3) != "DEV",]
   vi_a <- vi_a[substr(TYPE_CD, 1, 1) != "E", ]
   # The plots belong to LGMW project, which samples each polygon (a unit of sample)
@@ -65,11 +66,11 @@ samplePlotCompilation <- function(compilationType,
     ## the bec zone with the most sites for a given region/compartment wins
     ## based on Rene's suggestions on March 14, 2023
     spatialAvailable <- unique(vi_a[!is.na(BEC),.(SITE_IDENTIFIER, BEC, BEC_SBZ, BEC_VAR,
-                                           TSA, TSA_DESC, SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER)],
+                                                  TSA, TSA_DESC, SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER)],
                                by = "SITE_IDENTIFIER")
     bec_avai <- spatialAvailable[, .(No_samples = length(SITE_IDENTIFIER)),
-                     by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER",
-                            "BEC", "BEC_SBZ", "BEC_VAR")]
+                                 by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER",
+                                        "BEC", "BEC_SBZ", "BEC_VAR")]
     bec_avai <- bec_avai[order(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER, -No_samples),
                          .(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
                            BEC_new = BEC,
@@ -87,8 +88,8 @@ samplePlotCompilation <- function(compilationType,
               BEC_VAR = BEC_VAR_new)]
     vi_a[is.na(BEC)]
     tsa_avai <- spatialAvailable[, .(No_samples = length(SITE_IDENTIFIER)),
-                     by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER",
-                            "TSA", "TSA_DESC")]
+                                 by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER",
+                                        "TSA", "TSA_DESC")]
     tsa_avai <- tsa_avai[order(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER, -No_samples),
                          .(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
                            TSA_new = TSA,
@@ -141,7 +142,7 @@ samplePlotCompilation <- function(compilationType,
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
-                                     TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
+                                     TSA, TSA_DESC, FIZ, TFL, TFL_LICENCEE, OWNER, SCHEDULE, OWNERSHIP_DESCRIPTION,
                                      PROJ_ID, SAMP_NO,
                                      SAMPLE_ESTABLISHMENT_TYPE = paste0("PSP_", PSP_TYPE), SAMPLE_SITE_NAME,
                                      SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
@@ -153,7 +154,7 @@ samplePlotCompilation <- function(compilationType,
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
-                                     TSA, TSA_DESC, FIZ, TFL, OWNER, SCHEDULE,
+                                     TSA, TSA_DESC, FIZ, TFL, TFL_LICENCEE, OWNER, SCHEDULE, OWNERSHIP_DESCRIPTION,
                                      PROJ_ID, SAMP_NO,
                                      SAMPLE_SITE_NAME,
                                      SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
@@ -176,7 +177,7 @@ samplePlotCompilation <- function(compilationType,
                   SAMPLE_BREAK_POINT,
                   SAMPLE_BREAK_POINT_TYPE,
                   DBH_LIMIT_TAG = DBH_TAGGING_LIMIT,
-                  DBHLIMIT_COUNT,
+                  # DBHLIMIT_COUNT,
                   PROJECT_DESCRIPTOR)]
   mapsource <- data.table(mapFile = dir(mapPath, pattern = "_map"))
   spatialLookups <- list(spatiallookup = spatialLookups,
@@ -211,8 +212,8 @@ samplePlotCompilation <- function(compilationType,
   sitetopography[, lastvisit := max(VISIT_NUMBER),
                  by = SITE_IDENTIFIER]
   sitetopography <- unique(sitetopography[VISIT_NUMBER == lastvisit,
-                                   .(SITE_IDENTIFIER, ELEVATION,
-                                     ASPECT, SLOPE)],
+                                          .(SITE_IDENTIFIER, ELEVATION,
+                                            ASPECT, SLOPE)],
                            by = "SITE_IDENTIFIER")
   spatialLookups$spatiallookup <- merge(spatialLookups$spatiallookup,
                                         sitetopography,
@@ -350,14 +351,58 @@ samplePlotCompilation <- function(compilationType,
                                           by = "SITE_IDENTIFIER",
                                           all.x = TRUE)
   }
+  vi_a[, ':='(visit_first = min(VISIT_NUMBER),
+              visit_last = max(VISIT_NUMBER)),
+       by = "SITE_IDENTIFIER"]
+  vi_a[VISIT_NUMBER == visit_first,
+       FIRST_MSMT := "Y"]
+  vi_a[is.na(FIRST_MSMT), FIRST_MSMT := "N"]
+
+  vi_a[VISIT_NUMBER == visit_last,
+       LAST_MSMT := "Y"]
+  vi_a[is.na(LAST_MSMT), LAST_MSMT := "N"]
   vi_a[,':='(BEC_ZONE = NULL,
-             FIZ = NULL)]
-  return(list(spatiallookup = spatialLookups,
-              samples = vi_a,
-              plots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, PLOT_AREA_MAIN, PLOT_AREA_SUBPLOT,
-                              BLOWUP_MAIN, BLOWUP_SUBPLOT,
-                              PLOT_SHAPE_CODE, F_RAD,
-                              PLOT_WIDTH, PLOT_LENGTH, V_BAF, SMALL_TREE_SUBPLOT_RADIUS,
-                              PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION)]))
+             FIZ = NULL,
+             visit_first = NULL,
+             visit_last = NULL)]
+  vi_a <- merge(vi_a,
+                spatialLookups$spatiallookup[,.(SITE_IDENTIFIER,
+                                                SAMPLE_ESTABLISHMENT_TYPE,
+                                                BEC_ZONE, BEC_SBZ, BEC_VAR,
+                                                FIZ, TSA)],
+                by = "SITE_IDENTIFIER",
+                all.x = TRUE)
+  saveRDS(spatialLookups,
+          file.path(mapPath,
+                    paste0("spatiallookup_", compilationType, ".rds")))
+  samplesites <- spatialLookups$spatiallookup
+  samplesites[, LICENCEE := TFL_LICENCEE]
+  samplesites[, LICENCEE := gsub("Corporation", "", LICENCEE)]
+  samplesites[, LICENCEE := gsub("Inc.", "", LICENCEE)]
+  samplesites[, LICENCEE := gsub("Ltd.", "", LICENCEE)]
+  samplesites[, LICENCEE := gsub("Ltd", "", LICENCEE)]
+  samplesites[, LICENCEE := gsub("Co.", "", LICENCEE)]
+  samplesites[, LICENCEE := gsub(" ", "", LICENCEE)]
+
+  samplesites[!is.na(TFL), MGMT_UNIT := paste0(TFL, "_", LICENCEE)]
+  samplesites[, TSA_DESC_temp := gsub(" ", "", gsub(" TSA", "", TSA_DESC))]
+  samplesites[is.na(MGMT_UNIT), MGMT_UNIT := paste0("TSA", TSA, "_", TSA_DESC_temp)]
+  samplesites[, BEC_VAR_tmp := BEC_VAR]
+  samplesites[is.na(BEC_VAR),
+              BEC_VAR_tmp := ""]
+  samplesites[, BECLABEL := paste0(BEC_ZONE, BEC_SBZ, BEC_VAR_tmp)]
+
+  samplesites[,':='(LICENCEE = NULL,
+                    TSA_DESC_temp = NULL,
+                    BEC_VAR_tmp = NULL)]
+  samplesites[SITE_IDENTIFIER %in% sites_treated,
+              TREATMENT := "THINNED"]
+  return(list(samplesites = samplesites,
+              samplevisits = vi_a,
+              sampleplots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, PLOT_AREA_MAIN, PLOT_AREA_SUBPLOT,
+                                    BLOWUP_MAIN, BLOWUP_SUBPLOT,
+                                    PLOT_SHAPE_CODE, F_RAD,
+                                    PLOT_WIDTH, PLOT_LENGTH, V_BAF, SMALL_TREE_SUBPLOT_RADIUS,
+                                    PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION)]))
 }
 
