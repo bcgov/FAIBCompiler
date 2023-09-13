@@ -23,9 +23,9 @@
 #' @rdname dataPrepSample
 #' @author Yong Luo
 dataPrepSample <- function(compilationType,
-                         inputPath,
-                         outputPath,
-                         coeffPath){
+                           inputPath,
+                           outputPath,
+                           coeffPath){
   sitenavigation <- readRDS(dir(inputPath, pattern = "SiteNavigation.rds", full.names = TRUE)) %>%
     data.table
   sitenavigation <- sitenavigation[!is.na(UTM_ZONE) &
