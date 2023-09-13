@@ -16,7 +16,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = c("AC", "AC", "AC"))
+                     TREE_SPECIES_CODE = c("AC", "AC", "AC"),
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
@@ -37,7 +46,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = c("AC", "AC"))
+                     TREE_SPECIES_CODE = c("AC", "AC"),
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 2))
@@ -58,7 +76,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = c("AC", "AC"))
+                     TREE_SPECIES_CODE = c("AC", "AC"),
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 2))
@@ -80,13 +107,22 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = c("B", "D", "AC"))
+                     TREE_SPECIES_CODE = c("B", "D", "AC"),
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$LVD_EDIT[3],
-               "Missing, added dead as no lvd next")
+               "Missing at last msmt, added dead")
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   expect_equal(tree_editted$TREE_SPECIES_CODE, c("AC", "AC", "AC"))
@@ -105,7 +141,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
@@ -128,7 +173,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
@@ -152,7 +206,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
@@ -176,7 +239,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 7, 7))
@@ -203,13 +275,22 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$LVD_EDIT, c(rep(as.character(NA), 2),
-                                        "Missing, added dead as no lvd next"))
+                                        "Missing at last msmt, added dead"))
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   rm(tree, tree_editted)
@@ -226,7 +307,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = "N",
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
@@ -249,7 +339,16 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      LENGTH = NA,
                      BROKEN_TOP_IND = c("N", "Y", "N"),
                      CROWN_CLASS_CODE = "D",
-                     TREE_SPECIES_CODE = "AC")
+                     TREE_SPECIES_CODE = "AC",
+                     TREE_MEASUREMENT_COMMENT = as.character(NA),
+                     TREE_SUPPRESSION_CODE = as.character(NA),
+                     SUITABLE_FOR_HEIGHT_IND = "Y",
+                     VETERAN_IND = "N",
+                     RESIDUAL_IND = "N",
+                     TREE_STANCE_CODE = "S",
+                     SUITABLE_FOR_SITE_INDEX_IND = "Y",
+                     SUITABLE_FOR_AGE_IND = "Y",
+                     AGE_REPRESENTATIVE_IND = "Y")
   tree_editted <- treemsmtEditing(treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$BROKEN_TOP_IND, c("N", "Y", "Y"))
