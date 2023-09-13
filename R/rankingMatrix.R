@@ -157,7 +157,7 @@ rankingMatrix <- function(archivedPSPPath,
                                             4.0,
                                             DBH_LIMIT_TAG))]
 
-  smry_all[, STEMS_HA_L := STEMS_HA_LS + STEMS_HA_LF] # all live trees regardless of standing or falling
+  smry_all[, STEMS_HA_L := STEMS_HA_LIV] # all live trees regardless of standing or falling
 
 
   smry_all[, AREA_PM_MIN := ifelse(round(AREA, digits = 2) >= 0.04 & !is.na(AREA),
@@ -502,8 +502,8 @@ rankingMatrix <- function(archivedPSPPath,
 
 
   #-------------------------------------#
-  smry_all[, ':='(VHA_WSV_L = VHA_WSV_LF + VHA_WSV_LS,
-                  VHA_MER_L = VHA_MER_LF + VHA_MER_LS)]
+  smry_all[, ':='(VHA_WSV_L = VHA_WSV_LIV,
+                  VHA_MER_L = VHA_MER_LIV)]
 
   mastertable <- unique(smry_all[,.(SITE_IDENTIFIER)])
 
