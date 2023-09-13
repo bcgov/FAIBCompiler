@@ -921,6 +921,23 @@ ISMCCompiler <- function(compilationType,
                          prep_smy_temp,
                          by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                          all.x = TRUE)
+    prep_smy <- merge(prep_smy,
+                      treelist_db[,.(CLSTR_ID, PLOT, TREE_NO, RESIDUAL_IND)],
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                      all.x = TRUE)
+    ingrowthtrees <- readRDS(file.path(compilationPaths$compilation_db,
+                                     "component_change_treelevel.rds"))
+    ingrowthtrees <- ingrowthtrees[COMPONENT_CHANGE == "I",
+                                   .(CLSTR_ID  = paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER),
+                                     PLOT,
+                                      TREE_NO,
+                                      INGROWTH = "Y")]
+    prep_smy <- merge(prep_smy,
+                      ingrowthtrees,
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                      all.x = TRUE)
+    prep_smy[is.na(INGROWTH), INGROWTH := "N"]
+    rm(ingrowthtrees)
   }
   saveRDS(treelist_db[order(CLSTR_ID, PLOT, TREE_NO),],
           file.path(compilationPaths$compilation_db, "treelist.rds"))
@@ -929,24 +946,42 @@ ISMCCompiler <- function(compilationType,
 
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
   cat(paste(substr(Sys.time(), 1, 16), ": Summarize volume at sample level.\n", sep = ""))
+  if(compilationType == "nonPSP"){
   nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
     data.table
-  if(compilationType == "nonPSP"){
     vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
                                  clusterPlotHeader = samples,
                                  utilLevel = utilLevel,
                                  weirdUtil = weirdUtil,
                                  equation = "KBEC",
                                  nvafRatio = nvafratio)
+    # for eysm samples, the QMD will be forced to NA, as the DBH infor is not available for them
+    vrisummaries$vol_bycs <- merge(vrisummaries$vol_bycs,
+                                   unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
+                                          by = "CLSTR_ID"),
+                                   by = "CLSTR_ID",
+                                   all.x = TRUE)
+    vrisummaries$vol_bycs[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
+                          ':='(QMD_LS = NA,
+                               QMD_DS = NA)]
+    vrisummaries$vol_byc <- merge(vrisummaries$vol_byc,
+                                  unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
+                                         by = "CLSTR_ID"),
+                                  by = "CLSTR_ID",
+                                  all.x = TRUE)
+    vrisummaries$vol_byc[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
+                         ':='(QMD_LS = NA,
+                              QMD_DS = NA)]
+    vrisummaries$vol_bycs[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
+    vrisummaries$vol_byc[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
   } else {
     samples_tmp <- data.table::copy(samples)
     samples_tmp[, NO_PLOTS := 1]
-    vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
+    vrisummaries <- VolumeSummaries_PSP(allVolumeTrees = data.table::copy(prep_smy),
                                  clusterPlotHeader = samples_tmp,
                                  utilLevel = 3,
                                  weirdUtil = c("2", "4"),
-                                 equation = "KBEC",
-                                 nvafRatio = nvafratio)
+                                 equation = "KBEC")
     rm(samples_tmp)
     dbh_tagged_range <- prep_smy[MEASUREMENT_ANOMALY_CODE != "PSP-TALLY" |
                                    is.na(MEASUREMENT_ANOMALY_CODE),
@@ -990,31 +1025,6 @@ ISMCCompiler <- function(compilationType,
             file.path(compilationPaths$compilation_db,
                       "sample_msmt_header.rds"))
   }
-  vrisummaries$vol_bycs[,':='(VHA_DWB_LF = NULL,
-                              VHA_DWB_DS = NULL,
-                              VHA_DWB_DF = NULL)]
-  vrisummaries$vol_byc[,':='(VHA_DWB_LF = NULL,
-                             VHA_DWB_DS = NULL,
-                             VHA_DWB_DF = NULL)]
-  # for eysm samples, the QMD will be forced to NA, as the DBH infor is not available for them
-  vrisummaries$vol_bycs <- merge(vrisummaries$vol_bycs,
-                                 unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
-                                        by = "CLSTR_ID"),
-                                 by = "CLSTR_ID",
-                                 all.x = TRUE)
-  vrisummaries$vol_bycs[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
-                        ':='(QMD_LS = NA,
-                             QMD_DS = NA)]
-  vrisummaries$vol_byc <- merge(vrisummaries$vol_byc,
-                                unique(samples[,.(CLSTR_ID, SAMPLE_ESTABLISHMENT_TYPE)],
-                                       by = "CLSTR_ID"),
-                                by = "CLSTR_ID",
-                                all.x = TRUE)
-  vrisummaries$vol_byc[SAMPLE_ESTABLISHMENT_TYPE == "EYSM",
-                       ':='(QMD_LS = NA,
-                            QMD_DS = NA)]
-  vrisummaries$vol_bycs[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
-  vrisummaries$vol_byc[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
   saveRDS(vrisummaries$vol_bycs, file.path(compilationPaths$compilation_db, "Smries_volume_byCLSP.rds"))
   saveRDS(vrisummaries$vol_byc, file.path(compilationPaths$compilation_db, "Smries_volume_byCL.rds"))
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
@@ -1054,14 +1064,6 @@ ISMCCompiler <- function(compilationType,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCL.rds"))
   saveRDS(stumpCompile$stmp_cs,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
-
-  #############################
-  # for publish
-  if(forPublish){
-    cat(paste(substr(Sys.time(), 1, 16), ": Prepare data for publish.\n", sep = ""))
-    preparePublishData(compilationPaths,
-                       compilationType)
-  }
 
   #############################
   cat(paste(substr(Sys.time(), 1, 16), ": Generate data dictionary.\n", sep = ""))
@@ -1114,6 +1116,7 @@ ISMCCompiler <- function(compilationType,
   }
 
   if(nrow(col_missing) > 0){
+    col_missing <- unique(col_missing)
     warning("There are some attributes do not have description. Please add them in the master table.")
     datadictionary_master <- rbind(datadictionary_master,
                                    col_missing)
