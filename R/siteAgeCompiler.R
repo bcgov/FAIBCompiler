@@ -69,7 +69,7 @@ setMethod(
     ## assign bored age, first part of the age-ind.sas
     ## need check with rene to make sure the order makes sense
     siteAgeData[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NO)]
-
+browser()
     siteAgeData[, HT_CALC := BORED_HT]
     siteAgeData[!(BORE_AGE_LAB %in% c(NA, 0)),
                 ':='(AGE_BOR = boredAgeCalculator_Bore(officeBoredAge = as.numeric(BORE_AGE_LAB)),

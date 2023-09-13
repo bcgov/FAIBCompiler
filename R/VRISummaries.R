@@ -232,6 +232,12 @@ setMethod(
                   "SP0", "SA_VEGCOMP") := NULL]
     volsmy_c[, c(paste0("DBH2", c("_LS", "_LF", "_DS", "_DF")),
                  paste0("QMD", c("_LF", "_DF"))) := NULL]
+    volsmy_cs[,':='(VHA_DWB_LF = NULL,
+                                VHA_DWB_DS = NULL,
+                                VHA_DWB_DF = NULL)]
+    volsmy_c[,':='(VHA_DWB_LF = NULL,
+                               VHA_DWB_DS = NULL,
+                               VHA_DWB_DF = NULL)]
     return(list(vol_bycs = volsmy_cs,
                 vol_byc = volsmy_c,
                 heightsmry_byc = heightsmry_c,
