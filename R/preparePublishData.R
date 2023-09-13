@@ -1,99 +1,70 @@
 # prepare publish data
-preparePublishData <- function(compilationPaths,
+preparePublishData <- function(compilationPath,
+                               publishPath,
                                compilationType){
-  sampsites_org <- readRDS(file.path(compilationPaths$compilation_db,
+  if(dir.exists(publishPath)){
+    unlink(publishPath, recursive = TRUE)
+  }
+  dir.create(publishPath)
+  datadictionary_all <- read.xlsx(file.path(compilationPath,
+                                            "compilation_coeff",
+                                            "data_dictionary_master.xlsx")) %>%
+    data.table
+  datadictionary_all <- datadictionary_all[,.(Attribute = ColumnName,
+                                              Description)]
+  datadictionary_publish <- list()
+
+  sampsites_org <- readRDS(file.path(compilationPath,
+                                     paste0("compilation_", compilationType, "_db"),
                                      "sample_site_header.rds"))
 
-  tflmap <- readRDS(dir(compilationPaths$compilation_map,
-                        pattern = "TFL_map",
-                        full.names = TRUE))
-  tflmap_table <- data.table(data.frame(tflmap$map))
-  tflmap_table <- unique(tflmap_table[,.(TFL = FOREST_FILE_ID, LICENCEE)])
-  tflmap_table[, LICENCEE := gsub("Corporation", "", LICENCEE)]
-  tflmap_table[, LICENCEE := gsub("Inc.", "", LICENCEE)]
-  tflmap_table[, LICENCEE := gsub("Ltd.", "", LICENCEE)]
-  tflmap_table[, LICENCEE := gsub("Ltd", "", LICENCEE)]
-  tflmap_table[, LICENCEE := gsub("Co.", "", LICENCEE)]
-  tflmap_table[, LICENCEE := gsub(" ", "", LICENCEE)]
-  sampsites <- merge(sampsites_org,
-                     tflmap_table,
-                     by = "TFL",
-                     all.x = TRUE)
-  sampsites[!is.na(TFL), MGMT_UNIT := paste0(TFL, "_", LICENCEE)]
-  sampsites[, TSA_DESC := gsub(" ", "", gsub(" TSA", "", TSA_DESC))]
-
-  sampsites[is.na(MGMT_UNIT), MGMT_UNIT := paste0("TSA", TSA, "_", TSA_DESC)]
-
-
-  ownermap <- readRDS(dir(compilationPaths$compilation_map,
-                          pattern = "Ownership_map",
-                          full.names = TRUE))
-  ownermap_table <- data.table(data.frame(ownermap$map))
-  ownermap_table <- unique(ownermap_table[,.(OWNER = OWN,
-                                             SCHEDULE,
-                                             OWN_SCHED_DESCRIP = OWNERSHIP_DESCRIPTION)])
-
-  ownermap_table <- ownermap_table[,.(OWN_SCHED_DESCRIP = paste0(OWN_SCHED_DESCRIP, collapse = " or ")),
-                                   by = c("OWNER", "SCHEDULE")]
-  sampsites <- merge(sampsites,
-                     ownermap_table,
-                     by = c("OWNER", "SCHEDULE"),
-                     all.x = TRUE)
-
-  faib_header <- sampsites[,.(SITE_IDENTIFIER, BC_ALBERS_X, BC_ALBERS_Y, BEC_ZONE, BEC_SBZ,
+  faib_header <- sampsites_org[,.(SITE_IDENTIFIER, BC_ALBERS_X, BC_ALBERS_Y, BEC_ZONE, BEC_SBZ,
                               BEC_VAR, FIZ, IP_UTM, IP_EAST, IP_NRTH, Latitude, Longitude,
                               OWNER, SCHEDULE,
                               SAMPLE_TYPE = SAMPLE_ESTABLISHMENT_TYPE,
                               TFL, TSA, TSA_DESC, MGMT_UNIT,
-                              OWN_SCHED_DESCRIP,
+                              OWN_SCHED_DESCRIP = OWNERSHIP_DESCRIPTION,
                               GRID_BASE = NA, GRID_SIZE = NA)]
   write.csv(faib_header,
-            file.path(compilationPaths$compilation_publish,
-                      "faib_header.rds"),
+            file.path(publishPath,
+                      "faib_header.csv"),
             row.names = FALSE,
             na = "")
+  faib_header_dic <- data.table(Attribute = names(faib_header))
+  faib_header_dic <- merge(faib_header_dic,
+                           datadictionary_all,
+                           by = "Attribute",
+                           all.x = TRUE)
+  datadictionary_publish[["faib_header"]] <- faib_header_dic
 
-  sampvisits <- readRDS(file.path(compilationPaths$compilation_db,
+
+  sampvisits <- readRDS(file.path(compilationPath,
+                                  paste0("compilation_", compilationType, "_db"),
                                   "sample_msmt_header.rds"))
 
   sampvisits <- merge(sampvisits,
-                      sampsites_org[,.(SITE_IDENTIFIER, PROJ_AGE_1, PROJECTED_DATE,
+                      sampsites_org[,.(SITE_IDENTIFIER,
                                        SAMPLE_SITE_NAME, SAMPLE_ESTABLISHMENT_TYPE)],
                       by = "SITE_IDENTIFIER",
                       all.x = TRUE)
 
-  sampvisits[, ':='(visit_first = min(VISIT_NUMBER),
-                    visit_last = max(VISIT_NUMBER)),
-             by = "SITE_IDENTIFIER"]
-  sampvisits[VISIT_NUMBER == visit_first,
-             FIRST_MSMT := "Y"]
-  sampvisits[is.na(FIRST_MSMT), FIRST_MSMT := "N"]
-
-  sampvisits[VISIT_NUMBER == visit_last,
-             LAST_MSMT := "Y"]
-  sampvisits[is.na(LAST_MSMT), LAST_MSMT := "N"]
-
-  sampvisits[,':='(sa_ref = PROJ_AGE_1,
-                   year_ref = as.numeric(substr(PROJECTED_DATE, 1, 4)))]
-  sampvisits[, PROJ_AGE_ADJ := sa_ref - (year_ref - MEAS_YR)]
-
   sampvisits_first <- sampvisits[FIRST_MSMT == "Y",
                                  .(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE,
-                                   PROJ_AGE_ADJ)]
+                                   SA_VEGCOMP)]
   sampvisits_first[SAMPLE_ESTABLISHMENT_TYPE %in% c("CMI", "NFI", "SUP") &
-                     PROJ_AGE_ADJ > 50,
+                     SA_VEGCOMP > 50,
                    MAT_MAIN_FM := "Y"]
   sampvisits_first[is.na(MAT_MAIN_FM),
                    MAT_MAIN_FM := "N"]
 
   sampvisits_first[SAMPLE_ESTABLISHMENT_TYPE %in% c("CMI", "NFI", "YSM") &
-                     PROJ_AGE_ADJ <= 50 & PROJ_AGE_ADJ >= 15,
+                     SA_VEGCOMP <= 50 & SA_VEGCOMP >= 15,
                    YSM_MAIN_FM := "Y"]
   sampvisits_first[is.na(YSM_MAIN_FM),
                    YSM_MAIN_FM := "N"]
 
   sampvisits_first[SAMPLE_ESTABLISHMENT_TYPE == "YNS" &
-                     PROJ_AGE_ADJ <= 50 & PROJ_AGE_ADJ >= 15,
+                     SA_VEGCOMP <= 50 & SA_VEGCOMP >= 15,
                    YSM_PILOT_FM := "Y"]
   sampvisits_first[is.na(YSM_PILOT_FM),
                    YSM_PILOT_FM := "N"]
@@ -105,20 +76,20 @@ preparePublishData <- function(compilationPaths,
 
   sampvisits_last <- sampvisits[LAST_MSMT == "Y",
                                 .(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE,
-                                  PROJ_AGE_ADJ)]
+                                  SA_VEGCOMP)]
   sampvisits_last[SAMPLE_ESTABLISHMENT_TYPE %in% c("CMI", "NFI", "SUP") &
-                    PROJ_AGE_ADJ > 50,
+                    SA_VEGCOMP > 50,
                   MAT_MAIN_LM := "Y"]
   sampvisits_last[is.na(MAT_MAIN_LM),
                   MAT_MAIN_LM := "N"]
 
   sampvisits_last[SAMPLE_ESTABLISHMENT_TYPE %in% c("CMI", "NFI", "YSM") &
-                    PROJ_AGE_ADJ <= 50 & PROJ_AGE_ADJ >= 15,
+                    SA_VEGCOMP <= 50 & SA_VEGCOMP >= 15,
                   YSM_MAIN_LM := "Y"]
   sampvisits_last[is.na(YSM_MAIN_LM),
                   YSM_MAIN_LM := "N"]
   sampvisits_last[SAMPLE_ESTABLISHMENT_TYPE == "YNS" &
-                    PROJ_AGE_ADJ <= 50 & PROJ_AGE_ADJ >= 15,
+                    SA_VEGCOMP <= 50 & SA_VEGCOMP >= 15,
                   YSM_PILOT_LM := "Y"]
   sampvisits_last[is.na(YSM_PILOT_LM),
                   YSM_PILOT_LM := "N"]
@@ -131,33 +102,43 @@ preparePublishData <- function(compilationPaths,
   faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                        VISIT_NUMBER, FIRST_MSMT, LAST_MSMT,
                                        MEAS_DT, MEAS_YR, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
-                                       PROJ_AGE_ADJ,
+                                       PROJ_AGE_ADJ = SA_VEGCOMP,
                                        SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
                                        SAMPLE_ESTABLISHMENT_TYPE,
                                        MAT_MAIN_FM, MAT_MAIN_LM,
                                        YSM_MAIN_FM, YSM_MAIN_LM,
                                        YSM_PILOT_FM, YSM_PILOT_LM)]
   write.csv(faib_sample_byvisit,
-            file.path(compilationPaths$compilation_publish,
-                      "faib_sample_byvisit.rds"),
+            file.path(publishPath,
+                      "faib_sample_byvisit.csv"),
             row.names = FALSE,
             na = "")
+  faib_sample_byvisit_dic <- data.table(Attribute = names(faib_sample_byvisit))
+  faib_sample_byvisit_dic <- merge(faib_sample_byvisit_dic,
+                           datadictionary_all,
+                           by = "Attribute",
+                           all.x = TRUE)
+  datadictionary_publish[["faib_sample_byvisit"]] <- faib_sample_byvisit_dic
 
-  volsmry <- readRDS(file.path(compilationPaths$compilation_db,
+
+  volsmry <- readRDS(file.path(compilationPath,
+                               paste0("compilation_", compilationType, "_db"),
                                "Smries_volume_byCL.rds"))
   volsmry <- merge(volsmry,
                    sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                    by = "CLSTR_ID",
                    all.x = TRUE)
 
-  spcomp <- readRDS(file.path(compilationPaths$compilation_db,
+  spcomp <- readRDS(file.path(compilationPath,
+                              paste0("compilation_", compilationType, "_db"),
                               "Smries_speciesComposition_byCL.rds"))
 
   volsmry <- merge(volsmry,
                    spcomp,
                    by = c("CLSTR_ID", "UTIL"),
                    all.x = TRUE)
-  htsmry <- readRDS(file.path(compilationPaths$compilation_db,
+  htsmry <- readRDS(file.path(compilationPath,
+                              paste0("compilation_", compilationType, "_db"),
                               "Smries_height_byCL.rds"))
   volsmry <- merge(volsmry,
                    htsmry,
@@ -176,19 +157,29 @@ preparePublishData <- function(compilationPaths,
                                       HT_MEAN1, HT_MEAN2, HT_MNALL)]
 
   write.csv(faib_compiled_smeries,
-            file.path(compilationPaths$compilation_publish,
-                      "faib_compiled_smeries.rds"),
+            file.path(publishPath,
+                      "faib_compiled_smeries.csv"),
             row.names = FALSE,
             na = "")
 
-  volsmry_sp <- readRDS(file.path(compilationPaths$compilation_db,
+  faib_compiled_smeries_dic <- data.table(Attribute = names(faib_compiled_smeries))
+  faib_compiled_smeries_dic <- merge(faib_compiled_smeries_dic,
+                                   datadictionary_all,
+                                   by = "Attribute",
+                                   all.x = TRUE)
+  datadictionary_publish[["faib_compiled_smeries"]] <- faib_compiled_smeries_dic
+
+
+  volsmry_sp <- readRDS(file.path(compilationPath,
+                                  paste0("compilation_", compilationType, "_db"),
                                   "Smries_volume_byCLSP.rds"))
 
   volsmry_sp <- merge(volsmry_sp,
                       sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                       by = "CLSTR_ID",
                       all.x = TRUE)
-  agesmry_sp <- readRDS(file.path(compilationPaths$compilation_db,
+  agesmry_sp <- readRDS(file.path(compilationPath,
+                                  paste0("compilation_", compilationType, "_db"),
                                   "Smries_siteAge_byCLSP.rds"))
 
   volsmry_sp <- merge(volsmry_sp,
@@ -209,12 +200,19 @@ preparePublishData <- function(compilationPaths,
                                            AGEB_TLSO, AGET_TLSO, HT_TLSO,
                                            SI_M_TLSO, N_AG_TLSO, N_HT_TLSO)]
   write.csv(faib_compiled_spcsmries,
-            file.path(compilationPaths$compilation_publish,
-                      "faib_compiled_spcsmries.rds"),
+            file.path(publishPath,
+                      "faib_compiled_spcsmries.csv"),
             row.names = FALSE,
             na = "")
+  faib_compiled_spcsmries_dic <- data.table(Attribute = names(faib_compiled_spcsmries))
+  faib_compiled_spcsmries_dic <- merge(faib_compiled_spcsmries_dic,
+                                     datadictionary_all,
+                                     by = "Attribute",
+                                     all.x = TRUE)
+  datadictionary_publish[["faib_compiled_spcsmries"]] <- faib_compiled_spcsmries_dic
 
-  treemsmt <- readRDS(file.path(compilationPaths$compilation_sa,
+  treemsmt <- readRDS(file.path(compilationPath,
+                                paste0("compilation_", compilationType, "_sa"),
                                 "treemeasurements.rds"))
 
   treemsmt[DIAMETER_MEASMT_HEIGHT %==% 1.3 &
@@ -225,9 +223,9 @@ preparePublishData <- function(compilationPaths,
   treemsmt[!is.na(TREE_STANCE_CODE),
            TREE_STANCE_CODE := "S"]
 
-
   faib_tree_detail <- treemsmt[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NO = TREE_NUMBER,
-                                  SPECIES, DBH, HEIGHT,
+                                  SPECIES = TREE_SPECIES_CODE,
+                                  DBH, HEIGHT,
                                   LV_D = TREE_EXTANT_CODE,
                                   LVD_EDIT, DIAMETER_EDIT,
                                   HEIGHT_EDIT, MSMT_MISSING_EDIT,
@@ -242,7 +240,8 @@ preparePublishData <- function(compilationPaths,
                                   AZIMUTH = STEM_MAP_BEARING,
                                   DISTANCE = STEM_MAP_DISTANCE)]
 
-  treelist <- readRDS(file.path(compilationPaths$compilation_db,
+  treelist <- readRDS(file.path(compilationPath,
+                                paste0("compilation_", compilationType, "_db"),
                                 "treelist.rds"))
   faib_tree_detail <- merge(faib_tree_detail,
                             treelist[,.(CLSTR_ID, PLOT, TREE_NO,
@@ -251,7 +250,8 @@ preparePublishData <- function(compilationPaths,
                             by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                             all.x = TRUE)
 
-  vih <- readRDS(file.path(compilationPaths$compilation_db,
+  vih <- readRDS(file.path(compilationPath,
+                           paste0("compilation_", compilationType, "_db"),
                            "compiled_vi_h.rds"))
 
   faib_tree_detail <- merge(faib_tree_detail,
@@ -261,7 +261,8 @@ preparePublishData <- function(compilationPaths,
                             by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                             all.x = TRUE)
 
-  vid <- readRDS(file.path(compilationPaths$compilation_db,
+  vid <- readRDS(file.path(compilationPath,
+                           paste0("compilation_", compilationType, "_db"),
                            "compiled_vi_d.rds"))
 
   faib_tree_detail <- merge(faib_tree_detail,
@@ -271,7 +272,8 @@ preparePublishData <- function(compilationPaths,
                             by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                             all.x = TRUE)
 
-  compchange <- readRDS(file.path(compilationPaths$compilation_db,
+  compchange <- readRDS(file.path(compilationPath,
+                                  paste0("compilation_", compilationType, "_db"),
                                   "component_change_treelevel.rds"))
   faib_tree_detail <- merge(faib_tree_detail,
                             compchange[,.(SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NO,
@@ -287,7 +289,8 @@ preparePublishData <- function(compilationPaths,
   faib_tree_detail[OUT_OF_PLOT_IND == "Y",
                    MEAS_INTENSE := "OUT_OF_PLOT"]
 
-  sampplot <- readRDS(file.path(compilationPaths$compilation_db,
+  sampplot <- readRDS(file.path(compilationPath,
+                                paste0("compilation_", compilationType, "_db"),
                                 "sample_plot_header.rds"))
   faib_tree_detail <- merge(faib_tree_detail,
                             sampplot[,.(CLSTR_ID, PLOT, PLOT_WT)],
@@ -300,9 +303,18 @@ preparePublishData <- function(compilationPaths,
   # there still two variables missing x y coord
 
   write.csv(faib_tree_detail,
-            file.path(compilationPaths$compilation_publish,
-                      "faib_tree_detail.rds"),
+            file.path(publishPath,
+                      "faib_tree_detail.csv"),
             row.names = FALSE,
             na = "")
 
+  faib_tree_detail_dic <- data.table(Attribute = names(faib_tree_detail))
+  faib_tree_detail_dic <- merge(faib_tree_detail_dic,
+                                       datadictionary_all,
+                                       by = "Attribute",
+                                       all.x = TRUE)
+  datadictionary_publish[["faib_tree_detail"]] <- faib_tree_detail_dic
+
+  write.xlsx(datadictionary_publish,
+             file.path(publishPath, "data_dictionary.xlsx"))
 }
