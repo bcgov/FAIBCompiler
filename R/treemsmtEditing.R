@@ -94,21 +94,23 @@ treemsmtEditing <- function(treemsmts,
               grepl("tagged with no prev. measurement data.", TREE_MEASUREMENT_COMMENT) |
               grepl("found w/no data.", TREE_MEASUREMENT_COMMENT),
             lvd_comment := "L"]
-  trees_live_comment <- treemsmts[lvd_comment == "L",
-                                  .(confirm_live_visit = max(VISIT_NUMBER)),
-                                  by = "unitreeid"]
-  treemsmts <- merge(treemsmts,
-                     trees_live_comment,
-                     by = "unitreeid",
-                     all.x = TRUE)
-  treemsmts[VISIT_NUMBER <= confirm_live_visit &
-              TREE_EXTANT_CODE == "D",
-            ':='(TREE_EXTANT_CODE = "L",
-                 LVD_EDIT = "Back to L based on tree measurement comments")] # any msmt before this visit and lv_d == "D" need to be corrected
-  # to L
-  treemsmts[, ':='(lvd_comment = NULL,
-                   confirm_live_visit  = NULL)]
-  rm(trees_live_comment)
+  if(nrow(treemsmts[lvd_comment == "L",]) > 0){
+    trees_live_comment <- treemsmts[lvd_comment == "L",
+                                    .(confirm_live_visit = max(VISIT_NUMBER)),
+                                    by = "unitreeid"]
+    treemsmts <- merge(treemsmts,
+                       trees_live_comment,
+                       by = "unitreeid",
+                       all.x = TRUE)
+    treemsmts[VISIT_NUMBER <= confirm_live_visit &
+                TREE_EXTANT_CODE == "D",
+              ':='(TREE_EXTANT_CODE = "L",
+                   LVD_EDIT = "Back to L based on tree measurement comments")] # any msmt before this visit and lv_d == "D" need to be corrected
+    # to L
+    treemsmts[, ':='(lvd_comment = NULL,
+                     confirm_live_visit  = NULL)]
+    rm(trees_live_comment)
+  }
   ## correction 3, if a tree was dead at current msmt but live in the later msmts,
   # change this tree for current msmt as L
   trees_live <- treemsmts[TREE_EXTANT_CODE == "L",
@@ -212,7 +214,6 @@ treemsmtEditing <- function(treemsmts,
   # 2. add missing observation in between two msmt
   msmts_tree <- unique(treemsmts[,.(unitreeid, SITE_IDENTIFIER, VISIT_NUMBER,
                                     intreemsmt = TRUE)])
-
   msmts_tree_range <- msmts_tree[, .(visit_first = min(VISIT_NUMBER),
                                      visit_last = max(VISIT_NUMBER)),
                                  by = "unitreeid"]
@@ -337,23 +338,25 @@ treemsmtEditing <- function(treemsmts,
   ## 4. if a tree was broken top tree, this tree is always be btop trees in sequential msmt
   ### force trees that have length of 1.4 or less as broken top trees
   treemsmts[LENGTH %<=% 1.4 & BROKEN_TOP_IND == "N",
-           ':='(BROKEN_TOP_IND = "Y",
-                BTOP_EDIT = "Corrected to Y as the height is less than 1.4m")]
+            ':='(BROKEN_TOP_IND = "Y",
+                 BTOP_EDIT = "Corrected to Y as the height is less than 1.4m")]
   tree_btop <- treemsmts[BROKEN_TOP_IND == "Y",
                          .(unitreeid, VISIT_NUMBER, BROKEN_TOP_IND)]
-  tree_btop[, visit_ref := min(VISIT_NUMBER), by = "unitreeid"]
-  tree_btop <- tree_btop[visit_ref == VISIT_NUMBER,
-                         .(unitreeid, visit_ref, btop_ref = BROKEN_TOP_IND)]
-  treemsmts <- merge(treemsmts,
-                     tree_btop,
-                     by = "unitreeid",
-                     all.x = TRUE)
-  treemsmts[VISIT_NUMBER > visit_ref &
-              BROKEN_TOP_IND %in% c("N", NA),
-            ':='(BROKEN_TOP_IND = "Y",
-                 BTOP_EDIT = "Change to Y based on previous msmt")]
-  treemsmts[, ':='(btop_ref = NULL,
-                   visit_ref = NULL)]
+  if(nrow(tree_btop) > 0){
+    tree_btop[, visit_ref := min(VISIT_NUMBER), by = "unitreeid"]
+    tree_btop <- tree_btop[visit_ref == VISIT_NUMBER,
+                           .(unitreeid, visit_ref, btop_ref = BROKEN_TOP_IND)]
+    treemsmts <- merge(treemsmts,
+                       tree_btop,
+                       by = "unitreeid",
+                       all.x = TRUE)
+    treemsmts[VISIT_NUMBER > visit_ref &
+                BROKEN_TOP_IND %in% c("N", NA),
+              ':='(BROKEN_TOP_IND = "Y",
+                   BTOP_EDIT = "Change to Y based on previous msmt")]
+    treemsmts[, ':='(btop_ref = NULL,
+                     visit_ref = NULL)]
+  }
 
   treeid_no_diam <- unique(treemsmts[is.na(DIAMETER)]$unitreeid)
   treemsmts_good <- treemsmts[!(unitreeid %in% treeid_no_diam),]
@@ -419,21 +422,24 @@ treemsmtEditing <- function(treemsmts,
   treelist_withcrcl <- treemsmts_bad[!is.na(CROWN_CLASS_CODE),
                                      .(unitreeid,
                                        VISIT_NUMBER, CROWN_CLASS_CODE)]
-  treelist_withcrcl[, firstVisit := min(VISIT_NUMBER),
-                    by = c("unitreeid")]
-  treelist_withcrcl <- treelist_withcrcl[VISIT_NUMBER == firstVisit,
-                                         .(unitreeid,
-                                           visit_ref = VISIT_NUMBER,
-                                           CROWN_CLASS_CODE_ref = CROWN_CLASS_CODE)]
-  treemsmts_bad <- merge(treemsmts_bad,
-                         treelist_withcrcl,
-                         by = c("unitreeid"),
-                         all.x = TRUE)
-  treemsmts_bad[VISIT_NUMBER < visit_ref & is.na(CROWN_CLASS_CODE),
-                ':='(CROWN_CLASS_CODE = CROWN_CLASS_CODE_ref,
-                     CRCL_EDIT = "Missing, assigned based on next available crown CR_CL")]
-  treemsmts_bad[,':='(visit_ref = NULL,
-                      CROWN_CLASS_CODE_ref = NULL)]
+  if(nrow(treelist_withcrcl) > 0){
+    treelist_withcrcl[, firstVisit := min(VISIT_NUMBER),
+                      by = c("unitreeid")]
+    treelist_withcrcl <- treelist_withcrcl[VISIT_NUMBER == firstVisit,
+                                           .(unitreeid,
+                                             visit_ref = VISIT_NUMBER,
+                                             CROWN_CLASS_CODE_ref = CROWN_CLASS_CODE)]
+    treemsmts_bad <- merge(treemsmts_bad,
+                           treelist_withcrcl,
+                           by = c("unitreeid"),
+                           all.x = TRUE)
+    treemsmts_bad[VISIT_NUMBER < visit_ref & is.na(CROWN_CLASS_CODE),
+                  ':='(CROWN_CLASS_CODE = CROWN_CLASS_CODE_ref,
+                       CRCL_EDIT = "Missing, assigned based on next available crown CR_CL")]
+    treemsmts_bad[,':='(visit_ref = NULL,
+                        CROWN_CLASS_CODE_ref = NULL)]
+
+  }
   treemsmts_bad[is.na(CROWN_CLASS_CODE),
                 CRCL_EDIT := "Missing, no clue to add"]
   treemsmts <- rbind(treemsmts_good, treemsmts_bad, fill = TRUE)
@@ -566,18 +572,18 @@ treemsmtEditing <- function(treemsmts,
                  SUIT_SI_EDIT = "Missing, assigned to N as not suit for age")]
 
   treemsmts[(substr(AGE_MEASURE_CODE, 1, 1) %in% c("R", "C") |
-              SUITABLE_FOR_AGE_IND == "N" |
-              AGE_REPRESENTATIVE_IND == "N") &
+               SUITABLE_FOR_AGE_IND == "N" |
+               AGE_REPRESENTATIVE_IND == "N") &
               SUITABLE_FOR_SITE_INDEX_IND == "Y",
             ':='(SUITABLE_FOR_SITE_INDEX_IND = "N",
                  SUIT_SI_EDIT = "Corrected to N as not suit for age")]
   treemsmts[(CROWN_CLASS_CODE %in% c("S", "I") |
-              TREE_SUPPRESSION_CODE == "Y") &
+               TREE_SUPPRESSION_CODE == "Y") &
               SUITABLE_FOR_SITE_INDEX_IND == "Y",
             ':='(SUITABLE_FOR_SITE_INDEX_IND = "N",
                  SUIT_SI_EDIT = "Corrected to N as not dominant or codominant tree")]
   treemsmts[(CROWN_CLASS_CODE %in% c("S", "I") |
-              TREE_SUPPRESSION_CODE == "Y") &
+               TREE_SUPPRESSION_CODE == "Y") &
               is.na(SUITABLE_FOR_SITE_INDEX_IND),
             ':='(SUITABLE_FOR_SITE_INDEX_IND = "N",
                  SUIT_SI_EDIT = "Missing, assigned to N as not dominant or codominant tree")]
