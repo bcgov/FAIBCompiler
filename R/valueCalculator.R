@@ -24,7 +24,6 @@
 #' @importFrom data.table ':=' data.table
 #' @importFrom dplyr '%>%'
 #' @importFrom FAIBBase merge_dupUpdate
-#' @note
 #'
 #' @export
 #' @docType methods
