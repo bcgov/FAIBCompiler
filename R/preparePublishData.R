@@ -1,4 +1,20 @@
-# prepare publish data
+#' Prepare the compiled data for publish
+#' @description To prepare the compiled data for publish, currently supporting nonPSP part
+#'
+#' @param compilationPath character, The path to the compiled PSP data, which is configured
+#'                        from \code{ISMCCompiler}.
+#' @param publishPath character, The path to save prepared data.
+#' @param compilationType character, Specifies the compilation type either \code{nonPSP} or code{PSP}.
+#' @return no value returned. Instead, all the files will be saved into the \code{publishPath} including a readme file.
+#' @importFrom data.table ':='
+#' @note The compilationPath must have all the outputs from \code{ISMCCompiler}.
+#'
+#'
+#' @export preparePublishData
+#' @docType methods
+#' @rdname preparePublishData
+#'
+#' @author Yong Luo
 preparePublishData <- function(compilationPath,
                                publishPath,
                                compilationType){
@@ -374,4 +390,65 @@ preparePublishData <- function(compilationPath,
 
   write.xlsx(datadictionary_publish,
              file.path(publishPath, "data_dictionary.xlsx"))
+  ## prepare readme file
+  compilation_raw <- file.path(compilationPath,
+                               paste0("compilation_", compilationType, "_raw"))
+  downloadtime <- dir(compilation_raw, pattern = "AccessNotes.rds")
+  downloadtime <- paste0("Raw tree/sample data were downloaded from ISMC at ",
+                         substr(downloadtime, 11, 14),
+                         "-", substr(downloadtime, 15, 16),
+                         "-", substr(downloadtime, 17, 18),
+                         "-", substr(downloadtime, 20, 23),
+                         ".")
+  compiledate <- as.character(file.info(file.path(compilationPath,
+                                                  paste0("compilation_", compilationType, "_db"),
+                                                  "sample_site_header.rds"))$mtime)
+  compiledate <- paste0("Data were compiled on ", substr(compiledate, 1, 10),
+                        " using FAIBCompiler package at https://github.com/bcgov/FAIBCompiler.")
+  compilation_map <- file.path(compilationPath,
+                               paste0("compilation_map"))
+  mapinfor <- readRDS(file.path(compilation_map,
+                                paste0("spatiallookup_", compilationType, ".rds")))
+  mapinfor <- mapinfor$mapsource
+
+  mapinfor[, mapName := unlist(lapply(mapFile, function(s)unlist(strsplit(s, "_map"))[1]))]
+  TSA_id <- "8daa29da-d7f4-401c-83ae-d962e3a28980"
+  BEC_id <- "f358a53b-ffde-4830-a325-a5a03ff672c3"
+  TFL_id <- "454f2153-efbd-4a6e-8966-a6d9755da9a6"
+  FIZ_id <- "67e95c68-c1ef-4363-b351-0dfead151122"
+  Ownership_id <- "5fc4e8ce-dd1d-44fd-af17-e0789cf65e4e"
+  mapinfor[mapName == "TSA",
+           website := paste0("https://catalogue.data.gov.bc.ca/dataset/", TSA_id)]
+  mapinfor[mapName == "BEC",
+           website := paste0("https://catalogue.data.gov.bc.ca/dataset/", BEC_id)]
+  mapinfor[mapName == "TFL",
+           website := paste0("https://catalogue.data.gov.bc.ca/dataset/", TFL_id)]
+  mapinfor[mapName == "FIZ",
+           website := paste0("https://catalogue.data.gov.bc.ca/dataset/", FIZ_id)]
+  mapinfor[mapName == "Ownership",
+           website := paste0("https://catalogue.data.gov.bc.ca/dataset/", Ownership_id)]
+
+  mapinfor[, mapName := paste0("    ", mapName, " map")]
+  mapinfor[, lastModifyDate := unlist(lapply(mapFile, function(s)unlist(strsplit(s, "_map"))[2]))]
+  mapinfor[, lastModifyDate := gsub(".rds", "", lastModifyDate)]
+  mapinfor[, lastModifyDate := paste0("last modified date was ",
+                                      substr(lastModifyDate, 1, 4), "-",
+                                      substr(lastModifyDate, 5, 6), "-",
+                                      substr(lastModifyDate, 7, 8),
+                                      ".")]
+  mapinfor[, mapinfor := paste0(mapName, ": available at ", website, ", ",
+                                lastModifyDate)]
+  mapinfor <- paste(mapinfor$mapinfor, collapse = "\n ")
+  publshdate <- paste0(" Data were prepared for publish on ", substr(Sys.time(), 1, 10), ".")
+  vegcompyear <- substr(faib_sample_byvisit[!is.na(PROJECTED_DATE),]$PROJECTED_DATE[1], 1, 4)
+  rank1layer <- paste0("    VegCompR1: available by searching vri ", vegcompyear,
+                       " rank 1 layer at https://catalogue.data.gov.bc.ca/.")
+  cat(publshdate, "\n",
+      downloadtime, "\n",
+      compiledate, "\n",
+      "All the spatial maps were downloaded from BC Data Catalogue. \n",
+      "Detailed availability and last modified dates were listed below: \n",
+      mapinfor, "\n",
+      rank1layer,
+      file = file.path(publishPath, "readme.txt"))
 }
