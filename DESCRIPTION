@@ -37,6 +37,7 @@ Imports:
   FAIBBase,
   sf,
   fs,
-  lmfor
+  lmfor,
+  reshape
 Suggests: 
     knitr
