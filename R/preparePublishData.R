@@ -18,13 +18,56 @@ preparePublishData <- function(compilationPath,
                                      paste0("compilation_", compilationType, "_db"),
                                      "sample_site_header.rds"))
 
-  faib_header <- sampsites_org[,.(SITE_IDENTIFIER, BC_ALBERS_X, BC_ALBERS_Y, BEC_ZONE, BEC_SBZ,
+  faib_header <- sampsites_org[,.(SITE_IDENTIFIER, TOTAL_PERIOD,
+                                  BC_ALBERS_X, BC_ALBERS_Y, BEC_ZONE, BEC_SBZ,
                               BEC_VAR, FIZ, IP_UTM, IP_EAST, IP_NRTH, Latitude, Longitude,
                               OWNER, SCHEDULE,
-                              SAMPLE_TYPE = SAMPLE_ESTABLISHMENT_TYPE,
-                              TFL, TSA, TSA_DESC, MGMT_UNIT,
-                              OWN_SCHED_DESCRIP = OWNERSHIP_DESCRIPTION,
-                              GRID_BASE = NA, GRID_SIZE = NA)]
+                              SAMPLE_ESTABLISHMENT_TYPE,
+                              TFL, TSA = as.numeric(TSA),
+                              TSA_DESC, MGMT_UNIT,
+                              OWN_SCHED_DESCRIP = OWNERSHIP_DESCRIPTION)]
+  gridlookup <- read.xlsx(file.path(compilationPath,
+                                    "compilation_coeff",
+                                    paste0(compilationType, "_site_grid.xlsx"))) %>%
+    data.table
+  # first priority goes to tfl
+  gridlookup_tfl <- gridlookup[!is.na(TFL),
+                               .(SAMPLE_ESTABLISHMENT_TYPE, TFL,
+                                 GRID_BASE, GRID_SIZE)]
+  faib_header <- merge(faib_header,
+                       gridlookup_tfl,
+                       by = c("SAMPLE_ESTABLISHMENT_TYPE", "TFL"),
+                       all.x = TRUE)
+  # second priority goes to tsa
+  gridlookup_tsa <- gridlookup[!is.na(TSA),
+                               .(SAMPLE_ESTABLISHMENT_TYPE,
+                                 TSA,
+                                 GRID_BASE_tsa = GRID_BASE,
+                                 GRID_SIZE_tsa = GRID_SIZE)]
+  faib_header <- merge(faib_header,
+                       gridlookup_tsa,
+                       by = c("SAMPLE_ESTABLISHMENT_TYPE", "TSA"),
+                       all.x = TRUE)
+  faib_header[is.na(GRID_BASE),
+              ':='(GRID_BASE = GRID_BASE_tsa,
+                   GRID_SIZE = GRID_SIZE_tsa)]
+  faib_header[,':='(GRID_BASE_tsa = NULL,
+                    GRID_SIZE_tsa = NULL)]
+  # last priority goes to est type
+  gridlookup_est <- gridlookup[is.na(TSA) & is.na(TFL),
+                               .(SAMPLE_ESTABLISHMENT_TYPE,
+                                 GRID_BASE_est = GRID_BASE,
+                                 GRID_SIZE_est = GRID_SIZE)]
+  faib_header <- merge(faib_header,
+                       gridlookup_est,
+                       by = c("SAMPLE_ESTABLISHMENT_TYPE"),
+                       all.x = TRUE)
+  faib_header[is.na(GRID_BASE),
+              ':='(GRID_BASE = GRID_BASE_est,
+                   GRID_SIZE = GRID_SIZE_est)]
+  faib_header[,':='(GRID_BASE_est = NULL,
+                    GRID_SIZE_est = NULL)]
+
   write.csv(faib_header,
             file.path(publishPath,
                       "faib_header.csv"),
@@ -101,7 +144,7 @@ preparePublishData <- function(compilationPath,
 
   faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                        VISIT_NUMBER, FIRST_MSMT, LAST_MSMT,
-                                       MEAS_DT, MEAS_YR, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
+                                       MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
                                        PROJ_AGE_ADJ = SA_VEGCOMP,
                                        SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
                                        SAMPLE_ESTABLISHMENT_TYPE,
@@ -137,14 +180,6 @@ preparePublishData <- function(compilationPath,
                    spcomp,
                    by = c("CLSTR_ID", "UTIL"),
                    all.x = TRUE)
-  htsmry <- readRDS(file.path(compilationPath,
-                              paste0("compilation_", compilationType, "_db"),
-                              "Smries_height_byCL.rds"))
-  volsmry <- merge(volsmry,
-                   htsmry,
-                   by = c("CLSTR_ID"),
-                   all.x = TRUE)
-
   faib_compiled_smeries <- volsmry[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, UTIL,
                                       BA_HA_DF, BA_HA_DS, BA_HA_LF, BA_HA_LS,
                                       STEMS_HA_DF, STEMS_HA_DS, STEMS_HA_LF, STEMS_HA_LS,
@@ -152,10 +187,7 @@ preparePublishData <- function(compilationPath,
                                       VHA_WSV_DF, VHA_WSV_DS, VHA_WSV_LF, VHA_WSV_LS,
                                       VHA_NTWB_DF, VHA_NTWB_DS, VHA_NTWB_LF, VHA_NTWB_LS,
                                       VHA_NTWB_NVAF_DS, VHA_NTWB_NVAF_LS,
-                                      QMD_DS, QMD_LS, SPB_CPCT_LS,
-                                      HT_LRY1, HT_LRY2, HT_LRYALL,
-                                      HT_MEAN1, HT_MEAN2, HT_MNALL)]
-
+                                      QMD_DS, QMD_LS, SPB_CPCT_LS)]
   write.csv(faib_compiled_smeries,
             file.path(publishPath,
                       "faib_compiled_smeries.csv"),
@@ -170,6 +202,25 @@ preparePublishData <- function(compilationPath,
   datadictionary_publish[["faib_compiled_smeries"]] <- faib_compiled_smeries_dic
 
 
+  htsmry <- readRDS(file.path(compilationPath,
+                              paste0("compilation_", compilationType, "_db"),
+                              "Smries_height_byCL.rds"))
+  faib_compiled_ht_smeries <- htsmry[,.(CLSTR_ID, HT_LRY1, HT_LRY2, HT_LRYALL,
+  HT_MEAN1, HT_MEAN2, HT_MNALL)]
+
+  write.csv(faib_compiled_ht_smeries,
+            file.path(publishPath,
+                      "faib_compiled_ht_smeries.csv"),
+            row.names = FALSE,
+            na = "")
+
+  faib_compiled_ht_smeries_dic <- data.table(Attribute = names(faib_compiled_ht_smeries))
+  faib_compiled_ht_smeries_dic <- merge(faib_compiled_ht_smeries_dic,
+                                     datadictionary_all,
+                                     by = "Attribute",
+                                     all.x = TRUE)
+  datadictionary_publish[["faib_compiled_ht_smeries"]] <- faib_compiled_ht_smeries_dic
+
   volsmry_sp <- readRDS(file.path(compilationPath,
                                   paste0("compilation_", compilationType, "_db"),
                                   "Smries_volume_byCLSP.rds"))
@@ -177,14 +228,6 @@ preparePublishData <- function(compilationPath,
   volsmry_sp <- merge(volsmry_sp,
                       sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
                       by = "CLSTR_ID",
-                      all.x = TRUE)
-  agesmry_sp <- readRDS(file.path(compilationPath,
-                                  paste0("compilation_", compilationType, "_db"),
-                                  "Smries_siteAge_byCLSP.rds"))
-
-  volsmry_sp <- merge(volsmry_sp,
-                      agesmry_sp,
-                      by = c("CLSTR_ID", "SPECIES"),
                       all.x = TRUE)
 
   faib_compiled_spcsmries <- volsmry_sp[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER,
@@ -196,9 +239,7 @@ preparePublishData <- function(compilationPath,
                                            VHA_NTWB_NVAF_DS, VHA_NTWB_NVAF_LS,
                                            VHA_WSV_DF, VHA_WSV_DS, VHA_WSV_LF, VHA_WSV_LS,
                                            NVAF_L, NVAF_D, SP_PCT_BA_LS,
-                                           QMD_DS, QMD_LS,
-                                           AGEB_TLSO, AGET_TLSO, HT_TLSO,
-                                           SI_M_TLSO, N_AG_TLSO, N_HT_TLSO)]
+                                           QMD_DS, QMD_LS)]
   write.csv(faib_compiled_spcsmries,
             file.path(publishPath,
                       "faib_compiled_spcsmries.csv"),
@@ -210,6 +251,28 @@ preparePublishData <- function(compilationPath,
                                      by = "Attribute",
                                      all.x = TRUE)
   datadictionary_publish[["faib_compiled_spcsmries"]] <- faib_compiled_spcsmries_dic
+
+
+  agesmry_sp <- readRDS(file.path(compilationPath,
+                                  paste0("compilation_", compilationType, "_db"),
+                                  "Smries_siteAge_byCLSP.rds"))
+
+
+  faib_compiled_siteage_spcsmries <- agesmry_sp[,.(CLSTR_ID, SPECIES, AGEB_TLSO, AGET_TLSO, HT_TLSO,
+  SI_M_TLSO, N_AG_TLSO, N_HT_TLSO)]
+  write.csv(faib_compiled_siteage_spcsmries,
+            file.path(publishPath,
+                      "faib_compiled_siteage_spcsmries.csv"),
+            row.names = FALSE,
+            na = "")
+  faib_compiled_siteage_spcsmries_dic <- data.table(Attribute = names(faib_compiled_siteage_spcsmries))
+  faib_compiled_siteage_spcsmries_dic <- merge(faib_compiled_siteage_spcsmries_dic,
+                                       datadictionary_all,
+                                       by = "Attribute",
+                                       all.x = TRUE)
+  datadictionary_publish[["faib_compiled_siteage_spcsmries"]] <- faib_compiled_siteage_spcsmries_dic
+
+
 
   treemsmt <- readRDS(file.path(compilationPath,
                                 paste0("compilation_", compilationType, "_sa"),
@@ -227,9 +290,6 @@ preparePublishData <- function(compilationPath,
                                   SPECIES = TREE_SPECIES_CODE,
                                   DBH, HEIGHT,
                                   LV_D = TREE_EXTANT_CODE,
-                                  LVD_EDIT, DIAMETER_EDIT,
-                                  HEIGHT_EDIT, MSMT_MISSING_EDIT,
-                                  BTOP_EDIT, CRCL_EDIT, SP_EDIT, DIAM_MSMT_HT_EDIT,
                                   S_F = TREE_STANCE_CODE,
                                   OUT_OF_PLOT_IND,
                                   BROKEN_TOP_IND, CR_CL = CROWN_CLASS_CODE,
@@ -280,10 +340,7 @@ preparePublishData <- function(compilationPath,
                                           COMP_CHG = COMPONENT_CHANGE)],
                             by = c("SITE_IDENTIFIER", "VISIT_NUMBER", "PLOT", "TREE_NO"),
                             all.x = TRUE)
-  faib_tree_detail <- merge(faib_tree_detail,
-                            sampvisits[,.(CLSTR_ID, PERIOD)],
-                            by = "CLSTR_ID",
-                            all.x = TRUE)
+
   faib_tree_detail[COMP_CHG == "I",
                    PERIOD := 0]
   faib_tree_detail[OUT_OF_PLOT_IND == "Y",
