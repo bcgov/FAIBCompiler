@@ -609,13 +609,30 @@ ISMCCompiler <- function(compilationType,
                                tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
                           fill = TRUE)
   } else {
-    siteAgeTable <- merge(unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
+    # adjust meanage for dwb
+    # if tot_stand_age < 0 then
+    # agem_grp = 50 + (meas_yr - meas_yr_first);
+    # else
+    #   agem_grp = tot_stand_age + 50
+    siteAgeTable <- merge(unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, PROJ_ID,
+                                            SAMP_NO, TYPE_CD,
+                                            MEAS_YR)],
                                  by = "CLSTR_ID"),
                           cl_ah[,.(CLSTR_ID,
-                                   AT_M_TLS = TOT_STAND_AGE,
-                                   AT_M_TXO = TOT_STAND_AGE)],
+                                   TOT_STAND_AGE,
+                                   AT_M_TXO = as.numeric(NA))],
                           by = "CLSTR_ID",
                           all.x = TRUE)
+    siteAgeTable[, MEAS_YR_FIRST := min(MEAS_YR),
+                 by = "SITE_IDENTIFIER"]
+    siteAgeTable[is.na(TOT_STAND_AGE),
+                 AT_M_TLS := 50 + (MEAS_YR - MEAS_YR_FIRST)]
+    siteAgeTable[!is.na(TOT_STAND_AGE),
+                 AT_M_TLS := 50 + TOT_STAND_AGE]
+    siteAgeTable[, ':='(SITE_IDENTIFIER = NULL,
+                        MEAS_YR = NULL,
+                        MEAS_YR_FIRST = NULL,
+                        TOT_STAND_AGE = NULL)]
     tree_ms7 <- DWBCompiler(compilationType = compilationType,
                             treeMS = tree_ms6,
                             siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
@@ -826,8 +843,8 @@ ISMCCompiler <- function(compilationType,
     prep_smy[is.na(VOL_WSV),
              WSV_VOL_SRCE := "Not applicable"]
     rm(auxTrees_compiled)
-  }
   rm(tree_ms7)
+  }
   prep_smy <- merge(prep_smy,
                     unique(lookup_species()[,.(SPECIES, SP_TYPE)],
                            by = "SPECIES"),
