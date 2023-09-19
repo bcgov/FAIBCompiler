@@ -71,27 +71,39 @@ setMethod(
     tree_rsk <- merge(loss_fct, siteAge[,.(CLSTR_ID, AGE_DWB, AGE_FLG)],
                       by = c("CLSTR_ID"), all.x = TRUE)
     rm(loss_fct, siteAge)
-    tree_rsk[, ':='(ADJ_ID = as.character(NA))]
-
-    # certain areas of the province use specialized loss adjustment factors
-    # they are determined by the following code
-    tree_rsk[SP0 %in% c("C", "Y", "S", "H") &
-               (PROJ_ID == "3432" | TSA == 25),
-             ADJ_ID := "QCI"] ## need space or not will be specified
-    tree_rsk[BEC_ZONE == "ICH" & BEC_SBZ %in% c("wk", "vk") & BEC_VAR == "1",
-             ADJ_ID := "WET"]
-    tree_rsk[(TSA == 7 | PROJ_ID == "0071") & BEC_ZONE == "ICH" & BEC_SBZ %in% c("mv", "mk"),
-             ADJ_ID := "GLD_NW"]
     tree_rsk[, RISK_GRP := riskGroupDeriver(species = SP0,
                                             pathIndex = PATH_IND,
                                             method = equation)]
-    DWBfactors <- DWBGenerator_BEC(DBH = tree_rsk$DBH,
-                                   height = tree_rsk$HEIGHT,
-                                   species = tree_rsk$SP0,
-                                   meanAge = tree_rsk$AGE_DWB,
-                                   BEC = tree_rsk$BEC,
-                                   riskGroup = tree_rsk$RISK_GRP,
-                                   adjustID = tree_rsk$ADJ_ID)
+    tree_rsk[, ':='(ADJ_ID = as.character(NA))]
+
+    if(compilationType == "nonPSP"){
+      # certain areas of the province use specialized loss adjustment factors
+      # they are determined by the following code
+      # this is for nonPSP only, 2023-09-19
+      tree_rsk[SP0 %in% c("C", "Y", "S", "H") &
+                 (PROJ_ID == "3432" | TSA == 25),
+               ADJ_ID := "QCI"] ## need space or not will be specified
+      tree_rsk[BEC_ZONE == "ICH" & BEC_SBZ %in% c("wk", "vk") & BEC_VAR == "1",
+               ADJ_ID := "WET"]
+      tree_rsk[(TSA == 7 | PROJ_ID == "0071") & BEC_ZONE == "ICH" & BEC_SBZ %in% c("mv", "mk"),
+               ADJ_ID := "GLD_NW"]
+      DWBfactors <- DWBGenerator_BEC(DBH = tree_rsk$DBH,
+                                     height = tree_rsk$HEIGHT,
+                                     species = tree_rsk$SP0,
+                                     meanAge = tree_rsk$AGE_DWB,
+                                     BEC = tree_rsk$BEC,
+                                     riskGroup = tree_rsk$RISK_GRP,
+                                     adjustID = tree_rsk$ADJ_ID)
+
+    } else {
+      DWBfactors <- DWBGenerator_BEC(DBH = tree_rsk$DBH,
+                                     height = tree_rsk$HT_TOTAL,
+                                     species = tree_rsk$SP0,
+                                     meanAge = tree_rsk$AGE_DWB,
+                                     BEC = tree_rsk$BEC,
+                                     riskGroup = tree_rsk$RISK_GRP,
+                                     adjustID = tree_rsk$ADJ_ID)
+    }
     tree_rsk[, ':='(PCT_DCY = DWBfactors$decay,
                     PCT_WST = DWBfactors$waste,
                     PCT_BRK = DWBfactors$breakage)]
