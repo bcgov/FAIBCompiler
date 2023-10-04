@@ -17,7 +17,6 @@
 #'
 #' @importFrom data.table ':=' data.table melt shift
 #' @importFrom dplyr '%>%'
-#' @importFrom parallel detectCores makeCluster clusterExport parLapply stopCluster
 #' @export
 #' @docType methods
 #' @rdname dataPrepSample
