@@ -94,19 +94,16 @@ updateSA_vegcomp <- function(compilationType,
                       paste0("SA_VEGCOMP_", compilationType, ".rds")))
     rm(sampleSites_valid, vegcompversion)
   }
-
   sampleMsmts <- merge(sampleMsmts,
                        sampleSites[,.(SITE_IDENTIFIER,
                                          PROJ_AGE_1, PROJECTED_DATE)],
                    by = "SITE_IDENTIFIER",
                    all.x = TRUE)
-  sampleMsmts[, measYear := as.numeric(substr(MEAS_DT, 1, 4))]
   sampleMsmts[,':='(sa_ref = PROJ_AGE_1,
                 year_ref = as.numeric(substr(PROJECTED_DATE, 1, 4)))]
-  sampleMsmts[, SA_VEGCOMP := sa_ref - (year_ref - measYear)]
+  sampleMsmts[, SA_VEGCOMP := sa_ref - (year_ref - MEAS_YR)]
   sampleMsmts[, ':='(sa_ref = NULL,
-                 year_ref = NULL,
-                 measYear = NULL)]
+                 year_ref = NULL)]
 return(list(sampleSites = sampleSites,
             sampleMsmts = sampleMsmts))
 }
