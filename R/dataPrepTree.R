@@ -252,7 +252,9 @@ dataPrepTree <- function(compilationType,
                              all.x = TRUE)
 
     treemeasurements <- rbind(treemeasurements, small_tree_full, fill = TRUE)
-    rm(small_tree_full)
+    rm(small_tree_full, dbhlimit_count, indinumboftrees,
+       NUMBER_OF_TREES_uni, smalltrees_forvol,
+       treeno_max)
     gc()
   } else {
     sampleMsmts[, DBHLIMIT_COUNT := NA]
@@ -288,9 +290,9 @@ dataPrepTree <- function(compilationType,
                                       BEC_SBZ)]
   vi_f[, TREE_SPECIES_CODE := NULL]
   saveRDS(vi_f, file.path(outputPath, "vi_f.rds"))
-  rm(vi_f, dbhlimit_count, indiname, indinumboftrees,
-     NUMBER_OF_TREES_uni, SmallLiveTreeTallies, smalltrees_forvol,
-     totalnames, treeno_max)
+  rm(vi_f, indiname,
+     SmallLiveTreeTallies,
+     totalnames)
   # JD = common juniper
   # My guess is we consider Juniper spp as shrubs, not trees.
   # And as a shrub, we would ignore in our compilation.

@@ -4,6 +4,7 @@
 #' @description This function takes tree-level measurements and edits live/dead codes,
 #'              diameter, species, and add tree measurements if the measurements are missing.
 #'
+#' @param compilationType character, Compilation type, either \code{nonPSP} or \code{PSP}.
 #' @param treemsmts data.table, Tree measurements. The table must contain unique tree id, i.e.,
 #'                              \code{SITE_IDENTIFIER}, \code{PLOT}, and \code{TREE_NUMBER}, and
 #'                              \code{VISIT_NUMBER}.
@@ -46,7 +47,8 @@
 #' @rdname treemsmtEditing
 #'
 #' @author Yong Luo
-treemsmtEditing <- function(treemsmts,
+treemsmtEditing <- function(compilationType,
+                            treemsmts,
                             sitevisits){
   treemsmts[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NUMBER)]
   # 1. correct lv code
@@ -180,18 +182,33 @@ treemsmtEditing <- function(treemsmts,
                   diameter_last = NULL,
                   diameter_ht_last = NULL)]
 
-  # correction c,
-  # *check for outlier ht/dbh ratios;
-  # *if measured heights are more than 3X DBH, then assume height decimal placement error, divide by 10;
-  # if ld_fill(c) in ("L","I","V") and htmeas_fill(c) > 0 and dbh_fill(c) > 0 then do;
-  # if htmeas_fill(c)/dbh_fill(c) >= 3 then do;
-  # htmeas_fill(c) = htmeas_fill(c) / 10;
-  # tree_err11 = "_extrhtdbh";
-  # end;
-  # end;
-  treemsmts[LENGTH/DIAMETER >= 3,
-            ':='(LENGTH = LENGTH/10,
-                 HEIGHT_EDIT = "Abnomal HEIGHT-DBH ratio, divided by 10")]
+  # for PSP only
+  if(compilationType == "PSP"){
+    # correction c,
+    # *check for outlier ht/dbh ratios;
+    # *if measured heights are more than 3X DBH, then assume height decimal placement error, divide by 10;
+    # if ld_fill(c) in ("L","I","V") and htmeas_fill(c) > 0 and dbh_fill(c) > 0 then do;
+    # if htmeas_fill(c)/dbh_fill(c) >= 3 then do;
+    # htmeas_fill(c) = htmeas_fill(c) / 10;
+    # tree_err11 = "_extrhtdbh";
+    # end;
+    # end;
+    treemsmts[LENGTH/DIAMETER >= 3,
+              ':='(LENGTH = LENGTH/10,
+                   HEIGHT_EDIT = "Abnomal HEIGHT-DBH ratio, divided by 10")]
+  } else {
+    treemsmts[SITE_IDENTIFIER == 3001342 &
+                TREE_NUMBER == 68 &
+                VISIT_NUMBER == 1,
+              ':='(LENGTH = 4.7,
+                   HEIGHT_EDIT = "Best guess")] # best guess
+    treemsmts[SITE_IDENTIFIER == 6006671 &
+                TREE_NUMBER == 8 &
+                VISIT_NUMBER == 1 &
+                PLOT == "I",
+              ':='(LENGTH = 3.8,
+                   HEIGHT_EDIT = "Best guess")] # best guess
+  }
 
 
   # correction d, if this tree is dead, and diameter is missing
@@ -337,9 +354,10 @@ treemsmtEditing <- function(treemsmts,
 
   ## 4. if a tree was broken top tree, this tree is always be btop trees in sequential msmt
   ### force trees that have length of 1.4 or less as broken top trees
-  treemsmts[LENGTH %<=% 1.4 & BROKEN_TOP_IND == "N",
+  treemsmts[LENGTH %<=% 1.4 & BROKEN_TOP_IND == "N" &
+              DIAMETER >= 3,
             ':='(BROKEN_TOP_IND = "Y",
-                 BTOP_EDIT = "Corrected to Y as the height is less than 1.4m")]
+                 BTOP_EDIT = "Corrected to Y as height <= 1.4 and DBH >= 3")]
   tree_btop <- treemsmts[BROKEN_TOP_IND == "Y",
                          .(unitreeid, VISIT_NUMBER, BROKEN_TOP_IND)]
   if(nrow(tree_btop) > 0){
