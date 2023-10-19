@@ -889,7 +889,9 @@ ISMCCompiler <- function(compilationType,
                 VOL_WSV = 0,
                 VOL_MER = 0,
                 VOL_NTWB = 0,
-                VOL_DWB = 0)]
+                VOL_DWB = 0,
+                VOL_STUMP = 0,
+                WSV_VOL_SRCE = as.character(NA))]
 
   ba_lv <- prep_smy[,.(BA_ALL = sum(BA_TREE)),
                     by = "CLSTR_ID"]
@@ -910,6 +912,14 @@ ISMCCompiler <- function(compilationType,
   if(compilationType == "nonPSP"){
     treelist_db <- readRDS(file.path(compilationPaths$compilation_db,
                                      "treelist.rds"))
+    treelist_db[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
+             ':='(HEIGHT = HEIGHT - 7,
+                  HT_TOTAL = HT_TOTAL -7,
+                  DBH = NA,
+                  HT_TOTAL_EST = NA,
+                  MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
+    treelist_db[substr(CLSTR_ID, 9, 9) == "A" & MEASUREMENT_ANOMALY_CODE == "NA",
+             MEASUREMENT_ANOMALY_CODE := NA]
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, MEAS_INTENSE,
                                  H_MERCH, BA_TREE,
                                  PHF_TREE, TREE_WT, VOL_WSV, VOL_STUMP, VOL_MER, VOL_NTWB,
@@ -919,11 +929,8 @@ ISMCCompiler <- function(compilationType,
                          prep_smy_temp,
                          by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                          all.x = TRUE)
-    treelist_db[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
-                ':='(DBH = NA,
-                     MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
-    prep_smy[substr(CLSTR_ID, 9, 9) == "A" & MEASUREMENT_ANOMALY_CODE == "NA",
-             MEASUREMENT_ANOMALY_CODE := NA]
+    treelist_db[is.na(HEIGHT) & BROKEN_TOP_IND == "N" & VOLUME_TREE == "Y",
+                BROKEN_TOP_IND := as.character(NA)]
   } else {
     treelist_db <- readRDS(file.path(compilationPaths$compilation_db,
                                      "treelist.rds"))
