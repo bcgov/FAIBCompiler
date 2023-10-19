@@ -116,11 +116,13 @@ dataPrepTree <- function(compilationType,
                 varlist = c("treemsmtEditing",
                             "dbhManualCorrection",
                             "data.table", ":=",
+                            "compilationType",
                             "shift"),
                 envir = environment())
   allresults <- parLapply(cl = clusterInFunction,
                           inputdata_list,
-                          function(x){treemsmtEditing(treemsmts = x$treemeasurements,
+                          function(x){treemsmtEditing(compilationType = compilationType,
+                                                      treemsmts = x$treemeasurements,
                                                       sitevisits = x$sitevisits)})
   stopCluster(clusterInFunction)
   rm(inputdata_list)
