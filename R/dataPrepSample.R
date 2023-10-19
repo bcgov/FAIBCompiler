@@ -42,7 +42,6 @@ dataPrepSample <- function(compilationType,
 
   samplesites <- readRDS(dir(inputPath, pattern = "SampleSites.rds", full.names = TRUE)) %>%
     data.table
-
   samplesites <- samplesites[,.(SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                 IP_UTM, IP_EAST, IP_NRTH,
                                 UTM_SOURCE = COORDINATE_SOURCE_CODE,
@@ -52,7 +51,13 @@ dataPrepSample <- function(compilationType,
                                 FOREST_INVENTORY_ZONE_CD, STAND_ORIGIN_CODE,
                                 SITE_STATUS_CODE, SITE_CONDITION_CODE,
                                 PSP_TYPE = PSP_SAMPLE_SITE_TYPE_CODE,
-                                BGC_SS_GRD = SITE_SERIES)]
+                                BGC_SS_GRD = SITE_SERIES,
+                                BEC_ZONE_ISMC = BEC_ZONE_CODE,
+                                BEC_SUBZONE_ISMC = BGC_SUBZONE,
+                                BEC_VAR_ISMC = BGC_VARIANT,
+                                TFL_ISMC = TFL_NUMBER,
+                                FIZ_ISMC = FOREST_INVENTORY_ZONE_CD,
+                                TSA_ISMC = TIMBER_SUPPLY_AREA_CODE)]
   samplesites <- merge(samplesites,
                        actualcoord,
                        by = "SITE_IDENTIFIER",

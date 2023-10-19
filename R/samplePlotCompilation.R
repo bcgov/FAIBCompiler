@@ -62,83 +62,8 @@ samplePlotCompilation <- function(compilationType,
                         samplesites = vi_a,
                         mapPath = mapPath)
   if(compilationType == "PSP"){
-    # populate bec and tsa based on region number and compartment
-    ## the bec zone with the most sites for a given region/compartment wins
-    ## based on Rene's suggestions on March 14, 2023
-    spatialAvailable <- unique(vi_a[!is.na(BEC),.(SITE_IDENTIFIER, BEC, BEC_SBZ, BEC_VAR,
-                                                  TSA, TSA_DESC, SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER)],
-                               by = "SITE_IDENTIFIER")
-    bec_avai <- spatialAvailable[, .(No_samples = length(SITE_IDENTIFIER)),
-                                 by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER",
-                                        "BEC", "BEC_SBZ", "BEC_VAR")]
-    bec_avai <- bec_avai[order(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER, -No_samples),
-                         .(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
-                           BEC_new = BEC,
-                           BEC_SBZ_new = BEC_SBZ,
-                           BEC_VAR_new = BEC_VAR)]
-    bec_avai <- unique(bec_avai,
-                       by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"))
-    vi_a <- merge(vi_a,
-                  bec_avai,
-                  by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"),
-                  all.x = TRUE)
-    vi_a[is.na(BEC),
-         ':='(BEC = BEC_new,
-              BEC_SBZ = BEC_SBZ_new,
-              BEC_VAR = BEC_VAR_new)]
-    vi_a[is.na(BEC)]
-    tsa_avai <- spatialAvailable[, .(No_samples = length(SITE_IDENTIFIER)),
-                                 by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER",
-                                        "TSA", "TSA_DESC")]
-    tsa_avai <- tsa_avai[order(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER, -No_samples),
-                         .(SAMPLING_REGION_NUMBER, COMPARTMENT_NUMBER,
-                           TSA_new = TSA,
-                           TSA_DESC_new = TSA_DESC)]
-    tsa_avai <- unique(tsa_avai,
-                       by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"))
-    vi_a <- merge(vi_a,
-                  tsa_avai,
-                  by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"),
-                  all.x = TRUE)
-    vi_a[is.na(TSA),
-         ':='(TSA = TSA_new,
-              TSA_DESC = TSA_DESC_new)]
-    vi_a[is.na(TSA)]
-    #
-    # previousSamples <- readRDS(file.path(mapPath, "spatiallookup_PSP.rds"))
-    # previousSamples <- previousSamples$spatiallookup
-    # names(previousSamples) <- paste0(names(previousSamples), "_prev")
-    # setnames(previousSamples, "SITE_IDENTIFIER_prev", "SITE_IDENTIFIER")
-    # samplesites_Loc <- unique(vi_a[,
-    #                                .(SITE_IDENTIFIER,
-    #                                  IP_UTM, IP_NRTH, IP_EAST)],
-    #                           by = "SITE_IDENTIFIER")
-    #
-    # allsamples <- merge(previousSamples[, inprev := TRUE],
-    #                     samplesites_Loc[, incurt := TRUE],
-    #                     by = "SITE_IDENTIFIER",
-    #                     all = TRUE)
-    # allsamples[, unid := 1:nrow(allsamples)]
-    #
-    # samples_skip <- allsamples[(inprev == TRUE & incurt == TRUE) &
-    #                              (IP_UTM_prev == IP_UTM |
-    #                                 (is.na(IP_UTM_prev) & is.na(IP_UTM))) &
-    #                              (IP_EAST_prev == IP_EAST |
-    #                                 (is.na(IP_EAST_prev) & is.na(IP_EAST))) &
-    #                              (IP_NRTH_prev == IP_NRTH |
-    #                                 (is.na(IP_NRTH_prev) & is.na(IP_NRTH)))]
-    samples_skip <- vi_a[!is.na(BEC),]
-
-    samples_proc <- vi_a[!(SITE_IDENTIFIER %in% samples_skip$SITE_IDENTIFIER),]
-    if(nrow(samples_proc) > 0){
-      ## for PSP, some samples do not have good spatial coordinates, hence, causing
-      ## missing spatial attributes
-      samples_proc <- updateMissingSpAttribute(spatialtable = samples_proc,
-                                               mapPath = mapPath,
-                                               updateMethod = "fromRegionCompartMap")
-    }
-    vi_a <- rbindlist(list(samples_skip, samples_proc),
-                      fill = TRUE)
+    vi_a <- updateSpatial_badUTM_PSP(mapPath = mapPath,
+                                     samplesites = vi_a)
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,

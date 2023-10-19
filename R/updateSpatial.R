@@ -22,8 +22,7 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
   previousSamples <- previousSamples$spatiallookup
   names(previousSamples) <- paste0(names(previousSamples), "_prev")
   setnames(previousSamples, "SITE_IDENTIFIER_prev", "SITE_IDENTIFIER")
-  samplesites_Loc <- unique(samplesites[,
-                                        .(SITE_IDENTIFIER,
+  samplesites_Loc <- unique(samplesites[,.(SITE_IDENTIFIER,
                                           IP_UTM, IP_NRTH, IP_EAST)],
                             by = "SITE_IDENTIFIER")
   samples_proc_all <- unique(samplesites[!is.na(IP_UTM) & !is.na(IP_NRTH) & !is.na(IP_EAST),
@@ -56,7 +55,6 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                           Longitude = Longitude_prev,
                                           Latitude = Latitude_prev)]
   if(nrow(samples_proc) > 0){
-
     samplesites_Loc_bcalbers <- FAIBBase::UTM_Convertor(point_ID = samples_proc$SITE_IDENTIFIER,
                                                         zone = samples_proc$IP_UTM,
                                                         northing = samples_proc$IP_NRTH,
@@ -83,7 +81,6 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
   }
   samplesites <- merge(samplesites, samples_skip_latlong,
                        by = "SITE_IDENTIFIER", all.x = TRUE)
-
   if(dir(mapPath, pattern = "BEC_map") %in% previousMapVer$mapFile){ # bec map does not change
     samples_skip_bec <- samples_skip[,.(SITE_IDENTIFIER,
                                         BEC = BEC_ZONE_prev,
@@ -98,7 +95,8 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                                   spatialMap = becmap$map,
                                                   spatialAttribute = "bec")
       names(samplesites_loc_bec) <- c("SITE_IDENTIFIER", "BEC", "BEC_SBZ", "BEC_VAR")
-      samples_skip_bec <- rbind(samples_skip_bec, samplesites_loc_bec)
+      samplesites_loc_bec[, BEC_SOURCE := 1] # 1 means from map
+      samples_skip_bec <- rbind(samples_skip_bec, samplesites_loc_bec, fill = TRUE)
     }
     samplesites <- merge(samplesites, samples_skip_bec,
                          by = "SITE_IDENTIFIER", all.x = TRUE)
@@ -110,7 +108,9 @@ updateSpatial <- function(compilationType, samplesites, mapPath){
                                                 easting = samples_proc_all$IP_EAST,
                                                 spatialMap = becmap$map,
                                                 spatialAttribute = "bec")
+
     names(samplesites_loc_bec) <- c("SITE_IDENTIFIER", "BEC", "BEC_SBZ", "BEC_VAR")
+    samplesites_loc_bec[, BEC_SOURCE := 1] # 1 means from map
     samplesites <- merge(samplesites, samplesites_loc_bec,
                          by = "SITE_IDENTIFIER", all.x = TRUE)
   }
