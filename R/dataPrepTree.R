@@ -40,6 +40,7 @@ dataPrepTree <- function(compilationType,
     treemeasurements[PLOT == "IPC TD", PLOT := "I"]
     treemeasurements[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
   }
+
   treemeasurements[,':='(PLOT_CATEGORY_CODE = NULL,
                          PLOT_NUMBER = NULL,
                          COUNT_TREE_IND = NULL,
@@ -59,6 +60,37 @@ dataPrepTree <- function(compilationType,
                          VERT_DISTANCE_MEAS_REQ_IND = NULL,
                          LEANING_TREE_BEARING = NULL,
                          SPECIES_CHANGE_IND = NULL)]
+
+  if(compilationType == "nonPSP"){
+    treemeasurements[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NUMBER)]
+    # correct cmi walkthrough code based on communication with Dan on 2023-10-12
+    trees_walkthrough <- unique(treemeasurements[!is.na(CMI_WALKTHROUGH_CODE),]$unitreeid)
+
+    cmi_walkthrough <- treemeasurements[unitreeid %in% trees_walkthrough,
+                                        .(unitreeid,
+                                                 VISIT_NUMBER,
+                                                 CMI_WALKTHROUGH_CODE)]
+
+    cmi_walkthrough[, lastvisit := max(VISIT_NUMBER),
+                    by = "unitreeid"]
+    cmi_walkthrough <- cmi_walkthrough[VISIT_NUMBER == lastvisit,
+                                       .(unitreeid,
+                                         visit_ref = VISIT_NUMBER,
+                                         walkth_ref = CMI_WALKTHROUGH_CODE)]
+    treemeasurements <- merge(treemeasurements,
+                              cmi_walkthrough,
+                              by = "unitreeid",
+                              all.x = TRUE)
+    treemeasurements[VISIT_NUMBER < visit_ref,
+                     CMI_WALKTHROUGH_CODE := walkth_ref]
+    treemeasurements[,':='(visit_ref = NULL,
+                           walkth_ref = NULL,
+                           unitreeid = NULL)]
+    rm(trees_walkthrough, cmi_walkthrough)
+  }
+  # treemsmtEditing(compilationType = compilationType,
+  #                 treemsmts = treemeasurements,
+  #                 sitevisits = sampleMsmts)
   gc()
   allsites <- unique(sampleMsmts$SITE_IDENTIFIER)
   numCore <- as.integer(0.5*detectCores())
@@ -104,6 +136,7 @@ dataPrepTree <- function(compilationType,
   rm(allsites, numCore, clusterInFunction, numofrow,
      allresults)
   gc()
+
   ## based on discussion between Dan and sampling team on April 25, 2023
   ## for the ages that were measured as rotten (ROT) and cannot reach center (CRC)
   ## using prorate method to estimate boring age
@@ -113,8 +146,6 @@ dataPrepTree <- function(compilationType,
                      !is.na(PRORATE_LENGTH) & is.na(PRORATE_RING_COUNT),
                    PRORATE_RING_COUNT := ifelse(!is.na(MICROSCOPE_AGE), MICROSCOPE_AGE,
                                                 BORING_AGE)]
-
-
   treemeasurements <- merge(treemeasurements,
                             unique(sampleMsmts[,.(SITE_IDENTIFIER, VISIT_NUMBER,
                                                   CLSTR_ID)],
