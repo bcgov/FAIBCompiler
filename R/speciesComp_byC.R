@@ -81,12 +81,12 @@ setMethod(
     CSSmryTable[, ':='(PCTINTER = as.character(PCTINTER),
                        MAXPCTINTER = as.character(MAXPCTINTER))]
     CSSmryTable[, SPPCT := PCTINTER]
-    CSSmryTable[PCTINTER == MAXPCTINTER & nchar(PCTINTER) == 1,
-                SPPCT := paste("", SPPCT, sep = "")]
-    CSSmryTable[PCTINTER == MAXPCTINTER & nchar(PCTINTER) == 2,
-                SPPCT := paste("", SPPCT, sep = "")]
-    CSSmryTable[PCTINTER != MAXPCTINTER & nchar(PCTINTER) == 1,
+    CSSmryTable[nchar(PCTINTER) == 2,
                 SPPCT := paste("0", SPPCT, sep = "")]
+    CSSmryTable[nchar(PCTINTER) == 1,
+                SPPCT := paste("00", SPPCT, sep = "")]
+    CSSmryTable[nchar(SPECIES) == 1,
+                SPECIES := paste(SPECIES, " ", sep = "")]
     CSSmryTable[, SPPCT := paste(SPECIES, SPPCT, sep = "")]
     CSSmryTable <- CSSmryTable[, .(SPB_CPCT = paste(SPPCT, collapse = ""),
                                    TOTALBYCL = unique(TOTALBYCL)), by = bygroup]
