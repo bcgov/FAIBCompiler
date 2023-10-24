@@ -84,11 +84,50 @@ dataPrepTree <- function(compilationType,
     treemeasurements[VISIT_NUMBER < visit_ref,
                      CMI_WALKTHROUGH_CODE := walkth_ref]
     treemeasurements[,':='(visit_ref = NULL,
-                           walkth_ref = NULL,
-                           unitreeid = NULL)]
+                           walkth_ref = NULL)]
     rm(trees_walkthrough, cmi_walkthrough)
+
+    # for drop trees,
+    # as discussed with Dan on 2023-10-19, when a treemsmt is marked as dropped tree
+    # the msmts before and equal to this msmt are removed for compilation
+    droppedmsmt <- treemeasurements[MEASUREMENT_ANOMALY_CODE == "D",
+                                    .(unitreeid, VISIT_NUMBER)]
+    droppedmsmt[, lastvisit := max(VISIT_NUMBER),
+                by = "unitreeid"]
+    droppedmsmt <- droppedmsmt[VISIT_NUMBER == lastvisit,
+                               .(unitreeid, lastvisit)]
+    treemeasurements <- merge(treemeasurements,
+                              droppedmsmt,
+                              by = "unitreeid",
+                              all.x = TRUE)
+    treemeasurements <- treemeasurements[!(VISIT_NUMBER <= lastvisit) | is.na(lastvisit),]
+    treemeasurements[,':='(lastvisit = NULL)]
+
+    stemmap <- treemeasurements[!is.na(STEM_MAP_BEARING) & !is.na(STEM_MAP_DISTANCE),
+                                .(unitreeid, VISIT_NUMBER,
+                                  STEM_MAP_BEARING,
+                                  STEM_MAP_DISTANCE)]
+    stemmap[, lastvisit := max(VISIT_NUMBER),
+            by = "unitreeid"]
+    stemmap <- stemmap[VISIT_NUMBER == lastvisit,
+                       .(unitreeid,
+                         visit_ref = lastvisit,
+                         bearing_ref = STEM_MAP_BEARING,
+                         distance_ref = STEM_MAP_DISTANCE)]
+    treemeasurements <- merge(treemeasurements,
+                              stemmap,
+                              by = "unitreeid",
+                              all.x = TRUE)
+    treemeasurements[!is.na(visit_ref) &
+                       VISIT_NUMBER != visit_ref,
+                     ':='(STEM_MAP_BEARING = bearing_ref,
+                          STEM_MAP_DISTANCE = distance_ref)]
+    treemeasurements[,':='(unitreeid = NULL,
+                           visit_ref = NULL,
+                           bearing_ref = NULL,
+                           distance_ref = NULL)]
   }
-  # treemsmtEditing(compilationType = compilationType,
+  # treemsmtEditing(compilationType = "nonPSP",
   #                 treemsmts = treemeasurements,
   #                 sitevisits = sampleMsmts)
   gc()
