@@ -26,7 +26,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
   expect_equal(tree_editted$DIAMETER_EDIT, rep(as.character(NA), 3))
@@ -56,7 +57,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 2))
   expect_equal(tree_editted$DIAMETER_EDIT, rep(as.character(NA), 2))
@@ -86,7 +88,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 2))
   expect_equal(tree_editted$DIAMETER_EDIT, rep(as.character(NA), 2))
@@ -117,7 +120,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
@@ -151,7 +155,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
@@ -183,7 +188,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
@@ -216,7 +222,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
@@ -249,7 +256,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 7, 7))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "D", "D"))
@@ -285,7 +293,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
@@ -317,7 +326,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
@@ -349,7 +359,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
                      AGE_REPRESENTATIVE_IND = "Y")
-  tree_editted <- treemsmtEditing(treemsmts = tree,
+  tree_editted <- treemsmtEditing(compilationType = "PSP",
+                                  treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$BROKEN_TOP_IND, c("N", "Y", "Y"))
   expect_equal(tree_editted$BTOP_EDIT[3],

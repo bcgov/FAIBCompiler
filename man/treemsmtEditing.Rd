@@ -5,9 +5,11 @@
 \alias{treemsmtEditing}
 \title{Edit tree measurements for a repeatedly measured data.}
 \usage{
-treemsmtEditing(treemsmts, sitevisits)
+treemsmtEditing(compilationType, treemsmts, sitevisits)
 }
 \arguments{
+\item{compilationType}{character, Compilation type, either \code{nonPSP} or \code{PSP}.}
+
 \item{treemsmts}{data.table, Tree measurements. The table must contain unique tree id, i.e.,
 \code{SITE_IDENTIFIER}, \code{PLOT}, and \code{TREE_NUMBER}, and
 \code{VISIT_NUMBER}.

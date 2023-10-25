@@ -4,19 +4,9 @@
 \alias{spAttriFromRegCompt}
 \title{get tsa, bec, fiz and ownership attributes based on region and compartment map}
 \usage{
-spAttriFromRegCompt(
-  region,
-  compartment,
-  regionCompartMap,
-  spAttributeMap,
-  mapName
-)
+spAttriFromRegCompt(regionCompartMap, spAttributeMap, mapName)
 }
 \arguments{
-\item{region}{numeric, region number.}
-
-\item{compartment}{numeric, compartment number.}
-
 \item{regionCompartMap}{sf, regioncompartment map.}
 
 \item{spAttributeMap}{sf, spatial attribute map.}
@@ -29,6 +19,10 @@ table of spatial attributes corresponding to region and compartment.
 }
 \description{
 get tsa, bec, fiz and ownership attributes based on region and compartment map
+}
+\note{
+The spatial attributes must be one-on-one match to a unique combination of region
+and compartment
 }
 \author{
 Yong Luo
