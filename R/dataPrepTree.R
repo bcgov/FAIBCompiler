@@ -126,6 +126,7 @@ dataPrepTree <- function(compilationType,
                            visit_ref = NULL,
                            bearing_ref = NULL,
                            distance_ref = NULL)]
+
   }
   # treemsmtEditing(compilationType = "nonPSP",
   #                 treemsmts = treemeasurements,
@@ -461,25 +462,6 @@ dataPrepTree <- function(compilationType,
     treemeasurements[!is.na(SUIT_SI_temp),
                      SUITABLE_FOR_SITE_INDEX_IND := SUIT_SI_temp]
     treemeasurements[, SUIT_SI_temp := NULL]
-
-    ### for the NFI samples the tree number changes
-    ## the next few line to modify tree number and make them
-    ## the same as the previous ones. the crosswalk table is prepared
-    ## by Dan
-    crosswalk <- read.csv(file.path(coeffPath,
-                                    "NFI_TREE_CORRECTION.csv")) %>%
-      data.table
-    treemeasurements <- merge(treemeasurements,
-                              crosswalk,
-                              by = c("SITE_IDENTIFIER",
-                                     "VISIT_NUMBER",
-                                     "TREE_NUMBER"),
-                              all.x = TRUE)
-    treemeasurements[!is.na(TREE_NUMBER_future),
-                     TREE_NUMBER_org := TREE_NUMBER]
-    treemeasurements[!is.na(TREE_NUMBER_future),
-                     TREE_NUMBER := TREE_NUMBER_future]
-    treemeasurements[, TREE_NUMBER_future := NULL]
     treemeasurements[, ':='(SUIT_HT_EDIT = as.character(NA),
                             SUIT_SI_EDIT = as.character(NA),
                             LAB_AGE_EDIT = as.character(NA))]
