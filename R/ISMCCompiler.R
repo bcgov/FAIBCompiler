@@ -291,12 +291,10 @@ ISMCCompiler <- function(compilationType,
                    samples,
                    by = "CLSTR_ID",
                    all.x = TRUE)
-
   tree_ms1 <- vicPrep(compilationType = compilationType,
                       data.table::copy(samples),
                       compilationPaths$compilation_sa,
                       walkThru)
-
   tree_nonHT <- viiPrep(compilationType = compilationType,
                         clusterplotHeader = data.table::copy(samples),
                         dataSourcePath = compilationPaths$compilation_sa)
@@ -375,7 +373,6 @@ ISMCCompiler <- function(compilationType,
       voltrees <- alltrees$fullDimTrees
       nonHTTrees <- alltrees$nonHTTrees
     }
-
 
     # this is the best height-dbh model in the mixed effect model forms
     voltrees <- merge(voltrees,
@@ -925,6 +922,8 @@ ISMCCompiler <- function(compilationType,
                                  PHF_TREE, TREE_WT, VOL_WSV, VOL_STUMP, VOL_MER, VOL_NTWB,
                                  VOL_DWB, NET_FCT_METHOD, WSV_VOL_SRCE,
                                  VOLUME_TREE = "Y")]
+    prep_smy_temp[is.na(TREE_WT),
+                  TREE_WT := 1]
     treelist_db <- merge(treelist_db,
                          prep_smy_temp,
                          by = c("CLSTR_ID", "PLOT", "TREE_NO"),
@@ -941,6 +940,8 @@ ISMCCompiler <- function(compilationType,
                                  VOL_MER, VOL_NTWB,
                                  VOL_DWB, NET_FCT_METHOD,
                                  VOLUME_TREE = "Y")]
+    prep_smy_temp[is.na(TREE_WT),
+                  TREE_WT := 1]
     treelist_db <- merge(treelist_db,
                          prep_smy_temp,
                          by = c("CLSTR_ID", "PLOT", "TREE_NO"),
