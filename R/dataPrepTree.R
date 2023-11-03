@@ -208,7 +208,10 @@ dataPrepTree <- function(compilationType,
   if(compilationType == "PSP"){
     treeno_max <- treemeasurements[PLOT == 1,
                                    .(TREE_NO_max = max(TREE_NUMBER)),
-                                   by = "CLSTR_ID"]
+                                   by = c("SITE_IDENTIFIER", "CLSTR_ID")]
+    treeno_max[, TREE_NO_max := max(TREE_NO_max),
+               by = "SITE_IDENTIFIER"]
+    treeno_max[, SITE_IDENTIFIER := NULL]
     smalltrees_forvol <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE %in% 5:7,]
     smalltrees_forvol <- merge(smalltrees_forvol,
                                sampleMsmts[,.(CLSTR_ID, DBH_LIMIT_TAG)],
