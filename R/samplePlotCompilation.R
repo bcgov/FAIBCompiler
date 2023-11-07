@@ -37,12 +37,15 @@ samplePlotCompilation <- function(compilationType,
   vi_a[, meas_yr_cut := as.Date(paste0(meas_yr_temp, "-06-01"))]
   vi_a[, MEAS_YR := ifelse(MEAS_DT >= meas_yr_cut, meas_yr_temp,
                            meas_yr_temp - 1)]
-  vi_a[, NO_MEAS := max(VISIT_NUMBER),
+  vi_a[, ':='(NO_MEAS = length(unique(VISIT_NUMBER)),
+              firstvisit = min(VISIT_NUMBER),
+              lastvisit = max(VISIT_NUMBER)),
        by = "SITE_IDENTIFIER"]
-  vi_a[VISIT_NUMBER == 1,
+
+  vi_a[VISIT_NUMBER == firstvisit,
        ':='(MEAS_DT_FIRST = MEAS_DT,
             MEAS_YR_FIRST = MEAS_YR)]
-  vi_a[VISIT_NUMBER == NO_MEAS,
+  vi_a[VISIT_NUMBER == lastvisit,
        ':='(MEAS_DT_LAST = MEAS_DT,
             MEAS_YR_LAST = MEAS_YR)]
   vi_a[, ':='(MEAS_DT_FIRST = min(MEAS_DT_FIRST, na.rm = TRUE),
@@ -57,7 +60,9 @@ samplePlotCompilation <- function(compilationType,
   vi_a[, PERIOD := MEAS_YR - meas_yr_next]
   vi_a[,':='(meas_yr_temp = NULL,
              meas_yr_cut = NULL,
-             meas_yr_next = NULL)]
+             meas_yr_next = NULL,
+             firstvisit = NULL,
+             lastvisit = NULL)]
   vi_a <- updateSpatial(compilationType = compilationType,
                         samplesites = vi_a,
                         mapPath = mapPath)
@@ -80,6 +85,7 @@ samplePlotCompilation <- function(compilationType,
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
+                                     BEC_SOURCE,
                                      TSA, TSA_DESC, FIZ, TFL, TFL_LICENCEE, OWNER, SCHEDULE, OWNERSHIP_DESCRIPTION,
                                      PROJ_ID, SAMP_NO,
                                      SAMPLE_SITE_NAME,
