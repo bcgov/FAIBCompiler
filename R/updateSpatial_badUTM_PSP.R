@@ -49,7 +49,7 @@ updateSpatial_badUTM_PSP <- function(mapPath,
     for (indisp in c("BEC", "TSA", "TFL", "Ownership", "FIZ")) {
       ## check map version from lookup table
       mapname <- dir(mapPath, pattern = paste0(indisp, "_map"))
-      mapname <- data.table(mapversion = gsub(".rds", "", mapname))
+      mapname <- gsub(".rds", "", mapname)
       if(!(mapname %in% spAttr_regionCompartment$mapversion$mapversion)){ # map version does not match
         spmap <- readRDS(dir(mapPath, pattern = paste0(indisp, "_map"),
                              full.names = TRUE))
@@ -86,7 +86,7 @@ updateSpatial_badUTM_PSP <- function(mapPath,
   becmaptable[, ':='(BECLABEL_var = paste0(ZONE, SUBZONE, VARIANT),
                      BECLABEL_subzone = paste0(ZONE, SUBZONE))]
 
-  # 1 attempt using valid bec labels at var level
+  # 1 attempt using valid ismc bec labels at var level
   samplesites[BECLABEL_ISMC_var %in% becmaptable$BECLABEL_var &
                 is.na(BEC_SOURCE),
                       ':='(BEC = BEC_ZONE_ISMC,
@@ -94,14 +94,32 @@ updateSpatial_badUTM_PSP <- function(mapPath,
                            BEC_VAR = BEC_VAR_ISMC,
                            BEC_SOURCE = 2)]
 
-  # 2 attempt using valid bec labels at subzone level
+  # 2 attempt using valid ismc bec labels at subzone level
   samplesites[BECLABEL_ISMC_subzone %in% becmaptable$BECLABEL_subzone &
                 is.na(BEC_SOURCE),
               ':='(BEC = BEC_ZONE_ISMC,
                    BEC_SBZ = BEC_SUBZONE_ISMC,
                    BEC_SOURCE = 2)]
+  # 3 attempt using region and compartment number to find only
+  # one bec and becsub zone
+  # note: the region compartment and bec lookup table is
+  # derived by overlay region compartment map and bec map
+  # conservatively, only region/compartment that has one bec+becsubzone is used
+  # in other words, the area of one region/compartment is in a bec/becsubzone area
+  samplesites <- merge(samplesites,
+                       spAttr_regionCompartment$BEC,
+                       by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"),
+                       all.x = TRUE)
+  samplesites[is.na(BEC_SOURCE) & !is.na(BEC_rcp),
+              ':='(BEC = BEC_rcp,
+                   BEC_SBZ = BEC_sbz_rcp,
+                   BEC_SOURCE = 3)] # marked this method as 3
+  samplesites[,':='(BEC_rcp = NULL,
+                    BEC_sbz_rcp = NULL)]
 
-  # 3 guess subzone based the largest subzone for a given zone
+  # 4 attempt using ismc bec zone but no subzone information
+  # populate subzone by using guessed subzone based the largest subzone
+  # for that bec zone
   beclabelsmry <- becmaptable[,.(ZONE = unique(ZONE),
                                  SUBZONE = unique(SUBZONE),
                                  area_total = sum(FEATURE_AREA)),
@@ -118,7 +136,8 @@ updateSpatial_badUTM_PSP <- function(mapPath,
   samplesites[is.na(BEC_SOURCE) & !is.na(SUBZONE),
                       ':='(BEC = BEC_ZONE_ISMC,
                            BEC_SBZ = SUBZONE,
-                           BEC_SOURCE = 3)]
+                           BEC_SOURCE = 4)] # use ismc bec zone, subzone is the largest
+                                            # subzone in that bec zone
 
   samplesites[,':='(BEC_ZONE_ISMC = NULL,
                     BEC_SUBZONE_ISMC = NULL,
@@ -128,17 +147,9 @@ updateSpatial_badUTM_PSP <- function(mapPath,
                     SUBZONE = NULL)]
 
 
-  # # lastly, using region and compartment number
-  samplesites <- merge(samplesites,
-                       spAttr_regionCompartment$BEC,
-                       by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"),
-                       all.x = TRUE)
-  samplesites[is.na(BEC_SOURCE) & !is.na(BEC_rcp),
-              ':='(BEC = BEC_rcp,
-                   BEC_SBZ = BEC_sbz_rcp,
-                   BEC_SOURCE = 4)]
-  samplesites[,':='(BEC_rcp = NULL,
-                    BEC_sbz_rcp = NULL)]
+  # there still some sites do not have bec information
+  # to populate that, using the bec+subzone that have most sites for a
+  # given region+compartment
   regioncompartsmry <- unique(samplesites[!is.na(BEC_SOURCE),
                                            .(SITE_IDENTIFIER,
                                              SAMPLING_REGION_NUMBER,
@@ -167,7 +178,7 @@ updateSpatial_badUTM_PSP <- function(mapPath,
   samplesites[is.na(BEC_SOURCE) & !is.na(BEC_new),
                       ':='(BEC = BEC_new,
                            BEC_SBZ = BEC_SBZ_new,
-                          BEC_SOURCE = 4)]
+                          BEC_SOURCE = 5)]
   samplesites[,':='(BEC_new = NULL,
                             BEC_SBZ_new = NULL)]
   rm(regioncompartsmry)
@@ -179,6 +190,7 @@ updateSpatial_badUTM_PSP <- function(mapPath,
               ':='(TSA = TSA_ISMC)] # update from ISMC data
   # update from region compartment
   # from region compartment lookup table
+  # one on one match
   samplesites <- merge(samplesites,
                        spAttr_regionCompartment$TSA,
                        by = c("SAMPLING_REGION_NUMBER", "COMPARTMENT_NUMBER"),
