@@ -7,6 +7,7 @@
 #' @param compilationType character, Specifies the compilation type either \code{nonPSP} or code{PSP}.
 #' @return no value returned. Instead, all the files will be saved into the \code{publishPath} including a readme file.
 #' @importFrom data.table ':='
+#' @importFrom openxlsx write.xlsx
 #' @note The compilationPath must have all the outputs from \code{ISMCCompiler}.
 #'
 #'
@@ -114,6 +115,9 @@ preparePublishData <- function(compilationPath,
                       "faib_header.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_header,
+            file.path(publishPath,
+                      "faib_header.xlsx"))
   faib_header_dic <- data.table(Attribute = names(faib_header))
   faib_header_dic <- merge(faib_header_dic,
                            datadictionary_all,
@@ -204,6 +208,9 @@ preparePublishData <- function(compilationPath,
                       "faib_sample_byvisit.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_sample_byvisit,
+            file.path(publishPath,
+                      "faib_sample_byvisit.xlsx"))
   faib_sample_byvisit_dic <- data.table(Attribute = names(faib_sample_byvisit))
   faib_sample_byvisit_dic <- merge(faib_sample_byvisit_dic,
                                    datadictionary_all,
@@ -241,6 +248,9 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_smeries.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_compiled_smeries,
+            file.path(publishPath,
+                      "faib_compiled_smeries.xlsx"))
 
   faib_compiled_smeries_dic <- data.table(Attribute = names(faib_compiled_smeries))
   faib_compiled_smeries_dic <- merge(faib_compiled_smeries_dic,
@@ -261,6 +271,9 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_ht_smeries.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_compiled_ht_smeries,
+            file.path(publishPath,
+                      "faib_compiled_ht_smeries.xlsx"))
 
   faib_compiled_ht_smeries_dic <- data.table(Attribute = names(faib_compiled_ht_smeries))
   faib_compiled_ht_smeries_dic <- merge(faib_compiled_ht_smeries_dic,
@@ -293,6 +306,9 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_spcsmries.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_compiled_spcsmries,
+            file.path(publishPath,
+                      "faib_compiled_spcsmries.xlsx"))
   faib_compiled_spcsmries_dic <- data.table(Attribute = names(faib_compiled_spcsmries))
   faib_compiled_spcsmries_dic <- merge(faib_compiled_spcsmries_dic,
                                        datadictionary_all,
@@ -313,6 +329,9 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_siteage_spcsmries.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_compiled_siteage_spcsmries,
+            file.path(publishPath,
+                      "faib_compiled_siteage_spcsmries.xlsx"))
   faib_compiled_siteage_spcsmries_dic <- data.table(Attribute = names(faib_compiled_siteage_spcsmries))
   faib_compiled_siteage_spcsmries_dic <- merge(faib_compiled_siteage_spcsmries_dic,
                                                datadictionary_all,
@@ -407,6 +426,9 @@ preparePublishData <- function(compilationPath,
                       "faib_tree_detail.csv"),
             row.names = FALSE,
             na = "")
+  write.xlsx(faib_tree_detail,
+            file.path(publishPath,
+                      "faib_tree_detail.xlsx"))
 
   faib_tree_detail_dic <- data.table(Attribute = names(faib_tree_detail))
   faib_tree_detail_dic <- merge(faib_tree_detail_dic,
