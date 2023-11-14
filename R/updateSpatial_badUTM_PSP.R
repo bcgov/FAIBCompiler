@@ -182,10 +182,11 @@ updateSpatial_badUTM_PSP <- function(mapPath,
   samplesites[,':='(BEC_new = NULL,
                             BEC_SBZ_new = NULL)]
   rm(regioncompartsmry)
-
-
   # for TSA
   tsamap <- readRDS(dir(mapPath, pattern = "TSA_map", full.names = TRUE))
+  samplesites[TSA_ISMC == 32,
+              TSA_ISMC := as.character("NA")] # tsa 32 no longer exists
+
   samplesites[is.na(TSA) & !is.na(TSA_ISMC),
               ':='(TSA = TSA_ISMC)] # update from ISMC data
   # update from region compartment
@@ -200,7 +201,6 @@ updateSpatial_badUTM_PSP <- function(mapPath,
                    TSA_DESC = TSA_dsc_rcp)]
   samplesites[, ':='(TSA_rcp = NULL,
                      TSA_dsc_rcp = NULL)]
-
   # from region compartment which contains the most sites
   regioncompartsmry <- unique(samplesites[!is.na(TSA),
                                           .(SITE_IDENTIFIER,
@@ -243,8 +243,21 @@ updateSpatial_badUTM_PSP <- function(mapPath,
   samplesites[, TSA_NUMBER_DESCRIPTION := NULL]
 
   ## for tfl
+  samplesites[TFL_ISMC == 0, TFL_ISMC := NA]
   samplesites[is.na(TFL) & !is.na(TFL_ISMC),
-                      ':='(TFL = TFL_ISMC)]
+                      ':='(TFL = paste0("TFL", TFL_ISMC))]
+  tflmap <- readRDS(dir(mapPath, pattern = "TFL_map", full.names = TRUE))
+  tflmaptable <- data.table(data.frame(tflmap$map))
+  samplesites <- merge(samplesites,
+                       unique(tflmaptable[,.(TFL = FOREST_FILE_ID,
+                                             LICENCEE)]),
+                       by = "TFL",
+                       all.x = TRUE)
+  samplesites[is.na(TFL_LICENCEE) & !is.na(LICENCEE),
+              TFL_LICENCEE := LICENCEE]
+  samplesites[!is.na(TFL) & is.na(TFL_LICENCEE),
+              TFL := NA]
+  samplesites[, LICENCEE := NULL]
 
 
   ## for fiz
