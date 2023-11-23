@@ -38,7 +38,6 @@
 #' @param download logical, Specifies if the data from ISMC need to be downloaded. Default is \code{TRUE}, which m
 #'                          means need download.
 #' @param saveCSV logical, Specifies if the outputs need to be saved into CSV. Default is save.
-#' @param forPublish logical, Specifies if compiler produces data for publish for BCGW warehouse. Default is \code{FALSE}, which means no.
 #' @param recompile logical, Defines whether we want to recompile data using archived
 #'                              raw data. Default is FALSE, which means the compiler needs to
 #'                              download data from ISMC database. When it is \code{TRUE}, a folder will
@@ -102,7 +101,6 @@ ISMCCompiler <- function(compilationType,
                          weirdUtil = "4",
                          download = TRUE,
                          saveCSV = TRUE,
-                         forPublish = FALSE,
                          recompile = FALSE,
                          archiveDate = as.character(NA)){
   if(!(compilationType %in% c("PSP", "nonPSP"))){
@@ -115,8 +113,7 @@ ISMCCompiler <- function(compilationType,
                                             compilationType,
                                             recompile = recompile,
                                             download = download,
-                                            archiveDate = archiveDate,
-                                            forPublish = forPublish)
+                                            archiveDate = archiveDate)
 
   cat(paste(substr(Sys.time(), 1, 16), ": Check requirements for compilation:\n", sep = ""))
   checkMaps(mapPath = compilationPaths$compilation_map)
@@ -1117,28 +1114,6 @@ ISMCCompiler <- function(compilationType,
              file.path(compilationPaths$compilation_db,
                        "Data_dictionary.xlsx"))
 
-  if(forPublish){
-    allfiles_publish <- dir(compilationPaths$compilation_publish, pattern = ".csv")
-    allfiles_publish <- gsub(".csv", "", allfiles_publish)
-    dictionary_file_publish <- list()
-    for (indifile_publish in allfiles_publish) {
-      indifile_publish_file <- read.csv(file.path(compilationPaths$compilation_publish,
-                                                  paste0(indifile_publish, ".csv")))
-      indifile_publish_name <- data.table(ColumnName = names(indifile_publish_file))
-      rm(indifile_publish_file)
-      indifile_publish_name <- merge(indifile_publish_name,
-                                     datadictionary_master,
-                                     by = "ColumnName",
-                                     all.x = TRUE)
-      indifile_publish_name_missing <- indifile_publish_name[is.na(Description),]
-      dictionary_file_publish[[indifile_publish]] <- indifile_publish_name
-      col_missing <- rbind(col_missing, indifile_publish_name_missing)
-    }
-    write.xlsx(dictionary_file_publish,
-               file.path(compilationPaths$compilation_publish,
-                         "Data_dictionary.xlsx"))
-
-  }
 
   if(nrow(col_missing) > 0){
     col_missing <- unique(col_missing)
@@ -1225,13 +1200,7 @@ ISMCCompiler <- function(compilationType,
     }
     fs::dir_create(compilationPaths$compilation_archive)
 
-    if(forPublish){
-      clusterInFunction <- makeCluster(7)
-    } else {
-      clusterInFunction <- makeCluster(6)
-    }
-
-
+    clusterInFunction <- makeCluster(6)
     inputdata_list <- list()
     for (indicore in 1:6) {
       if(indicore == 1){
@@ -1250,11 +1219,7 @@ ISMCCompiler <- function(compilationType,
       inputdata_list[[indicore]] <- list("dir_path" = indi_dir_path,
                                          "new_path" = compilationPaths$compilation_archive)
     }
-    if(forPublish){
-      indi_dir_path <- compilationPaths$compilation_publish
-      inputdata_list[[7]] <- list("dir_path" = indi_dir_path,
-                                  "new_path" = compilationPaths$compilation_archive)
-    }
+
     clusterExport(clusterInFunction,
                   varlist = c("dir_copy"),
                   envir = environment())
