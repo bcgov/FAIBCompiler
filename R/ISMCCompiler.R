@@ -1070,6 +1070,37 @@ ISMCCompiler <- function(compilationType,
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
   smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
                                     smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
+  if(compilationType == "nonPSP"){
+  smalltreesamplemsmt <- readRDS(dir(compilationPaths$raw_from_oracle,
+                                     pattern = "SampleMeasurements.rds",
+                                     full.names = TRUE))
+  smalltreesamplemsmt <- smalltreesamplemsmt[PLOT_CATEGORY_CODE == "IPC SM" &
+                                               MEASUREMENT_STATUS_CODE == "NOC",
+                                             .(CLSTR_ID = paste0(SITE_IDENTIFIER, "-",
+                                                                 SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                                                 VISIT_NUMBER))]
+
+  smalltreecompile$clusterSummaries[CLSTR_ID %in% smalltreesamplemsmt$CLSTR_ID,
+                                    ':='(SMTR_TO2 = as.numeric(NA),
+                                         SMTR_TO3 = as.numeric(NA),
+                                         SMTR_TO4 = as.numeric(NA),
+                                         SMTR2_HA = as.numeric(NA),
+                                         SMTR3_HA = as.numeric(NA),
+                                         SMTR4_HA = as.numeric(NA),
+                                         SMTR_HA = as.numeric(NA),
+                                         SMTR_TOT = as.numeric(NA))]
+  smalltreecompile$clusterSpeciesSummaries[CLSTR_ID %in% smalltreesamplemsmt$CLSTR_ID,
+                                    ':='(SMTR_CT2 = as.numeric(NA),
+                                         SMTR_CT3 = as.numeric(NA),
+                                         SMTR_CT4 = as.numeric(NA),
+                                         SMTR2_HA = as.numeric(NA),
+                                         SMTR3_HA = as.numeric(NA),
+                                         SMTR4_HA = as.numeric(NA),
+                                         SMTR_HA = as.numeric(NA),
+                                         SMTR_TOT = as.numeric(NA))]
+  }
+
+
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,
