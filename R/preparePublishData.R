@@ -291,19 +291,19 @@ preparePublishData <- function(compilationPath,
 
   write.csv(faib_compiled_ht_smeries,
             file.path(publishPath,
-                      "faib_compiled_ht_smeries.csv"),
+                      "faib_compiled_smeries_ht.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(faib_compiled_ht_smeries,
              file.path(publishPath,
-                       "faib_compiled_ht_smeries.xlsx"))
+                       "faib_compiled_smeries_ht.xlsx"))
 
   faib_compiled_ht_smeries_dic <- data.table(Attribute = names(faib_compiled_ht_smeries))
   faib_compiled_ht_smeries_dic <- merge(faib_compiled_ht_smeries_dic,
                                         datadictionary_all,
                                         by = "Attribute",
                                         all.x = TRUE)
-  datadictionary_publish[["faib_compiled_ht_smeries"]] <- faib_compiled_ht_smeries_dic
+  datadictionary_publish[["faib_compiled_smeries_ht"]] <- faib_compiled_ht_smeries_dic
 
   volsmry_sp <- readRDS(file.path(compilationPath,
                                   paste0("compilation_", compilationType, "_db"),
@@ -370,18 +370,18 @@ preparePublishData <- function(compilationPath,
   }
   write.csv(faib_compiled_siteage_spcsmries,
             file.path(publishPath,
-                      "faib_compiled_siteage_spcsmries.csv"),
+                      "faib_compiled_spcsmries_siteage.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(faib_compiled_siteage_spcsmries,
              file.path(publishPath,
-                       "faib_compiled_siteage_spcsmries.xlsx"))
+                       "faib_compiled_spcsmries_siteage.xlsx"))
   faib_compiled_siteage_spcsmries_dic <- data.table(Attribute = names(faib_compiled_siteage_spcsmries))
   faib_compiled_siteage_spcsmries_dic <- merge(faib_compiled_siteage_spcsmries_dic,
                                                datadictionary_all,
                                                by = "Attribute",
                                                all.x = TRUE)
-  datadictionary_publish[["faib_compiled_siteage_spcsmries"]] <- faib_compiled_siteage_spcsmries_dic
+  datadictionary_publish[["faib_compiled_spcsmries_siteage"]] <- faib_compiled_siteage_spcsmries_dic
 
 
   treemsmt <- readRDS(file.path(compilationPath,
