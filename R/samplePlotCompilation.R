@@ -69,6 +69,7 @@ samplePlotCompilation <- function(compilationType,
   if(compilationType == "PSP"){
     vi_a <- updateSpatial_badUTM_PSP(mapPath = mapPath,
                                      samplesites = vi_a)
+    vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
@@ -82,6 +83,7 @@ samplePlotCompilation <- function(compilationType,
                                      TOTAL_PERIOD, NO_MEAS)],
                              by = "SAMP_POINT")
   } else {
+    vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
