@@ -343,8 +343,6 @@ dataPrepTree <- function(compilationType,
   # And as a shrub, we would ignore in our compilation.
   # Rene's email on 2022-09-09
   treemeasurements <- treemeasurements[TREE_SPECIES_CODE != "JD",]
-
-
   treemeasurements <- merge(treemeasurements,
                             unique(sampleMsmts[,.(TYPE_CD,
                                                   CLSTR_ID, MEAS_DT,
