@@ -121,7 +121,7 @@ preparePublishData <- function(compilationPath,
                       "faib_header.csv"),
             row.names = FALSE,
             na = "")
-  write.xlsx(faib_header,
+  write.xlsx(list(SHEET1 = faib_header),
              file.path(publishPath,
                        "faib_header.xlsx"))
   faib_header_dic <- data.table(Attribute = names(faib_header))
@@ -214,7 +214,7 @@ preparePublishData <- function(compilationPath,
                       "faib_sample_byvisit.csv"),
             row.names = FALSE,
             na = "")
-  write.xlsx(faib_sample_byvisit,
+  write.xlsx(list(SHEET1 = faib_sample_byvisit),
              file.path(publishPath,
                        "faib_sample_byvisit.xlsx"))
   faib_sample_byvisit_dic <- data.table(Attribute = names(faib_sample_byvisit))
@@ -267,7 +267,7 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_smeries.csv"),
             row.names = FALSE,
             na = "")
-  write.xlsx(faib_compiled_smeries,
+  write.xlsx(list(SHEET1 = faib_compiled_smeries),
              file.path(publishPath,
                        "faib_compiled_smeries.xlsx"))
 
@@ -294,7 +294,7 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_smeries_ht.csv"),
             row.names = FALSE,
             na = "")
-  write.xlsx(faib_compiled_ht_smeries,
+  write.xlsx(list(SHEET1 = faib_compiled_ht_smeries),
              file.path(publishPath,
                        "faib_compiled_smeries_ht.xlsx"))
 
@@ -340,7 +340,7 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_spcsmries.csv"),
             row.names = FALSE,
             na = "")
-  write.xlsx(faib_compiled_spcsmries,
+  write.xlsx(list(SHEET1 = faib_compiled_spcsmries),
              file.path(publishPath,
                        "faib_compiled_spcsmries.xlsx"))
   faib_compiled_spcsmries_dic <- data.table(Attribute = names(faib_compiled_spcsmries))
@@ -373,7 +373,7 @@ preparePublishData <- function(compilationPath,
                       "faib_compiled_spcsmries_siteage.csv"),
             row.names = FALSE,
             na = "")
-  write.xlsx(faib_compiled_siteage_spcsmries,
+  write.xlsx(list(SHEET1 = faib_compiled_siteage_spcsmries),
              file.path(publishPath,
                        "faib_compiled_spcsmries_siteage.xlsx"))
   faib_compiled_siteage_spcsmries_dic <- data.table(Attribute = names(faib_compiled_siteage_spcsmries))
@@ -487,7 +487,7 @@ preparePublishData <- function(compilationPath,
             row.names = FALSE,
             na = "")
   if(compilationType == "nonPSP"){
-    write.xlsx(faib_tree_detail,
+    write.xlsx(list(SHEET1 = faib_tree_detail),
                file.path(publishPath,
                          "faib_tree_detail.xlsx"))
   } else {
