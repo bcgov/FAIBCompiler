@@ -466,6 +466,13 @@ dataPrepTree <- function(compilationType,
     treemeasurements[, ':='(SUIT_HT_EDIT = as.character(NA),
                             SUIT_SI_EDIT = as.character(NA),
                             LAB_AGE_EDIT = as.character(NA))]
+
+    # for the l samples, the live fallen trees should be removed from the compilation
+    treemeasurements[, uniid := 1:length(DIAMETER_MEASMT_HEIGHT)]
+    uniid_removed <- treemeasurements[substr(CLSTR_ID, 9, 9) == "L" &
+                       TREE_EXTANT_CODE == "L" &
+                       TREE_STANCE_CODE == "F"]$uniid
+    treemeasurements <- treemeasurements[!(uniid %in% uniid_removed),]
   } else {
     # for PSP
     treemeasurements[, TREE_DETAIL_COMMENT := NULL]
