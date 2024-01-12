@@ -34,9 +34,9 @@ preparePublishData <- function(compilationPath,
   sampsites_org <- readRDS(file.path(compilationPath,
                                      paste0("compilation_", compilationType, "_db"),
                                      "sample_site_header.rds"))
-
   faib_header <- sampsites_org[,.(SITE_IDENTIFIER, TOTAL_PERIOD,
-                                  BC_ALBERS_X, BC_ALBERS_Y, BEC_ZONE, BEC_SBZ,
+                                  BC_ALBERS_X, BC_ALBERS_Y, SITE_STATUS_CODE,
+                                  BEC_ZONE, BEC_SBZ,
                                   BEC_VAR, FIZ, IP_UTM, IP_EAST, IP_NRTH, Latitude, Longitude,
                                   OWNER, SCHEDULE,
                                   SAMPLE_ESTABLISHMENT_TYPE,
@@ -75,7 +75,8 @@ preparePublishData <- function(compilationPath,
                      grid_fill = grid_fill_tsa)]
     faib_header[,':='(GRID_BASE_tsa = NULL,
                       GRID_SIZE_tsa = NULL,
-                      grid_fill_tsa = NULL)]
+                      grid_fill_tsa = NULL,
+                      SITE_STATUS_CODE = NULL)]
     # last priority goes to est type
     gridlookup_est <- gridlookup[TSA == "All" & TFL == "All",
                                  .(SAMPLE_ESTABLISHMENT_TYPE,
@@ -254,11 +255,11 @@ preparePublishData <- function(compilationPath,
   } else {
     faib_compiled_smeries <- volsmry[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, UTIL,
                                         BA_HA_LIV, BA_HA_L, BA_HA_I, BA_HA_V, BA_HA_D,
-                                        STEMS_HA_LIV, STEMS_HA_L, STEMS_HA_I, STEMS_HA_V,
+                                        STEMS_HA_LIV, STEMS_HA_L, STEMS_HA_I, STEMS_HA_V, STEMS_HA_D,
                                         VHA_WSV_LIV, VHA_WSV_L, VHA_WSV_I, VHA_WSV_V, VHA_WSV_D,
                                         VHA_MER_LIV, VHA_MER_L, VHA_MER_I, VHA_MER_V, VHA_MER_D,
                                         VHA_DWB_LIV, VHA_DWB_L, VHA_DWB_I, VHA_DWB_V, VHA_DWB_D,
-                                        QMD_LIV, QMD_L, QMD_I, QMD_V,
+                                        QMD_LIV, QMD_L, QMD_I, QMD_V, QMD_D,
                                         SPB_CPCT_LIV, SPB_CPCT_LI)]
 
   }
