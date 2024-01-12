@@ -169,7 +169,7 @@ rankingMatrix <- function(archivedPSPPath,
     data.table
 
   treelist <- treelist_org[MEASUREMENT_ANOMALY_CODE != "PSP-TALLY" |
-                                 is.na(MEASUREMENT_ANOMALY_CODE) &
+                             is.na(MEASUREMENT_ANOMALY_CODE) &
                              VOLUME_TREE == "Y",]
   # compute an number of live trees per plot computed at the minimum dbh limit
   tree_count_live <- treelist_org[LV_D == "L" &
@@ -228,11 +228,11 @@ rankingMatrix <- function(archivedPSPPath,
                                                        "201_240YR",
                                                        ">240YR")))]
 
- # for psp ranking the species composition is summarized using live non-residual trees
- # and based on original species in the database
+  # for psp ranking the species composition is summarized using live non-residual trees
+  # and based on original species in the database
 
-   treemsmts_raw <- readRDS(dir(file.path(archivedPSPPath,
-                                 "compilation_PSP_raw"),
+  treemsmts_raw <- readRDS(dir(file.path(archivedPSPPath,
+                                         "compilation_PSP_raw"),
                                pattern = "TreeMeasurements.rds",
                                full.names = TRUE))
   treemsmts_raw <- treemsmts_raw[,.(SITE_IDENTIFIER,
@@ -274,9 +274,9 @@ rankingMatrix <- function(archivedPSPPath,
   #                                  "compilation_PSP_db",
   #                                  "Smries_volume_byCLSP.rds"))
   leadingspecies <- ba_smry[order(CLSTR_ID, -SP_PCT_BA_LS),
-                                .(CLSTR_ID,
-                                  SPC1 = TREE_SPECIES_CODE,
-                                  SP_PCT_BA_LS)]
+                            .(CLSTR_ID,
+                              SPC1 = TREE_SPECIES_CODE,
+                              SP_PCT_BA_LS)]
   leadingspecies <- unique(leadingspecies,
                            by = c("CLSTR_ID"))
 
@@ -405,8 +405,8 @@ rankingMatrix <- function(archivedPSPPath,
   sample_sites[CELL_COMPLETE == "N",
                CELL_KEY := "MISS_STRATA"]
 
-    oldcellkeys <- fread(file.path(archivedPSPPath,
-                                   "compilation_coeff", "cellkeylookup.csv"))
+  oldcellkeys <- fread(file.path(archivedPSPPath,
+                                 "compilation_coeff", "cellkeylookup.csv"))
   if(useOldCellKey){
     sample_sites <- merge(sample_sites,
                           oldcellkeys[,.(SITE_IDENTIFIER, SAMP_ID, CELL_KEY_org,
@@ -418,14 +418,14 @@ rankingMatrix <- function(archivedPSPPath,
                           by = "SITE_IDENTIFIER",
                           all.x = TRUE)
     sample_sites[, ':='(CELL_KEY_new = CELL_KEY,
-                      CELL_COMPLETE_new = CELL_COMPLETE,
-                      STS_STRATA_new = STS_STRATA,
-                      TRT_STRATA_new = TRT_STRATA,
-                      BEC_STRATA_new = BEC_STRATA,
-                      SPC_STRATA_new = SPC_STRATA,
-                      AGE_STRATA_new = AGE_STRATA,
-                      DEN_STRATA_new = DEN_STRATA,
-                      SI_STRATA_new = SI_STRATA)]
+                        CELL_COMPLETE_new = CELL_COMPLETE,
+                        STS_STRATA_new = STS_STRATA,
+                        TRT_STRATA_new = TRT_STRATA,
+                        BEC_STRATA_new = BEC_STRATA,
+                        SPC_STRATA_new = SPC_STRATA,
+                        AGE_STRATA_new = AGE_STRATA,
+                        DEN_STRATA_new = DEN_STRATA,
+                        SI_STRATA_new = SI_STRATA)]
     sample_sites[!is.na(CELL_KEY_org),
                  ':='(CELL_COMPLETE = CELL_COMPLETE_org,
                       TRT_STRATA = TRT_STRATA_org,
@@ -453,8 +453,8 @@ rankingMatrix <- function(archivedPSPPath,
   # need to get access note data, as part of assessment of keeping a sample
   # ie., a sample needs to have either a gps coordinate or access notes, otherwise do not keep
   ac_ismc <- readRDS(file.path(archivedPSPPath,
-                                "compilation_PSP_sa",
-                                "siteaccessnotes.rds"))
+                               "compilation_PSP_sa",
+                               "siteaccessnotes.rds"))
   ac1 <- merge(sample_sites,
                ac_ismc[,.(SITE_IDENTIFIER, ACCESS_NOTES)],
                by = "SITE_IDENTIFIER",
@@ -559,9 +559,9 @@ rankingMatrix <- function(archivedPSPPath,
   #   data.table
 
   treelist_nhts <- treelist[HT_TOTAL_SOURCE == "Field measured" &
-                                  SUIT_HT == "Y" &
-                                  LV_D == "L",
-                                .(CLSTR_ID, HEIGHT, SUIT_HT, LV_D)]
+                              SUIT_HT == "Y" &
+                              LV_D == "L",
+                            .(CLSTR_ID, HEIGHT, SUIT_HT, LV_D)]
 
   treelist_nhts <- merge(treelist_nhts,
                          sample_msmt[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
@@ -887,11 +887,17 @@ rankingMatrix <- function(archivedPSPPath,
   psp5[substr(MEAS_DT_LAST, 1, 4) <= 1995,
        LAST_MSMT_GRP := "<=1995"]
   psp5[substr(MEAS_DT_LAST, 1, 4) >= 1996 & substr(MEAS_DT_LAST, 1, 4) <= 2000,
-       LAST_MSMT_GRP := "1996_2000"]
-  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2001 & substr(MEAS_DT_LAST, 1, 4) <= 2010,
-       LAST_MSMT_GRP := "2001_2010"]
-  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2011,
-       LAST_MSMT_GRP := ">=2011"]
+       LAST_MSMT_GRP := "1996 - 2000"]
+  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2001 & substr(MEAS_DT_LAST, 1, 4) <= 2005,
+       LAST_MSMT_GRP := "2001 - 2005"]
+  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2006 & substr(MEAS_DT_LAST, 1, 4) <= 2010,
+       LAST_MSMT_GRP := "2006 - 2010"]
+  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2011 & substr(MEAS_DT_LAST, 1, 4) <= 2015,
+       LAST_MSMT_GRP := "2011 - 2015"]
+  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2016 & substr(MEAS_DT_LAST, 1, 4) <= 2020,
+       LAST_MSMT_GRP := "2016 - 2020"]
+  psp5[substr(MEAS_DT_LAST, 1, 4) >= 2021,
+       LAST_MSMT_GRP := ">=2021"]
   ## to produce netdown table
   netdown_table <- NULL
   netdown1 <- data.table::copy(psp5)
@@ -906,42 +912,42 @@ rankingMatrix <- function(archivedPSPPath,
                     paste0("P", 1:6), "MT",
                     letters[1:8]), NULL)
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Total # Ground Samples @ FAIB",
-                                 `Removal Criteria` = as.character(NA),
-                                 `# Sample Removed` = as.numeric(NA),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Total # Ground Samples @ FAIB",
+                                    `Removal Criteria` = as.character(NA),
+                                    `# Site Removed` = as.numeric(NA),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1 <- netdown1[SAMPLE_ESTABLISHMENT_TYPE %in% c("PSP_R", "PSP_G"),]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "G & R sample types",
-                                 `Removal Criteria` = "CMI, VRI, YSM, & Other",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "G & R sample types",
+                                    `Removal Criteria` = "CMI, VRI, YSM, & Other",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1 <- netdown1[SITE_STATUS_CODE == c("A"),]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Active & Pest-damaged samples",
-                                 `Removal Criteria` = "Inactive, destroyed, damaged",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Active & Pest-damaged samples",
+                                    `Removal Criteria` = "Inactive, destroyed, damaged",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1 <- netdown1[PRIVATE == "N",]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Crown Forest",
-                                 `Removal Criteria` = "Private land, IR",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Crown Forest",
+                                    `Removal Criteria` = "Private land, IR",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
   library(fpCompare)
   netdown1 <- netdown1[round(AREA, 2) %>=% 0.04,]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Individual plot size >= 0.04ha",
-                                 `Removal Criteria` = "Plot size < 0.04ha",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Individual plot size >= 0.04ha",
+                                    `Removal Criteria` = "Plot size < 0.04ha",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1[SITE_ACCESS_CODE == "BOAT" &
@@ -949,10 +955,10 @@ rankingMatrix <- function(archivedPSPPath,
            remove := TRUE]
   netdown1 <- netdown1[is.na(remove),]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Restricted access samples",
-                                 `Removal Criteria` = "Boat accessible only",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Restricted access samples",
+                                    `Removal Criteria` = "Boat accessible only",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1[grepl(pattern = "NAT_PARK",
@@ -961,10 +967,10 @@ rankingMatrix <- function(archivedPSPPath,
            remove := TRUE]
   netdown1 <- netdown1[is.na(remove),]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Restricted access samples",
-                                 `Removal Criteria` = "In National Parks",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Restricted access samples",
+                                    `Removal Criteria` = "In National Parks",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
 
@@ -973,49 +979,50 @@ rankingMatrix <- function(archivedPSPPath,
            remove := TRUE]
   netdown1 <- netdown1[is.na(remove),]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Need location coordinates or access notes",
-                                 `Removal Criteria` = "No access info available",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Need location coordinates or access notes",
+                                    `Removal Criteria` = "No access info available",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
 
 
   netdown1 <- netdown1[MEAS_YR_LAST >= 1996,]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Last measured >= 1996",
-                                 `Removal Criteria` = "Last measured < 1996",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Last measured >= 1996",
+                                    `Removal Criteria` = "Last measured < 1996",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1 <- netdown1[CELL_COMPLETE == "Y",]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "All 7 matrix cell attributes populated",
-                                 `Removal Criteria` = "Missing cell attributes",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "All 7 matrix cell attributes populated",
+                                    `Removal Criteria` = "Missing cell attributes",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   netdown1 <- netdown1[PROTECT_PSP == "Y",]
   netdown_protect <- data.table::copy(netdown1)
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Total PSPs to protect",
-                                 `Removal Criteria` = "Not in any protect criteria",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Total PSPs to protect",
+                                    `Removal Criteria` = "Not in any protect criteria",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
+  backupsites <- netdown1[PROTECT_CODE %in% c("D", "E"),]
   netdown1 <- netdown1[PROTECT_CODE %in% c("A", "B", "C"),]
   netdown_table <- rbind(netdown_table,
-                      data.table(`Retention Criteria` = "Total PSPs to re-measure",
-                                 `Removal Criteria` = "protect criteria: D,E",
-                                 `# Sample Removed` = sampleRemain - nrow(netdown1),
-                                 `# Sample Remaining` = nrow(netdown1)))
+                         data.table(`Retention Criteria` = "Total PSPs to re-measure",
+                                    `Removal Criteria` = "protect criteria: D,E",
+                                    `# Site Removed` = sampleRemain - nrow(netdown1),
+                                    `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
   protect_sites <- data.table::copy(netdown_protect)
-  detail_of_psp_protect_list <- netdown_protect[,.(`# Samples` = length(RATING)),
+  detail_of_psp_protect_list <- netdown_protect[,.(`# Sites` = length(RATING)),
                                                 by = "PROTECT_CODE"]
   detail_of_psp_protect_list[PROTECT_CODE == "A",
                              PROTECT_CODE_DESCRIPTION := "Rank 1 PSPs with at least two measurements"]
@@ -1028,21 +1035,51 @@ rankingMatrix <- function(archivedPSPPath,
   detail_of_psp_protect_list[PROTECT_CODE == "E",
                              PROTECT_CODE_DESCRIPTION := "Rank 3-5 PSPs with at least 30years of a total re-measurement period"]
   detail_of_psp_protect_list <- rbind(detail_of_psp_protect_list[order(PROTECT_CODE),
-                                                           .(PROTECT_CODE, PROTECT_CODE_DESCRIPTION,
-                                                             `# Samples`)],
+                                                                 .(PROTECT_CODE, PROTECT_CODE_DESCRIPTION,
+                                                                   `# Sites`)],
                                       data.table(PROTECT_CODE = "Total # protected PSPs",
                                                  PROTECT_CODE_DESCRIPTION = "",
-                                                 `# Samples` = nrow(netdown_protect)))
+                                                 `# Sites` = nrow(netdown_protect)))
 
   remeasured_sites <- data.table::copy(netdown1)
-  detail_of_psp_remeas_psp <- rbind(data.table(`Last measurement year` = "Last measured between 1996 - 2000",
-                                               `# Samples` = nrow(netdown1[LAST_MSMT_GRP == "1996_2000"])),
-                                    data.table(`Last measurement year` = "Last measured between 2001 - 2010",
-                                               `# Samples` = nrow(netdown1[LAST_MSMT_GRP == "2001_2010"])),
-                                    data.table(`Last measurement year` = "Last measured after 2010",
-                                               `# Samples` = nrow(netdown1[LAST_MSMT_GRP == ">=2011"])),
-                                    data.table(`Last measurement year` = "Total # remeasured psps",
-                                               `# Samples` = nrow(netdown1)))
+  protectsites <- rbind(remeasured_sites[, .(`Site priority` = "Remeasured sites (A, B, and C)",
+                                             LAST_MSMT_GRP,
+                                             PROTECT_CODE)],
+                        backupsites[, .(`Site priority` = "Backup sites (D and E)",
+                                        LAST_MSMT_GRP,
+                                        PROTECT_CODE)])
+
+  detail_of_psp_remeas_psp <- protectsites[,.(`# Sites` = length(PROTECT_CODE)),
+                                           by = c("Site priority", "LAST_MSMT_GRP")]
+  detail_of_psp_remeas_psp_temp <- detail_of_psp_remeas_psp[order(-`Site priority`, LAST_MSMT_GRP),
+                                                            .(`Site priority`,
+                                                              `Last measurement year` = LAST_MSMT_GRP,
+                                                              `# Sites`)]
+  detail_of_psp_remeas_psp <- rbind(detail_of_psp_remeas_psp_temp[`Site priority` == "Remeasured sites (A, B, and C)",],
+                                    data.table(`Site priority` = "Total # sites",
+                                               `Last measurement year` = "",
+                                               `# Sites` = nrow(remeasured_sites)),
+                                    detail_of_psp_remeas_psp_temp[`Site priority` == "Backup sites (D and E)",],
+                                    data.table(`Site priority` = "Total # sites",
+                                               `Last measurement year` = "",
+                                               `# Sites` = nrow(backupsites)))
+
+  totlength <- nrow(detail_of_psp_remeas_psp)
+  detail_of_psp_protect_list <- rbind(detail_of_psp_protect_list,
+                                      data.table(PROTECT_CODE = rep(as.character(NA),
+                                                                    totlength - nrow(detail_of_psp_protect_list)),
+                                                 PROTECT_CODE_DESCRIPTION = rep(as.character(NA),
+                                                                                totlength - nrow(detail_of_psp_protect_list)),
+                                                 `# Sites` = rep(as.character(NA),
+                                                                 totlength - nrow(detail_of_psp_protect_list))))
+
+  detail_of_psp_protect_list <- cbind(detail_of_psp_protect_list,
+                                      data.table(" " = rep(NA, totlength),
+                                                 " " = rep(NA, totlength)),
+                                      detail_of_psp_remeas_psp)
+
+
+
   ranking_psp <- merge(ranking_psp,
                        psp5[,.(SITE_IDENTIFIER, SAMP_ID,
                                PROTECT_PSP, PROTECT_CODE, PROTECT_CRITERIA,
@@ -1087,13 +1124,23 @@ rankingMatrix <- function(archivedPSPPath,
                                  `Data Source` = "BCGW",
                                  `Download Time` = ownermap_time))
   datasource[`Data Name` == "ISMC raw data",
-              `Compiled Date` := substr(`Download Time`, 1, 8)]
+             `Compiled Date` := substr(`Download Time`, 1, 8)]
+  protected_sites <- psp5[PROTECT_PSP == "Y" &
+                            !is.na(PROTECT_CODE),
+                          .(SITE_IDENTIFIER, SAMP_ID, BC_ALBERS_X, BC_ALBERS_Y,
+                            BEC_ZONE, BEC_SBZ, TSA, MGMT_UNIT,
+                            CELL_KEY, PROTECT_CODE, PROTECT_CRITERIA,
+                            MEAS_YR_LAST, LAST_MSMT_GRP)]
+  protected_sites[PROTECT_CODE %in% c("A", "B", "C"),
+                  SITE_PRIORITY := "REMEASURE"]
+  protected_sites[is.na(SITE_PRIORITY),
+                  SITE_PRIORITY := "BACKUP"]
+
   return(list(psp_netdown_summary = netdown_table,
-              protected_psp_summary = detail_of_psp_protect_list,
-              remeasured_psp_summary = detail_of_psp_remeas_psp,
-              ranking_psp = ranking_psp,
+              protected_psp_smry = detail_of_psp_protect_list,
+              protected_psp = protected_sites,
               datasource = datasource,
-              ranking_all = ranking_all,# a place holder
+              ranking_psp = ranking_psp,
               ranking_matrix = psp5))
 }
 
