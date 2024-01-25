@@ -185,57 +185,53 @@ dataPrepSample <- function(compilationType,
                 samplemeasurement,
                 by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                 all.x = TRUE)
-  # ## assign dbh_tagging_limit for NAs
-  # ## 1) 9.1cm for measurement year < 1980
-  # ## 2) 7.5cm for measurement 1980<=year<=1990
-  # ## 2) 4cm for measurement 1990 < year
-  # ## based on Rene's previous compiler
-  # vi_a[, DBH_TAGGING_LIMIT_org := DBH_TAGGING_LIMIT]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) < 1980,
-  #      DBH_TAGGING_LIMIT := 9.1]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) >= 1980 &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) <= 1990,
-  #      DBH_TAGGING_LIMIT := 7.5]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) > 1990 &
-  #        SAMPLE_BREAK_POINT == 2,
-  #      DBH_TAGGING_LIMIT := 2]
-  # vi_a[is.na(DBH_TAGGING_LIMIT) &
-  #        as.numeric(substr(MEAS_DT, 1, 4)) > 1990,
-  #      DBH_TAGGING_LIMIT := 4]
-  ## hard code fix for site = 4042369 visit 3, the break point should be 4
-  vi_a[SITE_IDENTIFIER == 4042369 & VISIT_NUMBER == 3,
-       SAMPLE_BREAK_POINT := 4]
-  ## hard code to fill missing samplebreak point
-  vi_a[substr(MEAS_DT, 1, 4) >= 2020 &
-         is.na(SAMPLE_BREAK_POINT),
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-  vi_a[SITE_IDENTIFIER == 4002144 &
-         VISIT_NUMBER == 1,
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-  vi_a[SITE_IDENTIFIER == 4044744 &
-         VISIT_NUMBER == 2,
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-  vi_a[SITE_IDENTIFIER == 4001722 &
-         VISIT_NUMBER == 3,
-       ':='(SAMPLE_BREAK_POINT = 4,
-            SAMPLE_BREAK_POINT_TYPE = "D")]
-
   ## see communications between Dan and I on March 07, 2023
   vi_a[, DBH_TAGGING_LIMIT_org := DBH_TAGGING_LIMIT]
   if(compilationType == "PSP"){
+    # ## assign dbh_tagging_limit for NAs
+    # ## 1) 9.1cm for measurement year < 1980
+    # ## 2) 7.5cm for measurement 1980<=year<=1990
+    # ## 2) 4cm for measurement 1990 < year
+    # ## based on Rene's previous compiler
+    # vi_a[, DBH_TAGGING_LIMIT_org := DBH_TAGGING_LIMIT]
+    # vi_a[is.na(DBH_TAGGING_LIMIT) &
+    #        as.numeric(substr(MEAS_DT, 1, 4)) < 1980,
+    #      DBH_TAGGING_LIMIT := 9.1]
+    # vi_a[is.na(DBH_TAGGING_LIMIT) &
+    #        as.numeric(substr(MEAS_DT, 1, 4)) >= 1980 &
+    #        as.numeric(substr(MEAS_DT, 1, 4)) <= 1990,
+    #      DBH_TAGGING_LIMIT := 7.5]
+    # vi_a[is.na(DBH_TAGGING_LIMIT) &
+    #        as.numeric(substr(MEAS_DT, 1, 4)) > 1990 &
+    #        SAMPLE_BREAK_POINT == 2,
+    #      DBH_TAGGING_LIMIT := 2]
+    # vi_a[is.na(DBH_TAGGING_LIMIT) &
+    #        as.numeric(substr(MEAS_DT, 1, 4)) > 1990,
+    #      DBH_TAGGING_LIMIT := 4]
+    ## hard code fix for site = 4042369 visit 3, the break point should be 4
+    vi_a[SITE_IDENTIFIER == 4042369 & VISIT_NUMBER == 3,
+         SAMPLE_BREAK_POINT := 4]
+    ## hard code to fill missing samplebreak point
+    vi_a[substr(MEAS_DT, 1, 4) >= 2020 &
+           is.na(SAMPLE_BREAK_POINT),
+         ':='(SAMPLE_BREAK_POINT = 4,
+              SAMPLE_BREAK_POINT_TYPE = "D")]
+    vi_a[SITE_IDENTIFIER == 4002144 &
+           VISIT_NUMBER == 1,
+         ':='(SAMPLE_BREAK_POINT = 4,
+              SAMPLE_BREAK_POINT_TYPE = "D")]
+    vi_a[SITE_IDENTIFIER == 4044744 &
+           VISIT_NUMBER == 2,
+         ':='(SAMPLE_BREAK_POINT = 4,
+              SAMPLE_BREAK_POINT_TYPE = "D")]
+    vi_a[SITE_IDENTIFIER == 4001722 &
+           VISIT_NUMBER == 3,
+         ':='(SAMPLE_BREAK_POINT = 4,
+              SAMPLE_BREAK_POINT_TYPE = "D")]
     vi_a[is.na(DBH_TAGGING_LIMIT),
          DBH_TAGGING_LIMIT := 2]
     vi_a[SAMPLE_BREAK_POINT < DBH_TAGGING_LIMIT,
          ':='(SAMPLE_BREAK_POINT = 4)]
-  } else {
-    vi_a[, DBH_TAGGING_LIMIT := 4]
-    vi_a[, SAMPLE_BREAK_POINT := 9] # trees between 4 and 8.9 are in subplot
   }
 
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))

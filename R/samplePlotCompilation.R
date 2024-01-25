@@ -215,11 +215,23 @@ samplePlotCompilation <- function(compilationType,
          (as.numeric(substr(MEAS_DT, 1, 4)) == 2007 & PROJ_ID %in% c("0141", "014M", "0091")),
        PLOT_DED := NO_PLOTS]
   vi_a <- merge(vi_a,
-                unique(vi_b[,.(CLSTR_ID, SAMP_TYP, NO_PLOTS, PLOT_DED)],
+                unique(vi_b[,.(CLSTR_ID, SAMP_TYP, NO_PLOTS, PLOT_DED,
+                               PLOT_AREA_SUBPLOT)],
                        by = "CLSTR_ID"),
                 by = "CLSTR_ID")
+
   setnames(vi_a, "BEC", "BEC_ZONE")
   if(compilationType == "nonPSP"){
+    vi_a[, ':='(DBH_TAGGING_LIMIT = 4,
+                DBH_LIMIT_TAG = 4)] # all samples have dbh_tagging_limit of 4 cm
+    vi_a[TYPE_CD %in% c("M", "Y", "F", "L"),
+         ':='(SAMPLE_BREAK_POINT = 9,
+              SAMPLE_BREAK_POINT_TYPE = "D")] # for monitoring samples, breakpoint = 9cm
+    vi_a[TYPE_CD == "A", # A samples need to be overwritten
+         ':='(DBH_TAGGING_LIMIT = as.numeric(NA),
+              DBH_LIMIT_TAG = as.numeric(NA),
+              SAMPLE_BREAK_POINT = as.numeric(NA),
+              SAMPLE_BREAK_POINT_TYPE = as.character(NA))]
     allsample_ests <- dir(coeffPath, pattern = "sample_establishment_type")
     allsample_ests <- gsub("sample_establishment_type_", "", allsample_ests)
     allsample_ests <- gsub(".xlsx", "", allsample_ests)
@@ -275,7 +287,9 @@ samplePlotCompilation <- function(compilationType,
     site_visit1[, SAMPLE_ESTABLISHMENT_TYPE3 := NULL]
     site_visit1[TYPE_CD == "A",
                 SAMPLE_ESTABLISHMENT_TYPE := "EYSM"]
-    site_visit1[TYPE_CD == "A" & PROJECT_DESCRIPTOR == "Forest Health Early YSM",
+    site_visit1[TYPE_CD == "A" &
+                  PROJECT_DESCRIPTOR %in% c("Forest Health Early YSM",
+                                            "Early YSM Forest Health"),
                 SAMPLE_ESTABLISHMENT_TYPE := "FHYSM"]
     site_visit1 <- site_visit1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
     site_visit1[SITE_IDENTIFIER == "2104138",
@@ -285,6 +299,7 @@ samplePlotCompilation <- function(compilationType,
                                           by = "SITE_IDENTIFIER",
                                           all.x = TRUE)
   }
+  vi_a[, PLOT_AREA_SUBPLOT := NULL]
   vi_a[, ':='(visit_first = min(VISIT_NUMBER),
               visit_last = max(VISIT_NUMBER)),
        by = "SITE_IDENTIFIER"]
