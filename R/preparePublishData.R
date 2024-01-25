@@ -5,7 +5,7 @@
 #'                        from \code{ISMCCompiler}.
 #' @param publishPath character, The path to save prepared data.
 #' @param compilationType character, Specifies the compilation type either \code{nonPSP} or code{PSP}.
-#' @return no value returned. Instead, all the files will be saved into the \code{publishPath} including a readme file.
+#' @return no value returned. Instead, all the files will be saved into the \code{tempPath} including a readme file.
 #' @importFrom data.table ':='
 #' @importFrom openxlsx write.xlsx
 #' @note The compilationPath must have all the outputs from \code{ISMCCompiler}.
@@ -19,10 +19,12 @@
 preparePublishData <- function(compilationPath,
                                publishPath,
                                compilationType){
-  if(dir.exists(publishPath)){
-    unlink(publishPath, recursive = TRUE)
+  todaydate <- gsub("-", "", Sys.Date())
+  tempPath <- file.path(tempdir(), paste0(compilationType, "_", todaydate))
+  if(dir.exists(tempPath)){
+    unlink(tempPath, recursive = TRUE)
   }
-  dir.create(publishPath)
+  dir.create(tempPath)
   datadictionary_all <- read.xlsx(file.path(compilationPath,
                                             "compilation_coeff",
                                             "data_dictionary_master.xlsx")) %>%
@@ -118,12 +120,12 @@ preparePublishData <- function(compilationPath,
 
   faib_header <- faib_header[SITE_IDENTIFIER %in% sampvisits$SITE_IDENTIFIER,]
   write.csv(faib_header,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_header.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(list(SHEET1 = faib_header),
-             file.path(publishPath,
+             file.path(tempPath,
                        "faib_header.xlsx"))
   faib_header_dic <- data.table(Attribute = names(faib_header))
   faib_header_dic <- merge(faib_header_dic,
@@ -131,6 +133,26 @@ preparePublishData <- function(compilationPath,
                            by = "Attribute",
                            all.x = TRUE)
   datadictionary_publish[["faib_header"]] <- faib_header_dic
+
+  # bring sample_plot_header to the publish data
+  sampplot_org <- readRDS(file.path(compilationPath,
+                                    paste0("compilation_", compilationType, "_db"),
+                                    "sample_plot_header.rds"))
+  write.csv(sampplot_org,
+            file.path(tempPath,
+                      "faib_plot_header.csv"),
+            row.names = FALSE,
+            na = "")
+  write.xlsx(list(SHEET1 = sampplot_org),
+             file.path(tempPath,
+                       "faib_plot_header.xlsx"))
+
+  faib_plot_dic <- data.table(Attribute = names(sampplot_org))
+  faib_plot_dic <- merge(faib_plot_dic,
+                           datadictionary_all,
+                           by = "Attribute",
+                           all.x = TRUE)
+  datadictionary_publish[["faib_plot_header"]] <- faib_plot_dic
 
   # reassign first_msmt and last_msmt
   sampvisits[, ':='(minVisit = min(VISIT_NUMBER),
@@ -201,22 +223,44 @@ preparePublishData <- function(compilationPath,
                       by = "SITE_IDENTIFIER",
                       all.x = TRUE)
   sampvisits[SA_VEGCOMP < 0.1, SA_VEGCOMP := NA]
-  faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
+
+  if(compilationType == "nonPSP"){
+    faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
                                        VISIT_NUMBER, FIRST_MSMT, LAST_MSMT,
                                        MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
                                        PROJ_AGE_ADJ = SA_VEGCOMP,
                                        SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
                                        SAMPLE_ESTABLISHMENT_TYPE,
+                                       DBH_LIMIT_TAG, SAMPLE_BREAK_POINT,
+                                       SAMPLE_BREAK_POINT_TYPE,
+                                       PSP_PLOT_DESIGN = as.character(NA),
+                                       DBH_LIMIT_COUNT = as.numeric(NA),
                                        MAT_MAIN_FM, MAT_MAIN_LM,
                                        YSM_MAIN_FM, YSM_MAIN_LM,
                                        YSM_PILOT_FM, YSM_PILOT_LM)]
+  } else {
+    faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
+                                       VISIT_NUMBER, FIRST_MSMT, LAST_MSMT,
+                                       MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
+                                       PROJ_AGE_ADJ = SA_VEGCOMP,
+                                       SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                       SAMPLE_ESTABLISHMENT_TYPE,
+                                       DBH_LIMIT_TAG, SAMPLE_BREAK_POINT,
+                                       SAMPLE_BREAK_POINT_TYPE,
+                                       PSP_PLOT_DESIGN,
+                                       DBH_LIMIT_COUNT,
+                                       MAT_MAIN_FM, MAT_MAIN_LM,
+                                       YSM_MAIN_FM, YSM_MAIN_LM,
+                                       YSM_PILOT_FM, YSM_PILOT_LM)]
+  }
+
   write.csv(faib_sample_byvisit,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_sample_byvisit.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(list(SHEET1 = faib_sample_byvisit),
-             file.path(publishPath,
+             file.path(tempPath,
                        "faib_sample_byvisit.xlsx"))
   faib_sample_byvisit_dic <- data.table(Attribute = names(faib_sample_byvisit))
   faib_sample_byvisit_dic <- merge(faib_sample_byvisit_dic,
@@ -264,12 +308,12 @@ preparePublishData <- function(compilationPath,
 
   }
   write.csv(faib_compiled_smeries,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_compiled_smeries.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(list(SHEET1 = faib_compiled_smeries),
-             file.path(publishPath,
+             file.path(tempPath,
                        "faib_compiled_smeries.xlsx"))
 
   faib_compiled_smeries_dic <- data.table(Attribute = names(faib_compiled_smeries))
@@ -291,12 +335,12 @@ preparePublishData <- function(compilationPath,
   }
 
   write.csv(faib_compiled_ht_smeries,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_compiled_smeries_ht.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(list(SHEET1 = faib_compiled_ht_smeries),
-             file.path(publishPath,
+             file.path(tempPath,
                        "faib_compiled_smeries_ht.xlsx"))
 
   faib_compiled_ht_smeries_dic <- data.table(Attribute = names(faib_compiled_ht_smeries))
@@ -337,12 +381,12 @@ preparePublishData <- function(compilationPath,
                                              SP_PCT_BA_LI)]
   }
   write.csv(faib_compiled_spcsmries,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_compiled_spcsmries.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(list(SHEET1 = faib_compiled_spcsmries),
-             file.path(publishPath,
+             file.path(tempPath,
                        "faib_compiled_spcsmries.xlsx"))
   faib_compiled_spcsmries_dic <- data.table(Attribute = names(faib_compiled_spcsmries))
   faib_compiled_spcsmries_dic <- merge(faib_compiled_spcsmries_dic,
@@ -370,12 +414,12 @@ preparePublishData <- function(compilationPath,
 
   }
   write.csv(faib_compiled_siteage_spcsmries,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_compiled_spcsmries_siteage.csv"),
             row.names = FALSE,
             na = "")
   write.xlsx(list(SHEET1 = faib_compiled_siteage_spcsmries),
-             file.path(publishPath,
+             file.path(tempPath,
                        "faib_compiled_spcsmries_siteage.xlsx"))
   faib_compiled_siteage_spcsmries_dic <- data.table(Attribute = names(faib_compiled_siteage_spcsmries))
   faib_compiled_siteage_spcsmries_dic <- merge(faib_compiled_siteage_spcsmries_dic,
@@ -416,14 +460,14 @@ preparePublishData <- function(compilationPath,
   if(compilationType == "nonPSP"){
 
     faib_tree_detail <- merge(faib_tree_detail,
-                              treelist[,.(CLSTR_ID, PLOT, TREE_NO,
+                              treelist[,.(CLSTR_ID, PLOT, TREE_NO, STOP,
                                           MEAS_INTENSE, PHF_TREE, TREE_WT,
                                           BA_TREE, VOL_WSV, VOL_MER, VOL_NTWB)],
                               by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                               all.x = TRUE)
   } else {
     faib_tree_detail <- merge(faib_tree_detail,
-                              treelist[,.(CLSTR_ID, PLOT, TREE_NO,
+                              treelist[,.(CLSTR_ID, PLOT, TREE_NO, STOP,
                                           MEAS_INTENSE,
                                           HT_TOTAL,
                                           HEIGHT_SOURCE = HT_TOTAL_SOURCE,
@@ -483,17 +527,17 @@ preparePublishData <- function(compilationPath,
   faib_tree_detail[, OUT_OF_PLOT_IND := NULL]
   # there still two variables missing x y coord
   write.csv(faib_tree_detail,
-            file.path(publishPath,
+            file.path(tempPath,
                       "faib_tree_detail.csv"),
             row.names = FALSE,
             na = "")
   if(compilationType == "nonPSP"){
     write.xlsx(list(SHEET1 = faib_tree_detail),
-               file.path(publishPath,
+               file.path(tempPath,
                          "faib_tree_detail.xlsx"))
   } else {
     write.table(faib_tree_detail,
-                file.path(publishPath,
+                file.path(tempPath,
                           "faib_tree_detail.txt"),
                 row.names = FALSE,
                 na = "")
@@ -507,7 +551,7 @@ preparePublishData <- function(compilationPath,
   datadictionary_publish[["faib_tree_detail"]] <- faib_tree_detail_dic
 
   write.xlsx(datadictionary_publish,
-             file.path(publishPath, "data_dictionary.xlsx"))
+             file.path(tempPath, "data_dictionary.xlsx"))
   ## prepare readme file
   compilation_raw <- file.path(compilationPath,
                                paste0("compilation_", compilationType, "_raw"))
@@ -568,5 +612,6 @@ preparePublishData <- function(compilationPath,
       "Detailed availability and last modified dates were listed below: \n",
       mapinfor, "\n",
       rank1layer,
-      file = file.path(publishPath, "readme.txt"))
+      file = file.path(tempPath, "readme.txt"))
+  fs::dir_copy(tempPath, publishPath)
 }
