@@ -51,6 +51,53 @@ treemsmtEditing <- function(compilationType,
                             treemsmts,
                             sitevisits){
   treemsmts[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NUMBER)]
+  firstdf <- treemsmts[TREE_EXTANT_CODE == "D" &
+                         TREE_STANCE_CODE == "F",
+                       .(firstdf = min(VISIT_NUMBER)),
+                       by = "unitreeid"]
+  treemsmts <- merge(treemsmts,
+                     firstdf,
+                     by = "unitreeid",
+                     all.x = TRUE)
+  treemsmts <- treemsmts[VISIT_NUMBER <= firstdf | is.na(firstdf),]
+  treemsmts[TREE_EXTANT_CODE == "D" &
+              TREE_STANCE_CODE == "F",
+            STOP := "S_DF"]
+  treemsmts[, firstdf := NULL]
+
+  # not found, Harvest and dropped trees
+  NHDtrees <- unique(treemsmts[MEASUREMENT_ANOMALY_CODE %in% c("N", "H", "D")]$unitreeid)
+  treemsmts_bad <- treemsmts[(unitreeid %in% NHDtrees),
+                             .(unitreeid, MEASUREMENT_ANOMALY_CODE, VISIT_NUMBER)]
+  treemsmts_bad <- treemsmts_bad[order(unitreeid, VISIT_NUMBER)]
+  treemsmts_bad[, visit_prev := shift(VISIT_NUMBER, type = "lag"),
+                by = "unitreeid"]
+
+  treemsmts_bad <- treemsmts_bad[MEASUREMENT_ANOMALY_CODE %in% c("N", "H", "D"),
+                                 .(unitreeid, MEASUREMENT_ANOMALY_CODE,
+                                   VISIT_NUMBER, visit_prev)]
+  treemsmts_bad_last <- treemsmts_bad[,.SD[which.min(VISIT_NUMBER)],
+                                      by = "unitreeid"]
+  setnames(treemsmts_bad_last,
+           c("MEASUREMENT_ANOMALY_CODE", "VISIT_NUMBER"),
+           c("ANOMALY_CODE_last", "visit_last"))
+  treemsmts <- merge(treemsmts,
+                     treemsmts_bad_last,
+                     by = "unitreeid",
+                     all.x = TRUE)
+  # retain three sets of data
+  # 1) unstopped trees, 2) stop trees before N,H,D, 3) back to tally trees after dropped
+  treemsmts <- treemsmts[is.na(visit_last) | # this is unstopped trees
+                           VISIT_NUMBER < visit_last | # this is for stopped trees before N H D
+                           (VISIT_NUMBER > visit_last & ANOMALY_CODE_last == "D"), # this is for back to tally trees
+                         ]
+  treemsmts[VISIT_NUMBER == visit_prev,
+            STOP := paste0("S_", ANOMALY_CODE_last)]
+  treemsmts[,':='(ANOMALY_CODE_last = NULL,
+                  visit_last = NULL,
+                  visit_prev = NULL)]
+
+
   # 1. correct lv code
   ## if missing lv codes, use next lvd to populate,
   trees_missinglvd <- treemsmts[is.na(TREE_EXTANT_CODE),
@@ -150,7 +197,7 @@ treemsmtEditing <- function(compilationType,
             DIAMETER := NA]
   treemsmts[, ':='(diam_new = NULL)]
 
-  # correction 4. if the last msmt do not have diameter infomation, assign lvd as D
+  # correction 4. if the last msmt do not have diameter information, assign lvd as D
   # realized that there are a lot trees do not have diameter at any msmt
   # so, to fix that, add one more condition: if a tree have diameter measured at previous msmts
   treemsmts_withdiameter <- treemsmts[DIAMETER > 0,.(unitreeid, VISIT_NUMBER,
@@ -167,6 +214,8 @@ treemsmtEditing <- function(compilationType,
                      all.x = TRUE)
   rm(treemsmts_withdiameter)
   gc()
+
+
   # lv_d = L, but without diameter msmt
   # and inplot tree
   # *identify if tree at very last measurement is missing a diameter measurement, then assume it is a dead fallen tree;
@@ -313,10 +362,12 @@ treemsmtEditing <- function(compilationType,
                      by = "SITE_IDENTIFIER",
                      all.x = TRUE)
   # tree's last visit have not reached the site's last visit, and
+  # there is no stop sign
   # lv_d = L at the last visit of this tree and with diameter msmt
   treemsmts_missing_tail <- treemsmts[visit_tree_last == VISIT_NUMBER &
                                         visit_site_last != visit_tree_last &
-                                        !is.na(DIAMETER) & TREE_EXTANT_CODE == "L",]
+                                        !is.na(DIAMETER) & TREE_EXTANT_CODE == "L" &
+                                        is.na(STOP),]
   treemsmts_missing_tail <- merge(treemsmts_missing_tail,
                                   sitevisits[,.(SITE_IDENTIFIER, VISIT_NUMBER, VISIT_NUMBER_next)],
                                   by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
@@ -374,7 +425,9 @@ treemsmtEditing <- function(compilationType,
                      visit_ref = NULL)]
   }
 
-  treeid_no_diam <- unique(treemsmts[is.na(DIAMETER)]$unitreeid)
+  treeid_no_diam <- unique(treemsmts[is.na(DIAMETER) &
+                                       !is.na(DIAMETER_MEASMT_HEIGHT) &
+                                       LENGTH %>>% 1.3]$unitreeid)
   treemsmts_good <- treemsmts[!(unitreeid %in% treeid_no_diam),]
   treemsmts_bad <- treemsmts[(unitreeid %in% treeid_no_diam),]
   treemsmts_bad <- treemsmts_bad[order(unitreeid, VISIT_NUMBER),]
