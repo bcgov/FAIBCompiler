@@ -169,6 +169,15 @@ samplePlotCompilation <- function(compilationType,
   vi_b[is.na(V_BAF) & F_FULL == TRUE, PLOT_WT := 1]
   vi_b[is.na(V_BAF) & F_HALF == TRUE, PLOT_WT := 2]
   vi_b[is.na(V_BAF) & F_QRTR == TRUE, PLOT_WT := 4]
+  ## noticed that for all PSP, the f_full is missing when the
+  ## plot is square
+  ## use below codes to fix
+  ## it should be 1
+  if(compilationType == "PSP"){
+    vi_b[PLOT_SHAPE_CODE == "SQ",
+         PLOT_WT := 1]
+  }
+
 
   # calculate main plot area
   #for circular plot
