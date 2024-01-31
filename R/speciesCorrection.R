@@ -11,7 +11,8 @@
 #' @return corrected species code
 #'
 #' @importFrom data.table ':=' data.table
-#'
+#' @export
+#' @docType methods
 #' @rdname speciesCorrection
 #' @author Yong Luo
 speciesCorrection <- function(species, BEC, BEC_subzone){

@@ -12,7 +12,8 @@
 #'
 #' @importFrom data.table ':=' data.table melt
 #' @importFrom dplyr '%>%'
-#'
+#' @export
+#' @docType methods
 #' @rdname PSPCompilation_Init
 #' @author Yong Luo
 PSPCompilation_Init <- function(inputPath, outputPath){

@@ -1,21 +1,23 @@
-# title GYS_oracle_org1
-#
-# description This function is to merge oracle and ascii data before the GYS compiler, the function below is modified
-# from ld_gysfx_pt1_rene_10jun2017.sas
-# The major changes from the original codes are
-#   1. removed spatial attributes in GYS and updated from the most recent map
-#   2. clearified the processes in sample_id, plot and tree_no order, as the original sas version creates
-#      massive tables, and confuses the compilation.
-#   3. removed some pre-compiled results as inputs
-#
-# param oracleSourcePath character, Specifies the path that stores data from oracle data base.
-#                                    In VRI compiler, this should be the savePath for \code{\link{loadVGIS}}.
-# param outputPath character, Specifies the path to save your outputs. If missing, the current working
-#                   directory will be choosed.
-#
-# return no item returned
-#
-# importFrom data.table ':=' data.table copy
+#' title GYS_oracle_org1
+#'
+#' @description This function is to merge oracle and ascii data before the GYS compiler, the function below is modified
+#'              from ld_gysfx_pt1_rene_10jun2017.sas
+#'              The major changes from the original codes are
+#'              1. removed spatial attributes in GYS and updated from the most recent map
+#'              2. clearified the processes in sample_id, plot and tree_no order, as the original sas version creates
+#'                 massive tables, and confuses the compilation.
+#'              3. removed some pre-compiled results as inputs
+#'
+#' @param oracleSourcePath character, Specifies the path that stores data from oracle data base.
+#'                                    In VRI compiler, this should be the savePath for \code{\link{loadVGIS}}.
+#' @param outputPath character, Specifies the path to save your outputs. If missing, the current working
+#'                   directory will be choosed.
+#'
+#' @return no item returned
+#' @export
+#' @docType methods
+#' @rdname GYS_oracle_org1
+#' @importFrom data.table ':=' data.table copy
 GYS_oracle_org1 <- function(oracleSourcePath, outputPath){
   r <- readRDS(file.path(oracleSourcePath, "rcl_area_validn_codes.rds"))
   r <- r[,.(RCL_AREA_VALIDN_SKEY, COMPT_LTR, COMPT, FIZ, REGION)]

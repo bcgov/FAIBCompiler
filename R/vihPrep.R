@@ -1,6 +1,23 @@
-## to populate bored age for site trees using last measurements, set meas_cod = "FROM_LAST
-## and to correct bored age using last measurements, set meas_cod = *-ADJ_FROM_LAST
-
+#' to populate bored age for site trees using last measurements, set meas_cod = "FROM_LAST
+#' and to correct bored age using last measurements, set meas_cod = *-ADJ_FROM_LAST
+#'
+#' @description This function is to populate bored age for site trees using last measurements, set meas_cod = "FROM_LAST
+#' and to correct bored age using last measurements, set meas_cod = *-ADJ_FROM_LAST
+#'
+#' @param msmtInterval data.table, contains sample visits.
+#' @param siteAgeTrees data.table, sample trees.
+#'
+#'
+#' @return A data table
+#'
+#'
+#' @importFrom data.table data.table ':=' set rbindlist setnames setkey
+#' @importFrom dplyr '%>%'
+#' @export
+#' @docType methods
+#' @rdname vihPrep
+#'
+#' @author Yong Luo
 vihPrep <- function(msmtInterval,
                     siteAgeTrees){
   siteAgeTrees <- merge(siteAgeTrees, msmtInterval,

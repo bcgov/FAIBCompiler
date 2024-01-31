@@ -18,7 +18,6 @@ WSV_BARegression <- function(masterTable, regressionData, minObs = 3, minR2 = 0.
   output <- outputHeader[!is.na(RSQ), ]
   outputHeader <- outputHeader[is.na(RSQ),.(PRJ_GRP, LV_D, SP0, TYPE)]
 
-
   if(nrow(outputHeader) > 0){
     ## second attempt at prj_grp lv_d and type level
     outputHeader[, combination := paste(PRJ_GRP, LV_D, TYPE, sep = " & ")]

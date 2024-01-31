@@ -13,7 +13,8 @@
 #'
 #' @importFrom data.table ':=' data.table melt
 #' @importFrom dplyr '%>%'
-#'
+#' @export
+#' @docType methods
 #' @rdname ISMC_VGISTranslator
 #' @author Yong Luo
 ISMC_VGISTranslator <- function(inputPath, outputPath,

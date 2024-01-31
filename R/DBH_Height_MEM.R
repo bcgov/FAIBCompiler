@@ -12,7 +12,7 @@
 #' @importFrom dplyr '%>%'
 #' @importFrom lmfor fithd startHDlogistic startHDkorf startHDweibull startHDrichards startHDcurtis startHDnaslund
 #' @importFrom nlme nlme nlmeControl
-#'
+#' @export
 #' @rdname DBH_Height_MEM
 #' @author Yong Luo
 DBH_Height_MEM <- function(compilationPath, coeffSavePath, fityear){

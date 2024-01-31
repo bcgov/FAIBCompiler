@@ -15,7 +15,8 @@
 #' @importFrom data.table ':=' data.table melt
 #' @importFrom dplyr '%>%'
 #' @importFrom sf st_transform st_intersection st_crs
-#'
+#' @export
+#' @docType methods
 #' @rdname spAttriFromRegCompt
 #' @author Yong Luo
 spAttriFromRegCompt <- function(regionCompartMap,

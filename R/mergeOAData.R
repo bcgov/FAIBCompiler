@@ -25,7 +25,8 @@
 #' @importFrom data.table ':=' data.table
 #' @importFrom dplyr '%>%'
 #' @importFrom FAIBBase getSpatial
-#'
+#' @export
+#' @docType methods
 #' @rdname mergeOAData
 #' @author Yong Luo
 mergeOAData <- function(oracleSourcePath, asciiSourcePath, coeffPath,

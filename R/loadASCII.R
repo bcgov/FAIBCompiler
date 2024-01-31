@@ -16,11 +16,13 @@
 #'
 #'
 #' @rdname loadASCII
+#' @export
+#' @docType methods
 #' @examples
 #' \dontrun{
-#' loadASCII(txtLocation = "Q:/RDW/RDW_Data2/Work_Areas/VRI_ASCII_PROD/vri_raw",
+#' loadASCII(txtLocation = "Q:/RDW_Data2/Work_Areas/VRI_ASCII_PROD/vri_raw/to_be_added_next_compilation",
 #'           saveThem = TRUE,
-#'           savePath = "F:/vricompilertest/OracleTests")
+#'           savePath = "D:/vritest/forascii")
 #'
 #' }
 #' @author Yong Luo
@@ -1738,11 +1740,8 @@ readonetxt <- function(fileName){
     stop(paste("file: ", fileName, " has multiple header line."))
   } else {
     sampleheader[, ':='(MEAS_DT = as.Date(MEAS_DTC, '%Y%b%d'),
-                        CLSTR_ID = getClusterID(projID = PROJ_ID,
-                                                sampleNO = SAMP_NO,
-                                                sampleType = toupper(substr(TYPE_CD, 1, 1)),
-                                                intent = toupper(substr(TYPE_CD, 2, 2)),
-                                                visit = toupper(substr(TYPE_CD, 3, 3))))]
+                        CLSTR_ID = paste0(PROJ_ID, "-", SAMP_NO, "-",
+                                          substr(TYPE_CD, 1, 3)))]
     measurementDate <- sampleheader$MEAS_DT
     CLSTR_ID <- sampleheader$CLSTR_ID
   }

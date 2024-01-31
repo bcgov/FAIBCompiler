@@ -67,10 +67,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
-  expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 2))
-  expect_equal(tree_editted$DIAMETER_EDIT, rep(as.character(NA), 2))
-  expect_equal(tree_editted$MSMT_MISSING_EDIT, rep(as.character(NA), 2))
-  expect_equal(tree_editted$SP_EDIT, rep(as.character(NA), 2))
+  expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
+  expect_equal(tree_editted$DIAMETER_EDIT, c(rep(as.character(NA), 2), "Diameter assinged based on previous msmt"))
+  expect_equal(tree_editted$MSMT_MISSING_EDIT, c(rep(as.character(NA), 2), "Missing at tail, added"))
+  expect_equal(tree_editted$SP_EDIT, rep(as.character(NA), 3))
   rm(tree, tree_editted)
 
   tree <- data.table(SITE_IDENTIFIER = 1234567,
