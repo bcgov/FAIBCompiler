@@ -2,7 +2,8 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   library(data.table)
   library(testthat)
   site_visits <- data.table(SITE_IDENTIFIER = 1234567,
-                            VISIT_NUMBER = 1:3)
+                            VISIT_NUMBER = 1:3,
+                            VISIT_TYPE = "REP")
   # some good msmts
   tree <- data.table(SITE_IDENTIFIER = 1234567,
                      PLOT = "I",
@@ -25,7 +26,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
@@ -56,7 +60,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
@@ -87,7 +94,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
@@ -119,14 +129,17 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$LVD_EDIT[3],
-               "Missing at last msmt, added dead")
+               "Missing at tail, added D")
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   expect_equal(tree_editted$TREE_SPECIES_CODE, c("AC", "AC", "AC"))
@@ -154,16 +167,19 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
   expect_equal(tree_editted$LVD_EDIT[2],
-               "Change to L based on later msmt")
+               "Corrected to L as found alive later")
   expect_equal(tree_editted$DIAMETER_EDIT[2],
-               "Diameter assigned based on mean of prev and next diameters")
+               "Missing, assigned based on mean of prev and next diameters")
   rm(tree, tree_editted)
 
   tree <- data.table(SITE_IDENTIFIER = 1234567,
@@ -187,16 +203,19 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
   expect_equal(tree_editted$LVD_EDIT[2],
-               "Missing, added based on next msmt")
+               "Missing, added L as found alive later")
   expect_equal(tree_editted$DIAMETER_EDIT[2],
-               "Diameter assigned based on mean of prev and next diameters")
+               "Missing, assigned based on mean of prev and next diameters")
   rm(tree, tree_editted)
 
   # test missing
@@ -221,7 +240,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
@@ -229,7 +251,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
   expect_equal(tree_editted$DIAMETER_EDIT[2],
-               "Diameter assigned based on mean of prev and next diameters")
+               "Missing, assigned based on mean of prev and next diameters")
   expect_equal(tree_editted$MSMT_MISSING_EDIT[2],
                "Missing in between, added")
   rm(tree, tree_editted)
@@ -255,7 +277,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
@@ -263,7 +288,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "D", "D"))
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
   expect_equal(tree_editted$DIAMETER_EDIT[2:3],
-               c("Diameter assigned based on mean of prev and next diameters",
+               c("Missing, assigned based on mean of prev and next diameters",
                "Diameter assinged based on previous msmt"))
   expect_equal(tree_editted$MSMT_MISSING_EDIT[2],
                "Missing in between, added")
@@ -292,14 +317,17 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$LVD_EDIT, c(rep(as.character(NA), 2),
-                                        "Missing at last msmt, added dead"))
+                                        "Missing at tail, added D"))
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   rm(tree, tree_editted)
@@ -325,7 +353,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
@@ -358,7 +389,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                      TREE_STANCE_CODE = "S",
                      SUITABLE_FOR_SITE_INDEX_IND = "Y",
                      SUITABLE_FOR_AGE_IND = "Y",
-                     AGE_REPRESENTATIVE_IND = "Y")
+                     AGE_REPRESENTATIVE_IND = "Y",
+                     MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                     STEM_MAP_BEARING = 160,
+                     STEM_MAP_DISTANCE = 5)
   tree_editted <- treemsmtEditing(compilationType = "PSP",
                                   treemsmts = tree,
                                   sitevisits = site_visits)
