@@ -37,32 +37,75 @@ samplePlotCompilation <- function(compilationType,
   vi_a[, meas_yr_cut := as.Date(paste0(meas_yr_temp, "-06-01"))]
   vi_a[, MEAS_YR := ifelse(MEAS_DT >= meas_yr_cut, meas_yr_temp,
                            meas_yr_temp - 1)]
-  vi_a[, ':='(NO_MEAS = length(unique(VISIT_NUMBER)),
-              firstvisit = min(VISIT_NUMBER),
-              lastvisit = max(VISIT_NUMBER)),
+  vi_a[,':='(visit_first = min(VISIT_NUMBER),
+             visit_last = max(VISIT_NUMBER),
+             MEAS_DT_FIRST = min(MEAS_DT),
+             MEAS_YR_FIRST = min(MEAS_YR),
+             MEAS_DT_LAST = max(MEAS_DT),
+             MEAS_YR_LAST = max(MEAS_YR),
+             NO_MEAS = length(unique(VISIT_NUMBER))),
        by = "SITE_IDENTIFIER"]
+  vi_a[VISIT_NUMBER == visit_first, FIRST_MSMT := "Y"]
+  vi_a[is.na(FIRST_MSMT), FIRST_MSMT := "N"]
+  vi_a[VISIT_NUMBER == visit_last, LAST_MSMT := "Y"]
+  vi_a[is.na(LAST_MSMT), LAST_MSMT := "N"]
 
-  vi_a[VISIT_NUMBER == firstvisit,
-       ':='(MEAS_DT_FIRST = MEAS_DT,
-            MEAS_YR_FIRST = MEAS_YR)]
-  vi_a[VISIT_NUMBER == lastvisit,
-       ':='(MEAS_DT_LAST = MEAS_DT,
-            MEAS_YR_LAST = MEAS_YR)]
-  vi_a[, ':='(MEAS_DT_FIRST = min(MEAS_DT_FIRST, na.rm = TRUE),
-              MEAS_YR_FIRST = min(MEAS_YR_FIRST, na.rm = TRUE),
-              MEAS_DT_LAST = min(MEAS_DT_LAST, na.rm = TRUE),
-              MEAS_YR_LAST = min(MEAS_YR_LAST, na.rm = TRUE)),
-       by = "SITE_IDENTIFIER"]
-  vi_a[, TOTAL_PERIOD := MEAS_YR_LAST - MEAS_YR_FIRST]
-  vi_a <- vi_a[order(SITE_IDENTIFIER, VISIT_NUMBER),]
-  vi_a[, meas_yr_next := shift(MEAS_YR, type = "lag"),
-       by = "SITE_IDENTIFIER"]
-  vi_a[, PERIOD := MEAS_YR - meas_yr_next]
-  vi_a[,':='(meas_yr_temp = NULL,
-             meas_yr_cut = NULL,
-             meas_yr_next = NULL,
-             firstvisit = NULL,
-             lastvisit = NULL)]
+
+  vi_a[TYPE_CD %in% c("M", "L", "Y", "F", "PSP", "A"),
+       VISIT_TYPE := "REP"] # permanent site with repeated visit
+  vi_a[is.na(VISIT_TYPE),
+       VISIT_TYPE := "TMP"] # temporary visit, there is no revisit in the future
+  vi_a_temp <- vi_a[VISIT_TYPE == "REP",
+                    .(SITE_IDENTIFIER, VISIT_NUMBER, MEAS_YR, MEAS_DT)]
+  vi_a_temp[,':='(visit_first = min(VISIT_NUMBER),
+                  visit_last = max(VISIT_NUMBER),
+                  REP_VST_DT_FIRST = min(MEAS_DT),
+                  REP_VST_YR_FIRST = min(MEAS_YR),
+                  REP_VST_DT_LAST = max(MEAS_DT),
+                  REP_VST_YR_LAST = max(MEAS_YR),
+                  NO_REP_VST = length(unique(VISIT_NUMBER))),
+            by = "SITE_IDENTIFIER"]
+
+  vi_a_temp[, TOTAL_PERIOD := REP_VST_YR_LAST - REP_VST_YR_FIRST]
+
+  vi_a_temp <- vi_a_temp[order(SITE_IDENTIFIER, VISIT_NUMBER),]
+  vi_a_temp[, meas_yr_prev := shift(MEAS_YR, type = "lag"),
+            by = "SITE_IDENTIFIER"]
+  vi_a_temp[, PERIOD := MEAS_YR - meas_yr_prev]
+  vi_a_temp[is.na(PERIOD),
+            PERIOD := 0]
+  vi_a_temp[, ':='(MEAS_YR = NULL,
+                   MEAS_DT = NULL)]
+  vi_a_temp[VISIT_NUMBER == visit_first,
+            FIRST_REP_VST := "Y"]
+  vi_a_temp[is.na(FIRST_REP_VST), FIRST_REP_VST := "N"]
+  vi_a_temp[VISIT_NUMBER == visit_last, LAST_REP_VST := "Y"]
+  vi_a_temp[is.na(LAST_REP_VST), LAST_REP_VST := "N"]
+
+  vi_a <- merge(vi_a,
+                vi_a_temp[,.(SITE_IDENTIFIER, VISIT_NUMBER,
+                             PERIOD)],
+                by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
+                all.x = TRUE)
+  vi_a <- merge(vi_a,
+                unique(vi_a_temp[,.(SITE_IDENTIFIER,
+                                    REP_VST_DT_FIRST, REP_VST_DT_LAST,
+                                    REP_VST_YR_FIRST, REP_VST_YR_LAST,
+                                    NO_REP_VST, TOTAL_PERIOD)],
+                       by = "SITE_IDENTIFIER"),
+                by = c("SITE_IDENTIFIER"),
+                all.x = TRUE)
+  vi_a[is.na(NO_REP_VST),
+       NO_REP_VST := 0]
+
+  rm(vi_a_temp)
+
+  vi_a[,':='(visit_first = NULL,
+             visit_last = NULL,
+             meas_yr_temp = NULL,
+             meas_yr_cut = NULL)]
+
+
   vi_a <- updateSpatial(compilationType = compilationType,
                         samplesites = vi_a,
                         mapPath = mapPath)
@@ -79,8 +122,11 @@ samplePlotCompilation <- function(compilationType,
                                      SAMPLE_ESTABLISHMENT_TYPE = paste0("PSP_", PSP_TYPE), SAMPLE_SITE_NAME,
                                      SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
                                      STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND,
-                                     BGC_SS_GRD, MEAS_DT_FIRST, MEAS_DT_LAST, MEAS_YR_FIRST, MEAS_YR_LAST,
-                                     TOTAL_PERIOD, NO_MEAS)],
+                                     BGC_SS_GRD, NO_MEAS,
+                                     MEAS_DT_FIRST, MEAS_DT_LAST, MEAS_YR_FIRST, MEAS_YR_LAST,
+                                     NO_REP_VST, REP_VST_DT_FIRST, REP_VST_DT_LAST,
+                                     REP_VST_YR_FIRST, REP_VST_YR_LAST,
+                                     TOTAL_PERIOD)],
                              by = "SAMP_POINT")
   } else {
     vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
@@ -93,13 +139,19 @@ samplePlotCompilation <- function(compilationType,
                                      SAMPLE_SITE_NAME,
                                      SITE_STATUS_CODE, SITE_ACCESS_CODE, STAND_ORIGIN_CODE,
                                      STAND_DISTURBANCE_CODE, SEL_LGD = SELECTIVELY_LOGGED_IND,
-                                     BGC_SS_GRD, MEAS_DT_FIRST, MEAS_DT_LAST, MEAS_YR_FIRST, MEAS_YR_LAST,
-                                     TOTAL_PERIOD, NO_MEAS)],
+                                     BGC_SS_GRD, NO_MEAS,
+                                     MEAS_DT_FIRST, MEAS_DT_LAST, MEAS_YR_FIRST, MEAS_YR_LAST,
+                                     NO_REP_VST, REP_VST_DT_FIRST, REP_VST_DT_LAST,
+                                     REP_VST_YR_FIRST, REP_VST_YR_LAST,
+                                     TOTAL_PERIOD)],
                              by = "SAMP_POINT")
   }
   vi_a <- vi_a[,.(CLSTR_ID,
                   SITE_IDENTIFIER,
                   VISIT_NUMBER,
+                  VISIT_TYPE,
+                  FIRST_MSMT,
+                  LAST_MSMT,
                   BEC, FIZ,
                   MEAS_DT,
                   MEAS_YR,
@@ -309,20 +361,8 @@ samplePlotCompilation <- function(compilationType,
                                           all.x = TRUE)
   }
   vi_a[, PLOT_AREA_SUBPLOT := NULL]
-  vi_a[, ':='(visit_first = min(VISIT_NUMBER),
-              visit_last = max(VISIT_NUMBER)),
-       by = "SITE_IDENTIFIER"]
-  vi_a[VISIT_NUMBER == visit_first,
-       FIRST_MSMT := "Y"]
-  vi_a[is.na(FIRST_MSMT), FIRST_MSMT := "N"]
-
-  vi_a[VISIT_NUMBER == visit_last,
-       LAST_MSMT := "Y"]
-  vi_a[is.na(LAST_MSMT), LAST_MSMT := "N"]
   vi_a[,':='(BEC_ZONE = NULL,
-             FIZ = NULL,
-             visit_first = NULL,
-             visit_last = NULL)]
+             FIZ = NULL)]
   vi_a <- merge(vi_a,
                 spatialLookups$spatiallookup[,.(SITE_IDENTIFIER,
                                                 SAMPLE_ESTABLISHMENT_TYPE,
@@ -330,6 +370,7 @@ samplePlotCompilation <- function(compilationType,
                                                 FIZ, TSA)],
                 by = "SITE_IDENTIFIER",
                 all.x = TRUE)
+
   saveRDS(spatialLookups,
           file.path(mapPath,
                     paste0("spatiallookup_", compilationType, ".rds")))

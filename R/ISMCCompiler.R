@@ -212,7 +212,7 @@ ISMCCompiler <- function(compilationType,
                               coeffPath = compilationPaths$compilation_coeff,
                               sampleMsmts = sample_site_msmt$sampleMsmts)
   samples <- data.table::copy(sampleMsmts)
-  samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER,
+  samples_tmp <- unique(samples[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, VISIT_TYPE,
                                    FIRST_MSMT, LAST_MSMT, MEAS_DT,
                                    SAMPLE_SITE_PURPOSE_TYPE_CODE = TYPE_CD, SAMPLE_SITE_PURPOSE_TYPE_DESCRIPTION,
                                    MEAS_YR, PERIOD,
@@ -225,6 +225,7 @@ ISMCCompiler <- function(compilationType,
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db,
                     "sample_msmt_header.rds"))
+  rm(samples_tmp, sampleMsmts)
   cat("    Saved compiled sample visit information. \n")
 
 
@@ -233,11 +234,20 @@ ISMCCompiler <- function(compilationType,
   ## done after the bec zone information updated
   treemsmt <- readRDS(file.path(compilationPaths$compilation_sa,
                                 "treemeasurements.rds"))
-  treelist <- assignChangeComponent(treelist = treemsmt,
-                                    samples = samples)
-  saveRDS(treelist, file.path(compilationPaths$compilation_db,
-                              "component_change_treelevel.rds"))
-  rm(treelist)
+
+  treemsmt_rep <- merge(treemsmt,
+                        unique(samples[,.(CLSTR_ID, VISIT_TYPE)],
+                               by = "CLSTR_ID"),
+                        by = "CLSTR_ID",
+                        all.x = TRUE)
+  treemsmt_rep <- treemsmt_rep[VISIT_TYPE == "REP",]
+  treelist_compchange <- assignChangeComponent(treelist = treemsmt_rep,
+                                               samples = samples[VISIT_TYPE == "REP",])
+  saveRDS(treelist_compchange,
+          file.path(compilationPaths$compilation_db,
+                    "component_change_treelevel.rds"))
+  rm(treelist_compchange, treemsmt_rep)
+  gc()
   treelist_db <- treemsmt[,.(CLSTR_ID,
                              SITE_IDENTIFIER, VISIT_NUMBER,
                              PLOT, TREE_NO = TREE_NUMBER,
@@ -523,7 +533,7 @@ ISMCCompiler <- function(compilationType,
                          by = c("CLSTR_ID", "PLOT"),
                          all.x = TRUE)
     treelist_db <- merge(treelist_db,
-                         unique(samples_tmp[,.(CLSTR_ID, MEAS_YR)]),
+                         unique(samplePlotResults$samplevisits[,.(CLSTR_ID, MEAS_YR)]),
                          by = "CLSTR_ID",
                          all.x = TRUE)
     voltrees_mark <- tree_ms6[,.(CLSTR_ID, PLOT, TREE_NO,
@@ -838,7 +848,7 @@ ISMCCompiler <- function(compilationType,
     prep_smy[is.na(VOL_WSV),
              WSV_VOL_SRCE := "Not applicable"]
     rm(auxTrees_compiled)
-  rm(tree_ms7)
+    rm(tree_ms7)
   }
   prep_smy <- merge(prep_smy,
                     unique(lookup_species()[,.(SPECIES, SP_TYPE)],
@@ -908,13 +918,13 @@ ISMCCompiler <- function(compilationType,
     treelist_db <- readRDS(file.path(compilationPaths$compilation_db,
                                      "treelist.rds"))
     treelist_db[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
-             ':='(HEIGHT = HEIGHT - 7,
-                  HT_TOTAL = HT_TOTAL -7,
-                  DBH = NA,
-                  HT_TOTAL_EST = NA,
-                  MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
+                ':='(HEIGHT = HEIGHT - 7,
+                     HT_TOTAL = HT_TOTAL -7,
+                     DBH = NA,
+                     HT_TOTAL_EST = NA,
+                     MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
     treelist_db[substr(CLSTR_ID, 9, 9) == "A" & MEASUREMENT_ANOMALY_CODE == "NA",
-             MEASUREMENT_ANOMALY_CODE := NA]
+                MEASUREMENT_ANOMALY_CODE := NA]
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, MEAS_INTENSE,
                                  H_MERCH, BA_TREE,
                                  PHF_TREE, TREE_WT, VOL_WSV, VOL_STUMP, VOL_MER, VOL_NTWB,
@@ -949,12 +959,12 @@ ISMCCompiler <- function(compilationType,
                       by = c("CLSTR_ID", "PLOT", "TREE_NO"),
                       all.x = TRUE)
     ingrowthtrees <- readRDS(file.path(compilationPaths$compilation_db,
-                                     "component_change_treelevel.rds"))
+                                       "component_change_treelevel.rds"))
     ingrowthtrees <- ingrowthtrees[COMPONENT_CHANGE == "I",
                                    .(CLSTR_ID  = paste0(SITE_IDENTIFIER, "-PSP", VISIT_NUMBER),
                                      PLOT,
-                                      TREE_NO,
-                                      INGROWTH = "Y")]
+                                     TREE_NO,
+                                     INGROWTH = "Y")]
     prep_smy <- merge(prep_smy,
                       ingrowthtrees,
                       by = c("CLSTR_ID", "PLOT", "TREE_NO"),
@@ -970,8 +980,8 @@ ISMCCompiler <- function(compilationType,
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
   cat(paste(substr(Sys.time(), 1, 16), ": Summarize volume at sample level.\n", sep = ""))
   if(compilationType == "nonPSP"){
-  nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
-    data.table
+    nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
+      data.table
     vrisummaries <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy),
                                  clusterPlotHeader = samples,
                                  utilLevel = utilLevel,
@@ -1001,10 +1011,10 @@ ISMCCompiler <- function(compilationType,
     samples_tmp <- data.table::copy(samples)
     samples_tmp[, NO_PLOTS := 1]
     vrisummaries <- VolumeSummaries_PSP(allVolumeTrees = data.table::copy(prep_smy),
-                                 clusterPlotHeader = samples_tmp,
-                                 utilLevel = 3,
-                                 weirdUtil = c("2", "4"),
-                                 equation = "KBEC")
+                                        clusterPlotHeader = samples_tmp,
+                                        utilLevel = 3,
+                                        weirdUtil = c("2", "4"),
+                                        equation = "KBEC")
     rm(samples_tmp)
     dbh_tagged_range <- prep_smy[MEASUREMENT_ANOMALY_CODE != "PSP-TALLY" |
                                    is.na(MEASUREMENT_ANOMALY_CODE),
@@ -1031,9 +1041,9 @@ ISMCCompiler <- function(compilationType,
                                   all.x = TRUE)
     vrisummaries$vol_byc[!is.na(DBHLIMIT_COUNT), DBH_LIMIT_TAG := DBHLIMIT_COUNT]
     vrisummaries$vol_byc[!(UTIL < DBH_LIMIT_TAG),
-                          SUMRY_RANGE := "FULL"]
+                         SUMRY_RANGE := "FULL"]
     vrisummaries$vol_byc[is.na(SUMRY_RANGE),
-                          SUMRY_RANGE := "PARTIAL"]
+                         SUMRY_RANGE := "PARTIAL"]
     vrisummaries$vol_byc[,':='(DBH_LIMIT_TAG = NULL,
                                DBHLIMIT_COUNT = NULL)]
     samp_msmt <- readRDS(file.path(compilationPaths$compilation_db,
@@ -1072,33 +1082,33 @@ ISMCCompiler <- function(compilationType,
   smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
                                     smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
   if(compilationType == "nonPSP"){
-  smalltreesamplemsmt <- readRDS(dir(compilationPaths$raw_from_oracle,
-                                     pattern = "SampleMeasurements.rds",
-                                     full.names = TRUE))
-  smalltreesamplemsmt <- smalltreesamplemsmt[PLOT_CATEGORY_CODE == "IPC SM" &
-                                               MEASUREMENT_STATUS_CODE == "NOC",
-                                             .(CLSTR_ID = paste0(SITE_IDENTIFIER, "-",
-                                                                 SAMPLE_SITE_PURPOSE_TYPE_CODE,
-                                                                 VISIT_NUMBER))]
+    smalltreesamplemsmt <- readRDS(dir(compilationPaths$raw_from_oracle,
+                                       pattern = "SampleMeasurements.rds",
+                                       full.names = TRUE))
+    smalltreesamplemsmt <- smalltreesamplemsmt[PLOT_CATEGORY_CODE == "IPC SM" &
+                                                 MEASUREMENT_STATUS_CODE == "NOC",
+                                               .(CLSTR_ID = paste0(SITE_IDENTIFIER, "-",
+                                                                   SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                                                   VISIT_NUMBER))]
 
-  smalltreecompile$clusterSummaries[CLSTR_ID %in% smalltreesamplemsmt$CLSTR_ID,
-                                    ':='(SMTR_TO2 = as.numeric(NA),
-                                         SMTR_TO3 = as.numeric(NA),
-                                         SMTR_TO4 = as.numeric(NA),
-                                         SMTR2_HA = as.numeric(NA),
-                                         SMTR3_HA = as.numeric(NA),
-                                         SMTR4_HA = as.numeric(NA),
-                                         SMTR_HA = as.numeric(NA),
-                                         SMTR_TOT = as.numeric(NA))]
-  smalltreecompile$clusterSpeciesSummaries[CLSTR_ID %in% smalltreesamplemsmt$CLSTR_ID,
-                                    ':='(SMTR_CT2 = as.numeric(NA),
-                                         SMTR_CT3 = as.numeric(NA),
-                                         SMTR_CT4 = as.numeric(NA),
-                                         SMTR2_HA = as.numeric(NA),
-                                         SMTR3_HA = as.numeric(NA),
-                                         SMTR4_HA = as.numeric(NA),
-                                         SMTR_HA = as.numeric(NA),
-                                         SMTR_TOT = as.numeric(NA))]
+    smalltreecompile$clusterSummaries[CLSTR_ID %in% smalltreesamplemsmt$CLSTR_ID,
+                                      ':='(SMTR_TO2 = as.numeric(NA),
+                                           SMTR_TO3 = as.numeric(NA),
+                                           SMTR_TO4 = as.numeric(NA),
+                                           SMTR2_HA = as.numeric(NA),
+                                           SMTR3_HA = as.numeric(NA),
+                                           SMTR4_HA = as.numeric(NA),
+                                           SMTR_HA = as.numeric(NA),
+                                           SMTR_TOT = as.numeric(NA))]
+    smalltreecompile$clusterSpeciesSummaries[CLSTR_ID %in% smalltreesamplemsmt$CLSTR_ID,
+                                             ':='(SMTR_CT2 = as.numeric(NA),
+                                                  SMTR_CT3 = as.numeric(NA),
+                                                  SMTR_CT4 = as.numeric(NA),
+                                                  SMTR2_HA = as.numeric(NA),
+                                                  SMTR3_HA = as.numeric(NA),
+                                                  SMTR4_HA = as.numeric(NA),
+                                                  SMTR_HA = as.numeric(NA),
+                                                  SMTR_TOT = as.numeric(NA))]
   }
 
 

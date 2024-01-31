@@ -39,6 +39,7 @@ assignChangeComponent <- function(treelist, samples){
                          DIAMETER,
                          TREE_NO = TREE_NUMBER,
                          LV_D = TREE_EXTANT_CODE,
+                         STOP,
                          LVD_EDIT,
                          MSMT_MISSING_EDIT,
                          DIAMETER_EDIT,
