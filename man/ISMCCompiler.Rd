@@ -24,7 +24,6 @@ ISMCCompiler(
   weirdUtil = "4",
   download = TRUE,
   saveCSV = TRUE,
-  forPublish = FALSE,
   recompile = FALSE,
   archiveDate = as.character(NA)
 )
@@ -82,8 +81,6 @@ Default is \code{no}, if missing. Otherwise, a number should be provided.}
 means need download.}
 
 \item{saveCSV}{logical, Specifies if the outputs need to be saved into CSV. Default is save.}
-
-\item{forPublish}{logical, Specifies if compiler produces data for publish for BCGW warehouse. Default is \code{FALSE}, which means no.}
 
 \item{recompile}{logical, Defines whether we want to recompile data using archived
 raw data. Default is FALSE, which means the compiler needs to

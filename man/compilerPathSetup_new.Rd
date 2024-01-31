@@ -11,8 +11,7 @@ compilerPathSetup_new(
   compilationType,
   recompile,
   download,
-  archiveDate,
-  forPublish
+  archiveDate
 )
 }
 \arguments{
@@ -34,8 +33,6 @@ previously.}
 
 \item{archiveDate}{character, Defines on which archive date the raw data were downloaded.
 These raw data will be used for recompilation. Format is YYYYMMDD.}
-
-\item{forPublish}{logical, Specifies if compiler produces data for publish for BCGW warehouse.}
 }
 \value{
 Seven paths will be returned as following:
@@ -56,8 +53,6 @@ Seven paths will be returned as following:
 \item {compilation_coeff} {Path to archive all coefficients for compilation process.}
 
 \item {compilation_last} {Path to archive last compilation process.}
-
-\item {compilation_publish} {Path to publish data.}
 }
 }
 \description{

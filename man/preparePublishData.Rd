@@ -16,7 +16,7 @@ from \code{ISMCCompiler}.}
 \item{compilationType}{character, Specifies the compilation type either \code{nonPSP} or code{PSP}.}
 }
 \value{
-no value returned. Instead, all the files will be saved into the \code{publishPath} including a readme file.
+no value returned. Instead, all the files will be saved into the \code{tempPath} including a readme file.
 }
 \description{
 To prepare the compiled data for publish, currently supporting nonPSP part
