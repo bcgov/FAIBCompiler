@@ -5,5 +5,7 @@ developmentTools.R
 *.rds
 *.xlsx
 runningCodes.r
+runningCodes_preparePublishData.r
+runningCodes_psp_matrix.r
 alldata.rdata
 .Rd2pdf16648
