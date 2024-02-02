@@ -147,7 +147,6 @@ dataPrepSample <- function(compilationType,
                                      IP_DT_PN = NA, IP_AZ_GP = NA,
                                      IP_DT_GP = NA, IP_GPSID = NA)],
                  by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
-
   # manually correct measurement date
   ### for the sample site 4016893 and visit 3,
   ### the sample date is 2008-04-01 based on Chris
@@ -237,7 +236,6 @@ dataPrepSample <- function(compilationType,
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
                              full.names = TRUE))
-
   plotdetails <- merge(plotdetails, vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                             CLSTR_ID)],
                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
@@ -257,7 +255,7 @@ dataPrepSample <- function(compilationType,
                           PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
                           PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
                           PLOT_SHAPE_CODE,
-                          SMALL_TREE_SUBPLOT_RADIUS)]
+                          SUBPLOT_RADIUS = SMALL_TREE_SUBPLOT_RADIUS)]
     vi_b[PLOT == "IPC TD", PLOT := "I"]
     vi_b[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
   } else {
@@ -271,13 +269,13 @@ dataPrepSample <- function(compilationType,
                           PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
                           PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
                           PLOT_SHAPE_CODE,
-                          SMALL_TREE_SUBPLOT_RADIUS)]
+                          SUBPLOT_RADIUS = SMALL_TREE_SUBPLOT_RADIUS)]
   }
   vi_b_master <- unique(vi_b[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                 PLOT, V_BAF, F_RAD,
                                 PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
                                 PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                                PLOT_SHAPE_CODE, SMALL_TREE_SUBPLOT_RADIUS)],
+                                PLOT_SHAPE_CODE, SUBPLOT_RADIUS)],
                         by = c("CLSTR_ID", "PLOT"))
   fixplots <- vi_b[!is.na(F_RAD),]
   vi_b_master <- merge(vi_b_master,
@@ -338,13 +336,13 @@ dataPrepSample <- function(compilationType,
                    F_HALF = NA,
                    F_QRTR = NA)]
   vi_b_master[CLSTR_ID %in% vi_a[SAMPLE_BREAK_POINT == DBH_TAGGING_LIMIT]$CLSTR_ID,
-              SMALL_TREE_SUBPLOT_RADIUS := 0]
+              SUBPLOT_RADIUS := 0]
   # since 2021, if subplot area is missing and plot is either sq or rectangle,
   # a 5.64 circle subplot will be used, as per communications with Chris on 2023-03-13
   vi_b_master[CLSTR_ID %in% vi_a[substr(MEAS_DT, 1, 4) > 2020,]$CLSTR_ID &
                 !is.na(PLOT_WIDTH) &
-                is.na(SMALL_TREE_SUBPLOT_RADIUS),
-              SMALL_TREE_SUBPLOT_RADIUS := 5.64]
+                is.na(SUBPLOT_RADIUS),
+              SUBPLOT_RADIUS := 5.64]
 
   ## use subplot area lookup table to populate subplot area when it is missing
   if(compilationType == "PSP"){

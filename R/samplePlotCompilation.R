@@ -251,10 +251,10 @@ samplePlotCompilation <- function(compilationType,
             PLOT_AREA_MAIN = PLOT_AREA)]
   # for subplot area
   vi_b[V_BAF %in% c(0, NA) &
-         !(SMALL_TREE_SUBPLOT_RADIUS %in% c(NA, 0)),
-       ':='(PLOT_AREA_SUBPLOT = (pi* SMALL_TREE_SUBPLOT_RADIUS^2) / 10000)]
+         !(SUBPLOT_RADIUS %in% c(NA, 0)),
+       ':='(PLOT_AREA_SUBPLOT = (pi* SUBPLOT_RADIUS^2) / 10000)]
   vi_b[is.na(PLOT_AREA_SUBPLOT) &
-         SMALL_TREE_SUBPLOT_RADIUS == 0,
+         SUBPLOT_RADIUS == 0,
        ':='(PLOT_AREA_SUBPLOT = 0)]
   vi_b[is.na(PLOT_AREA_SUBPLOT) &
          !is.na(AREA_PS),
@@ -401,7 +401,7 @@ samplePlotCompilation <- function(compilationType,
               sampleplots = vi_b[,.(CLSTR_ID, PLOT, PLOT_WT, PLOT_AREA_MAIN, PLOT_AREA_SUBPLOT,
                                     BLOWUP_MAIN, BLOWUP_SUBPLOT,
                                     PLOT_SHAPE_CODE, F_RAD,
-                                    PLOT_WIDTH, PLOT_LENGTH, V_BAF, SMALL_TREE_SUBPLOT_RADIUS,
+                                    PLOT_WIDTH, PLOT_LENGTH, V_BAF, SUBPLOT_RADIUS,
                                     PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION)]))
 }
 
