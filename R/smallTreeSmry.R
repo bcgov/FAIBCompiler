@@ -43,14 +43,20 @@ setMethod(
     # 7:                           7                               Live trees with height between 6.5 and 9.0 cm (PSP only)
 
     clustersummaries <- unique(smallTreePlotHeader[,.(CLSTR_ID)], by = "CLSTR_ID")
-    smallTreePlotHeader <- smallTreePlotHeader[,.(CLSTR_ID, F_FULL, F_HALF, F_QRTR, F_RAD)]
-    smallTreePlotHeader <- smallTreePlotHeader[!duplicated(smallTreePlotHeader),]
+    smallTreePlotHeader[F_FULL %in% c("X", TRUE), PLOT_WT := 1]
+    smallTreePlotHeader[F_HALF %in% c("X", TRUE), PLOT_WT := 2]
+    smallTreePlotHeader[F_QRTR %in% c("X", TRUE), PLOT_WT := 4]
+    smallTreePlotHeader <- smallTreePlotHeader[!is.na(F_RAD),
+                                               .(CLSTR_ID, PLOT,
+                                                 PLOT_AREA = pi*((F_RAD)^2),
+                                                 PLOT_WT)]
+    smallTreePlotHeader <- smallTreePlotHeader[,.(PLOT_AREA = sum(PLOT_AREA),
+                                                  PLOT_WT = mean(PLOT_WT)),
+                                               by = "CLSTR_ID"]
     sm_tr <- merge(smallTreeData, smallTreePlotHeader,
-                   by = "CLSTR_ID", all.x = TRUE)
+                   by = c("CLSTR_ID"),
+                   all.x = TRUE)
     rm(smallTreeData, smallTreePlotHeader)
-    sm_tr[F_FULL %in% c("X", TRUE), PLOT_WT := 1]
-    sm_tr[F_HALF %in% c("X", TRUE), PLOT_WT := 2]
-    sm_tr[F_QRTR %in% c("X", TRUE), PLOT_WT := 4]
     totalnames <- names(sm_tr)
     totalnames <- totalnames[substr(totalnames, 1, 5) == "TOTAL"]
     totalnames <- sort(gsub("TOTAL", "", totalnames))
@@ -58,7 +64,7 @@ setMethod(
                  SMTR_TOT = 0)]
     for (indiname in totalnames) {
       setnames(sm_tr, paste0("TOTAL", indiname), "tempcol")
-      sm_tr[,':='(SMTR_HA_temp = round(tempcol * 10000/(pi * PLOT_WT * (F_RAD^2)), 1))]
+      sm_tr[,':='(SMTR_HA_temp = round(tempcol * 10000/(PLOT_AREA * PLOT_WT), 1))]
       sm_tr[,':='(SMTR_HA = SMTR_HA_temp + SMTR_HA,
                   SMTR_TOT = tempcol + SMTR_TOT)]
       setnames(sm_tr, c("tempcol", "SMTR_HA_temp"), c(paste0("SMTR_CT", indiname),
@@ -71,7 +77,6 @@ setMethod(
     smtr_cs <- unique(sm_tr[,.(CLSTR_ID, SPECIES)])
     sm_tr_org <- data.table::copy(sm_tr)
     sm_tr <- data.table::copy(sm_tr_org)
-
     for (indiname in totalnames) {
       setnames(sm_tr, indiname, "tempcol")
       indismry_cs <- sm_tr[,.(tempcol = sum(tempcol)),
@@ -98,11 +103,9 @@ setMethod(
                                        basedOn = "tempcol", speciesMaxNO = 12,
                                        smallTreeCompile = TRUE)
         if(substr(indiname, 1, 7) == "SMTR_CT"){
-
           setnames(sp_cmp_indi, "SPB_CPCT", paste0("ST", gsub("SMTR_CT", "", indiname), "_CMP"))
         } else {
           setnames(sp_cmp_indi, "SPB_CPCT", "STT_CMP")
-
         }
         clustersummaries <- FAIBBase::merge_dupUpdate(clustersummaries,
                                                       sp_cmp_indi,

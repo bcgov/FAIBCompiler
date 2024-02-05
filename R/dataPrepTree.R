@@ -236,9 +236,16 @@ dataPrepTree <- function(compilationType,
   } else {
     sampleMsmts[, DBHLIMIT_COUNT := NA]
   }
-  vi_f <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE < 5,
-                               .(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
-                                 low_bnd, TOTAL = NUMBER_OF_TREES)]
+  if(compilationType == "nonPSP"){
+    vi_f <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE < 5,
+                                 .(CLSTR_ID, PLOT = "I", TREE_SPECIES_CODE,
+                                   low_bnd, TOTAL = NUMBER_OF_TREES)]
+  } else {
+    vi_f <- SmallLiveTreeTallies[SMALL_TREE_TALLY_CLASS_CODE < 5,
+                                 .(CLSTR_ID, PLOT = PLOT_NUMBER, TREE_SPECIES_CODE,
+                                   low_bnd, TOTAL = NUMBER_OF_TREES)]
+  }
+
   vi_f <- vi_f[,.(TOTAL = sum(TOTAL)),
                by = c("CLSTR_ID", "PLOT", "TREE_SPECIES_CODE", "low_bnd")]
 
@@ -839,8 +846,6 @@ dataPrepTree <- function(compilationType,
   } else {
     treedamage[, PLOT := PLOT_NUMBER]
   }
-
-
   treedamage <- treedamage[order(SITE_IDENTIFIER, VISIT_NUMBER,
                                  PLOT, TREE_NUMBER),
                            .(SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NUMBER,

@@ -402,6 +402,7 @@ samplePlotCompilation <- function(compilationType,
                                     BLOWUP_MAIN, BLOWUP_SUBPLOT,
                                     PLOT_SHAPE_CODE, F_RAD,
                                     PLOT_WIDTH, PLOT_LENGTH, V_BAF, SUBPLOT_RADIUS,
-                                    PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION)]))
+                                    PLOT_SLOPE,	PLOT_ASPECT, PLOT_ELEVATION,
+                                    SMALL_TREE_TALLY_PLOT_RADIUS)]))
 }
 

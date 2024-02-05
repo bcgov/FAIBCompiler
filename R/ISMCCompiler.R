@@ -1110,8 +1110,6 @@ ISMCCompiler <- function(compilationType,
                                                   SMTR_HA = as.numeric(NA),
                                                   SMTR_TOT = as.numeric(NA))]
   }
-
-
   saveRDS(smalltreecompile$clusterSummaries,
           file.path(compilationPaths$compilation_db, "Smries_smallTree_byCL.rds"))
   saveRDS(smalltreecompile$clusterSpeciesSummaries,

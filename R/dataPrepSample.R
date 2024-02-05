@@ -232,10 +232,20 @@ dataPrepSample <- function(compilationType,
     vi_a[SAMPLE_BREAK_POINT < DBH_TAGGING_LIMIT,
          ':='(SAMPLE_BREAK_POINT = 4)]
   }
-
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
                              full.names = TRUE))
+  tallytreeplot <- plotdetails[PLOT_CATEGORY_CODE == "IPC SM",
+                               .(SITE_IDENTIFIER, VISIT_NUMBER,
+                                 PLOT_CATEGORY_CODE = "IPC TD",
+                                 PLOT_NUMBER,
+                                 SMALL_TREE_TALLY_PLOT_RADIUS = PLOT_RADIUS)]
+  plotdetails <- merge(plotdetails,
+                       tallytreeplot,
+                       by = c("SITE_IDENTIFIER", "VISIT_NUMBER",
+                              "PLOT_CATEGORY_CODE", "PLOT_NUMBER"),
+                       all.x = TRUE)
+
   plotdetails <- merge(plotdetails, vi_a[,.(SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                             CLSTR_ID)],
                        by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
@@ -255,7 +265,8 @@ dataPrepSample <- function(compilationType,
                           PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
                           PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
                           PLOT_SHAPE_CODE,
-                          SUBPLOT_RADIUS = SMALL_TREE_SUBPLOT_RADIUS)]
+                          SUBPLOT_RADIUS = SMALL_TREE_SUBPLOT_RADIUS,
+                          SMALL_TREE_TALLY_PLOT_RADIUS)]
     vi_b[PLOT == "IPC TD", PLOT := "I"]
     vi_b[PLOT != "I", PLOT := substr(PLOT, 5, 5)]
   } else {
@@ -269,13 +280,15 @@ dataPrepSample <- function(compilationType,
                           PARTIAL_PLOT_REASON_CODE, PLOT_SEGMENT_CODE,
                           PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
                           PLOT_SHAPE_CODE,
-                          SUBPLOT_RADIUS = SMALL_TREE_SUBPLOT_RADIUS)]
+                          SUBPLOT_RADIUS = SMALL_TREE_SUBPLOT_RADIUS,
+                          SMALL_TREE_TALLY_PLOT_RADIUS)]
   }
   vi_b_master <- unique(vi_b[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD,
                                 PLOT, V_BAF, F_RAD,
                                 PLOT_AREA, PLOT_WIDTH, PLOT_LENGTH,
                                 PLOT_SLOPE, PLOT_ASPECT, PLOT_ELEVATION,
-                                PLOT_SHAPE_CODE, SUBPLOT_RADIUS)],
+                                PLOT_SHAPE_CODE, SUBPLOT_RADIUS,
+                                SMALL_TREE_TALLY_PLOT_RADIUS)],
                         by = c("CLSTR_ID", "PLOT"))
   fixplots <- vi_b[!is.na(F_RAD),]
   vi_b_master <- merge(vi_b_master,
@@ -356,39 +369,53 @@ dataPrepSample <- function(compilationType,
   }
   saveRDS(vi_b_master, file.path(outputPath, "vi_b.rds"))
 
-  vi_e <- unique(plotdetails[PLOT_CATEGORY_CODE %in% c("IPC SM",  "IPC ST"),
-                             .(CLSTR_ID, PLOT = "I", F_RAD = PLOT_RADIUS, PLOT_CATEGORY_CODE)],
-                 by = c("CLSTR_ID",  "PLOT_CATEGORY_CODE"))
-
+  if(compilationType == "nonPSP"){
+    vi_e <- unique(plotdetails[PLOT_CATEGORY_CODE %in% c("IPC SM",  "IPC ST"),
+                               .(CLSTR_ID, PLOT = "I",
+                                 F_RAD = PLOT_RADIUS, PLOT_CATEGORY_CODE)],
+                   by = c("CLSTR_ID",  "PLOT_CATEGORY_CODE", "PLOT"))
+    plotdetails[, PLOT := "I"]
+  } else {
+    vi_e <- unique(plotdetails[PLOT_CATEGORY_CODE %in% c("IPC SM",  "IPC ST"),
+                               .(CLSTR_ID, PLOT = PLOT_NUMBER,
+                                 F_RAD = PLOT_RADIUS, PLOT_CATEGORY_CODE)],
+                   by = c("CLSTR_ID",  "PLOT_CATEGORY_CODE", "PLOT"))
+    plotdetails[, PLOT := PLOT_NUMBER]
+  }
   vi_e <- merge(vi_e,
                 plotdetails[PARTIAL_PLOT_REASON_CODE == "BOUNDARY",
                             .(CLSTR_ID, PLOT_CATEGORY_CODE,
+                              PLOT,
                               F_BDRY = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
+                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE", "PLOT"),
                 all.x = TRUE)
   vi_e <- merge(vi_e,
                 plotdetails[PARTIAL_PLOT_REASON_CODE == "SPLIT",
                             .(CLSTR_ID, PLOT_CATEGORY_CODE,
+                              PLOT,
                               F_SPLT = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
+                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE", "PLOT"),
                 all.x = TRUE)
   vi_e <- merge(vi_e,
                 plotdetails[PLOT_SEGMENT_CODE == "FULL",
                             .(CLSTR_ID, PLOT_CATEGORY_CODE,
+                              PLOT,
                               F_FULL = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
+                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE", "PLOT"),
                 all.x = TRUE)
   vi_e <- merge(vi_e,
                 plotdetails[PLOT_SEGMENT_CODE == "HALF",
                             .(CLSTR_ID, PLOT_CATEGORY_CODE,
+                              PLOT,
                               F_HALF = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
+                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE", "PLOT"),
                 all.x = TRUE)
   vi_e <- merge(vi_e,
                 plotdetails[PLOT_SEGMENT_CODE == "QTR",
                             .(CLSTR_ID, PLOT_CATEGORY_CODE,
+                              PLOT,
                               F_QRTR = "X")],
-                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE"),
+                by = c("CLSTR_ID", "PLOT_CATEGORY_CODE", "PLOT"),
                 all.x = TRUE)
   vi_e[PLOT_CATEGORY_CODE == "IPC SM", PL_ORIG := "SML_TR"]
   vi_e[PLOT_CATEGORY_CODE == "IPC ST", PL_ORIG := "STUMP"]
@@ -398,6 +425,4 @@ dataPrepSample <- function(compilationType,
   vi_e[,PLOT_CATEGORY_CODE := NULL]
   rm(plotdetails)
   saveRDS(vi_e, file.path(outputPath, "vi_e.rds"))
-
-
 }
