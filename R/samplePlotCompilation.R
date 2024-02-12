@@ -51,7 +51,7 @@ samplePlotCompilation <- function(compilationType,
   vi_a[is.na(LAST_MSMT), LAST_MSMT := "N"]
 
 
-  vi_a[TYPE_CD %in% c("M", "L", "Y", "F", "PSP", "A"),
+  vi_a[TYPE_CD %in% c("M", "L", "Y", "F", "PSP"),
        VISIT_TYPE := "REP"] # permanent site with repeated visit
   vi_a[is.na(VISIT_TYPE),
        VISIT_TYPE := "TMP"] # temporary visit, there is no revisit in the future
