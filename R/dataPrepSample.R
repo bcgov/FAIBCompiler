@@ -162,7 +162,7 @@ dataPrepSample <- function(compilationType,
   ### we need to combine access codes into one
   siteaccess <- SampleSiteVisits[!is.na(SITE_ACCESS_CODE),.(SITE_IDENTIFIER,
                                                             SITE_ACCESS_CODE, DESCRIPTION)]
-  siteaccess_new <- siteaccess[, .(SITE_ACCESS_CODE = paste0(SITE_ACCESS_CODE, collapse = ", "),
+  siteaccess_new <- siteaccess[, .(SITE_ACCESS_CODE = paste0(SITE_ACCESS_CODE, collapse = ". "),
                                    DESCRIPTION = paste0(DESCRIPTION, collapse = ", ")),
                                by = "SITE_IDENTIFIER"]
   vi_a <- merge(vi_a, siteaccess_new,

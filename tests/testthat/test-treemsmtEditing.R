@@ -69,7 +69,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
                                   sitevisits = site_visits)
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
   expect_equal(tree_editted$DIAMETER_EDIT, c(rep(as.character(NA), 2), "Diameter assinged based on previous msmt"))
-  expect_equal(tree_editted$MSMT_MISSING_EDIT, c(rep(as.character(NA), 2), "Missing at tail, added"))
+  expect_equal(tree_editted$MSMT_MISSING_EDIT, c(rep(as.character(NA), 2), "Missing at tail. added"))
   expect_equal(tree_editted$SP_EDIT, rep(as.character(NA), 3))
   rm(tree, tree_editted)
 
@@ -139,7 +139,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$LVD_EDIT[3],
-               "Missing at tail, added D")
+               "Missing at tail. added D")
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   expect_equal(tree_editted$TREE_SPECIES_CODE, c("AC", "AC", "AC"))
@@ -179,7 +179,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$LVD_EDIT[2],
                "Corrected to L as found alive later")
   expect_equal(tree_editted$DIAMETER_EDIT[2],
-               "Missing, assigned based on mean of prev and next diameters")
+               "Missing. assigned based on mean of prev and next diameters")
   rm(tree, tree_editted)
 
   tree <- data.table(SITE_IDENTIFIER = 1234567,
@@ -213,9 +213,9 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$DIAMETER, c(7, 8, 9))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
   expect_equal(tree_editted$LVD_EDIT[2],
-               "Missing, added L as found alive later")
+               "Missing. added L as found alive later")
   expect_equal(tree_editted$DIAMETER_EDIT[2],
-               "Missing, assigned based on mean of prev and next diameters")
+               "Missing. assigned based on mean of prev and next diameters")
   rm(tree, tree_editted)
 
   # test missing
@@ -251,9 +251,9 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "L"))
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
   expect_equal(tree_editted$DIAMETER_EDIT[2],
-               "Missing, assigned based on mean of prev and next diameters")
+               "Missing. assigned based on mean of prev and next diameters")
   expect_equal(tree_editted$MSMT_MISSING_EDIT[2],
-               "Missing in between, added")
+               "Missing in between. added")
   rm(tree, tree_editted)
 
   tree <- data.table(SITE_IDENTIFIER = 1234567,
@@ -288,10 +288,10 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "D", "D"))
   expect_equal(tree_editted$LVD_EDIT, rep(as.character(NA), 3))
   expect_equal(tree_editted$DIAMETER_EDIT[2:3],
-               c("Missing, assigned based on mean of prev and next diameters",
+               c("Missing. assigned based on mean of prev and next diameters",
                "Diameter assinged based on previous msmt"))
   expect_equal(tree_editted$MSMT_MISSING_EDIT[2],
-               "Missing in between, added")
+               "Missing in between. added")
   rm(tree, tree_editted)
 
 
@@ -327,7 +327,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$LVD_EDIT, c(rep(as.character(NA), 2),
-                                        "Missing at tail, added D"))
+                                        "Missing at tail. added D"))
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   rm(tree, tree_editted)
@@ -363,7 +363,7 @@ test_that("treemsmtEditing.R: tree measurement editing.", {
   expect_equal(tree_editted$DIAMETER, c(7, 8, 8))
   expect_equal(tree_editted$TREE_EXTANT_CODE, c("L", "L", "D"))
   expect_equal(tree_editted$MSMT_MISSING_EDIT[3],
-               "Missing at tail, added")
+               "Missing at tail. added")
   expect_equal(tree_editted$DIAMETER_EDIT[3],
                "Diameter assinged based on previous msmt")
   rm(tree, tree_editted)
