@@ -299,7 +299,7 @@ dataPrepTree <- function(compilationType,
   treemeasurements[SPECIES_ORG != SPECIES & is.na(SP_EDIT),
                    SP_EDIT := "Corrected based on BEC"]
   treemeasurements[SPECIES_ORG != SPECIES & SP_EDIT == "Species changed based on last msmt",
-                   SP_EDIT := paste0(SP_EDIT, ", Corrected based on BEC")]
+                   SP_EDIT := paste0(SP_EDIT, ". Corrected based on BEC")]
   treemeasurements[TREE_SPECIES_CODE != SPECIES,
                    TREE_SPECIES_CODE := SPECIES]
   treemeasurements[, ':='(SPECIES = NULL)]
