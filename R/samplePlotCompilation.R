@@ -110,6 +110,15 @@ samplePlotCompilation <- function(compilationType,
                         samplesites = vi_a,
                         mapPath = mapPath)
   if(compilationType == "PSP"){
+    # based on the conversation between Anya and Bryce.
+    # the site 4042209 is very close to 40-N, private land
+    # when it intersect with the ownership map, it is mistakenly take 40-N
+    # the below is manual correction of the ownership for this site
+    vi_a[SITE_IDENTIFIER == 4042209,
+         ':='(OWNER = 72,
+              SCHEDULE = "B",
+              OWNERSHIP_DESCRIPTION = "Crown Tenure - Tree Farm Licence/Schedule B")]
+
     vi_a <- updateSpatial_badUTM_PSP(mapPath = mapPath,
                                      samplesites = vi_a)
     vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
