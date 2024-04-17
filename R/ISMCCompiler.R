@@ -218,7 +218,7 @@ ISMCCompiler <- function(compilationType,
                                    MEAS_YR, PERIOD,
                                    SAMP_TYP, NO_PLOTS, PROJ_ID, SAMP_NO, SAMPLE_BREAK_POINT,
                                    SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = DBHLIMIT_COUNT,
-                                   DBH_LIMIT_TAG, SA_VEGCOMP, VEGCOMP_YEAR,
+                                   DBH_LIMIT_TAG, SA_VEGCOMP, SA_VEGCOMP_SOURCE,
                                    NO_LIVE_TREE_MAPPED, NO_TOTAL_LIVE_TREE,
                                    STEM_MAPPED_SAMPLE)],
                         by = "CLSTR_ID")
