@@ -104,11 +104,38 @@ updateSA_vegcomp <- function(compilationType,
                        by = "SITE_IDENTIFIER",
                        all.x = TRUE)
   sampleMsmts[,':='(sa_ref = PROJ_AGE_1,
-                    VEGCOMP_YEAR = as.numeric(substr(PROJECTED_DATE, 1, 4)))]
-  sampleMsmts[, SA_VEGCOMP := sa_ref - (VEGCOMP_YEAR - MEAS_YR)]
+                    SA_VEGCOMP_SOURCE = as.numeric(substr(PROJECTED_DATE, 1, 4)))]
+  sampleMsmts[, SA_VEGCOMP := sa_ref - (SA_VEGCOMP_SOURCE - MEAS_YR)]
   sampleMsmts[, ':='(sa_ref = NULL,
                      PROJ_AGE_1 = NULL,
                      PROJECTED_DATE = NULL)]
+  if(file.exists(file.path(coeffPath,
+                           paste0("SA_VEGCOMP_hist_", compilationType, ".rds")))){
+    sa_veg_hist <- readRDS(file.path(coeffPath,
+                                     paste0("SA_VEGCOMP_hist_", compilationType, ".rds")))
+    sampleMsmts <- merge(sampleMsmts,
+                         sa_veg_hist,
+                         by = "CLSTR_ID",
+                         all.x = TRUE)
+    sampleMsmts[SA_VEGCOMP_hist > 0 & SA_VEGCOMP < 0,
+                ':='(SA_VEGCOMP = SA_VEGCOMP_hist,
+                     SA_VEGCOMP_SOURCE = as.numeric(SA_VEGCOMP_SOURCE_hist))]
+    sampleMsmts[, ':='(SA_VEGCOMP_hist = NULL,
+                       SA_VEGCOMP_SOURCE_hist = NULL)]
+    sa_veg_hist <- sampleMsmts[,.(CLSTR_ID,
+                                  SA_VEGCOMP_hist = SA_VEGCOMP,
+                                  SA_VEGCOMP_SOURCE_hist = SA_VEGCOMP_SOURCE)]
+    saveRDS(sa_veg_hist,
+            file.path(coeffPath,
+                      paste0("SA_VEGCOMP_hist_", compilationType, ".rds")))
+  } else {
+    sa_veg_hist <- sampleMsmts[,.(CLSTR_ID,
+                                  SA_VEGCOMP_hist = SA_VEGCOMP,
+                                  SA_VEGCOMP_SOURCE_hist = SA_VEGCOMP_SOURCE)]
+    saveRDS(sa_veg_hist,
+            file.path(coeffPath,
+                      paste0("SA_VEGCOMP_hist_", compilationType, ".rds")))
+  }
   return(list(sampleSites = sampleSites,
               sampleMsmts = sampleMsmts))
 }
