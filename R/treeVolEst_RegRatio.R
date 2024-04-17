@@ -38,11 +38,11 @@ treeVolEst_RegRatio <- function(nonVolTrees, fixedCoeffTable, randomCoeffTable, 
 
   volVariables <- c(paste("VOL_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                    "NTWB", "D", "DW", "DWB"),
-                          sep = ""), "VAL_MER")
+                          sep = ""))
   ## why the last one is included?? val_mer is value not volume
 
   ratioVariables <- paste("RATIO_",c("WSV", "NET", "MER", "NETM", "NTW2",
-                                     "NTWB", "D", "DW", "DWB", "VAL"),
+                                     "NTWB", "D", "DW", "DWB"),
                           sep = "")
   ratioTable <- ratioTable[, c("BEC_ZONE", "SP0", "LV_D", ratioVariables), with = FALSE]
   nonVolTrees <- merge(nonVolTrees, fixedCoeffTable,

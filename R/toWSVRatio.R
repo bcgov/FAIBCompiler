@@ -27,10 +27,10 @@
 toWSVRatio <- function(inputData, needCombs, minDBH = 10, minObs = 30){
   volVariables <- c(paste("VOL_",c("WSV", "NET", "MER", "NETM", "NTW2",
                                    "NTWB", "D", "DW", "DWB"),
-                          sep = ""), "VAL_MER")
+                          sep = ""))
 
   ratioVariables <- paste("RATIO_",c("WSV", "NET", "MER", "NETM", "NTW2",
-                                     "NTWB", "D", "DW", "DWB", "VAL"),
+                                     "NTWB", "D", "DW", "DWB"),
                           sep = "")
   all_trees_ratio <- inputData[MEAS_INTENSE %in% c("FULL", "ENHANCED") &
                                  DBH >= minDBH & VOL_NTWB > 0,]
