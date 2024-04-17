@@ -25,14 +25,27 @@ DBH_Height_MEM <- function(compilationPath, coeffSavePath, fityear){
                                  BROKEN_TOP_IND == "N", # no broken top trees
                                .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
                                  DBH = DIAMETER, HEIGHT = LENGTH,
-                                 SPECIES, BEC_ZONE)]
+                                 SPECIES = TREE_SPECIES_CODE, BEC_ZONE)]
+  treelist_nonpsp <- readRDS(file.path(compilationPath, "compilation_nonPSP_sa",
+                                       "treemeasurements.rds"))
+  treelist_nonpsp <- treelist_nonpsp[!is.na(DIAMETER) & DIAMETER_MEASMT_HEIGHT == 1.3 &
+                                 LENGTH > 1.3 & # all height and dbh are present
+                                 TREE_EXTANT_CODE == "L" & # all alive trees
+                                 is.na(HEIGHT_EDIT) &  # no modification for height
+                                 is.na(DIAMETER_EDIT) & # no diameter modification
+                                 BROKEN_TOP_IND == "N", # no broken top trees
+                               .(CLSTR_ID, PLOT, TREE_NO = TREE_NUMBER,
+                                 DBH = DIAMETER, HEIGHT = LENGTH,
+                                 SPECIES = TREE_SPECIES_CODE, BEC_ZONE)]
+
+  treelist_all_org <- rbind(treelist_psp, treelist_nonpsp)
   splookup <- lookup_species()
-  treelist_psp <- merge(treelist_psp,
+  treelist_all_org <- merge(treelist_all_org,
                         unique(splookup[,.(SPECIES, SP0, SP_TYPE)]),
                         by = "SPECIES",
                         all.x = TRUE)
   # treelist_all <- rbind(treelist_psp, treelist_nonpsp)
-  treelist_all <- data.table::copy(treelist_psp)
+  treelist_all <- data.table::copy(treelist_all_org)
   treelist_all[, SITE_IDENTIFIER := as.numeric(substr(CLSTR_ID, 1, 7))]
 
   allcombo <- unique(treelist_all[,.(SPECIES, SP0, SP_TYPE)])
@@ -71,9 +84,7 @@ DBH_Height_MEM <- function(compilationPath, coeffSavePath, fityear){
   allcombo[,':='(Nobs2 = NULL,
                  Nobs4 = NULL)]
   fitdata[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NO)]
-  # saveRDS(fitdata, file.path(coeffSavePath, paste0("fitdata_ht_dbh", fityear, ".rds")))
-  # allcombo_org <- data.table::copy(allcombo)
-  # allcombo <- data.table::copy(allcombo_org)[1:2,]
+  saveRDS(fitdata, file.path(coeffSavePath, paste0("fitdata_ht_dbh", fityear, ".rds")))
   for(indidatagroup in c("species", "sp0", "sp_type")){
     indifitdata <- allcombo[datagroup == indidatagroup]
     if(nrow(indifitdata) > 0){
