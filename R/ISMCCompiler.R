@@ -707,11 +707,7 @@ ISMCCompiler <- function(compilationType,
     # derive ratio and regression routine
     if(needNewCoffs){
       cat(paste0("    Start to derive coefficients and ratios for year ", compilationYear, "\n"))
-
-      alltreelist <- mergeAllVolTrees(treeMS = data.table::copy(tree_ms7),
-                                      treeAX = data.table::copy(tree_nonHT))
-      allbecsplvd <- unique(alltreelist[,.(BEC_ZONE, SP0, LV_D)])
-
+      allbecsplvd <- unique(tree_ms7[,.(BEC_ZONE, SP0, LV_D)])
       ## if the regratiodata can not be found in coeff folder
       ## generate regratiodata and derive coeff and ratio using mixed effect models
       regRatioData <- regRatioDataSelect(samples, tree_ms7, usage = "ismc")
@@ -769,40 +765,28 @@ ISMCCompiler <- function(compilationType,
         randomcoeff_final <- coefs$randomcoeff
         randomcoeff_final[,':='(YEAR_FIT = compilationYear)]
       }
-      saveRDS(fixedcoeff_final,
+      bestmodels_BA_WSV <- list(fixedcoeff_final = fixedcoeff_final,
+                                randomcoeff_final = randomcoeff_final)
+
+      saveRDS(bestmodels_BA_WSV,
               file.path(compilationPaths$compilation_coeff,
-                        paste0("fixedCoefs", compilationYear, ".rds")))
-      saveRDS(randomcoeff_final,
-              file.path(compilationPaths$compilation_coeff,
-                        paste0("randomCoefs", compilationYear, ".rds")))
-      write.table(fixedcoeff_final,
-                  file.path(compilationPaths$compilation_coeff,
-                            paste0("fixedCoefs", compilationYear, ".txt")),
-                  row.names = FALSE, sep = ",")
-      write.table(randomcoeff_final,
-                  file.path(compilationPaths$compilation_coeff,
-                            paste0("randomCoefs", compilationYear, ".txt")),
-                  row.names = FALSE, sep = ",")
-      cat(paste0("        Derived and saved coefficients to fixedCoefs", compilationYear, "\n"))
-      cat(paste0("                                     and randomCoefs", compilationYear, "\n"))
+                        paste0("bestmodels_BA_WSV", compilationYear, ".rds")))
+      cat(paste0("        Derived and saved coefficients to bestmodels_BA_WSV",
+                 compilationYear, "\n"))
+
       ratios <- toWSVRatio(inputData = regRatioData, needCombs = allbecsplvd)
       saveRDS(ratios,
               file.path(compilationPaths$compilation_coeff,
                         paste0("ratios", compilationYear, ".rds")))
-      write.table(ratios,
-                  file.path(compilationPaths$compilation_coeff,
-                            paste0("ratios", compilationYear, ".txt")),
-                  row.names = FALSE, sep = ",")
       cat(paste0("        Calculated and saved ratios to ratios", compilationYear, "\n"))
       rm(coefs, ratios, regRatioData)
     } else {
       cat(paste0("    Use the existing coefficients and ratios of year ", compilationYear, "\n"))
     }
-    fixedcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                     paste0("fixedCoefs", compilationYear, ".rds")))
-
-    randomcoeffs <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                      paste0("randomCoefs", compilationYear, ".rds")))
+    bestmodels_BA_WSV <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                           paste0("bestmodels_BA_WSV", compilationYear, ".rds")))
+    fixedcoeffs <- bestmodels_BA_WSV$fixedcoeff_final
+    randomcoeffs <- bestmodels_BA_WSV$randomcoeff_final
     randomcoeffs[, SAMP_POINT := as.numeric(SAMP_POINT)]
     ratios <- readRDS(file.path(compilationPaths$compilation_coeff,
                                 paste0("ratios", compilationYear, ".rds")))
