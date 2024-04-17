@@ -149,9 +149,9 @@ preparePublishData <- function(compilationPath,
 
   faib_plot_dic <- data.table(Attribute = names(sampplot_org))
   faib_plot_dic <- merge(faib_plot_dic,
-                           datadictionary_all,
-                           by = "Attribute",
-                           all.x = TRUE)
+                         datadictionary_all,
+                         by = "Attribute",
+                         all.x = TRUE)
   datadictionary_publish[["faib_plot_header"]] <- faib_plot_dic
 
   # reassign first_msmt and last_msmt
@@ -169,7 +169,8 @@ preparePublishData <- function(compilationPath,
 
   sampvisits <- merge(sampvisits,
                       sampsites_org[,.(SITE_IDENTIFIER,
-                                       SAMPLE_SITE_NAME, SAMPLE_ESTABLISHMENT_TYPE)],
+                                       SAMPLE_SITE_NAME, SAMPLE_ESTABLISHMENT_TYPE,
+                                       FEATURE_ID)],
                       by = "SITE_IDENTIFIER",
                       all.x = TRUE)
   sampvisits_first <- sampvisits[FIRST_MSMT == "Y",
@@ -223,35 +224,45 @@ preparePublishData <- function(compilationPath,
                       by = "SITE_IDENTIFIER",
                       all.x = TRUE)
   sampvisits[SA_VEGCOMP < 0.1, SA_VEGCOMP := NA]
+  sampvisits <- merge(sampvisits,
+                      sampsites_org[,.(SITE_IDENTIFIER, PROJ_AGE_1, PROJECTED_DATE)],
+                      by = "SITE_IDENTIFIER",
+                      all.x = TRUE)
 
   if(compilationType == "nonPSP"){
     faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
-                                       VISIT_NUMBER, FIRST_MSMT, LAST_MSMT,
-                                       MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
-                                       PROJ_AGE_ADJ = SA_VEGCOMP,
-                                       SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
-                                       SAMPLE_ESTABLISHMENT_TYPE,
-                                       DBH_LIMIT_TAG, SAMPLE_BREAK_POINT,
-                                       SAMPLE_BREAK_POINT_TYPE,
-                                       PSP_PLOT_DESIGN = as.character(NA),
-                                       DBH_LIMIT_COUNT = as.numeric(NA),
-                                       MAT_MAIN_FM, MAT_MAIN_LM,
-                                       YSM_MAIN_FM, YSM_MAIN_LM,
-                                       YSM_PILOT_FM, YSM_PILOT_LM)]
+                                         VISIT_NUMBER,
+                                         FIRST_MSMT, LAST_MSMT,
+                                         MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS,
+                                         FEATURE_ID, PROJ_AGE_1, PROJECTED_DATE,
+                                         PROJ_AGE_ADJ = SA_VEGCOMP,
+                                         SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                         VISIT_TYPE,
+                                         SAMPLE_ESTABLISHMENT_TYPE,
+                                         DBH_LIMIT_TAG, SAMPLE_BREAK_POINT,
+                                         SAMPLE_BREAK_POINT_TYPE,
+                                         PSP_PLOT_DESIGN = as.character(NA),
+                                         DBH_LIMIT_COUNT = as.numeric(NA),
+                                         MAT_MAIN_FM, MAT_MAIN_LM,
+                                         YSM_MAIN_FM, YSM_MAIN_LM,
+                                         YSM_PILOT_FM, YSM_PILOT_LM)]
   } else {
     faib_sample_byvisit <- sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, SAMPLE_SITE_NAME,
-                                       VISIT_NUMBER, FIRST_MSMT, LAST_MSMT,
-                                       MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS, PROJ_AGE_1, PROJECTED_DATE,
-                                       PROJ_AGE_ADJ = SA_VEGCOMP,
-                                       SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
-                                       SAMPLE_ESTABLISHMENT_TYPE,
-                                       DBH_LIMIT_TAG, SAMPLE_BREAK_POINT,
-                                       SAMPLE_BREAK_POINT_TYPE,
-                                       PSP_PLOT_DESIGN,
-                                       DBH_LIMIT_COUNT,
-                                       MAT_MAIN_FM, MAT_MAIN_LM,
-                                       YSM_MAIN_FM, YSM_MAIN_LM,
-                                       YSM_PILOT_FM, YSM_PILOT_LM)]
+                                         VISIT_NUMBER,
+                                         FIRST_MSMT, LAST_MSMT,
+                                         MEAS_DT, MEAS_YR, PERIOD, NO_PLOTS,
+                                         FEATURE_ID, PROJ_AGE_1, PROJECTED_DATE,
+                                         PROJ_AGE_ADJ = SA_VEGCOMP,
+                                         SAMP_TYP, SAMPLE_SITE_PURPOSE_TYPE_CODE,
+                                         VISIT_TYPE,
+                                         SAMPLE_ESTABLISHMENT_TYPE,
+                                         DBH_LIMIT_TAG, SAMPLE_BREAK_POINT,
+                                         SAMPLE_BREAK_POINT_TYPE,
+                                         PSP_PLOT_DESIGN,
+                                         DBH_LIMIT_COUNT,
+                                         MAT_MAIN_FM, MAT_MAIN_LM,
+                                         YSM_MAIN_FM, YSM_MAIN_LM,
+                                         YSM_PILOT_FM, YSM_PILOT_LM)]
   }
 
   write.csv(faib_sample_byvisit,
