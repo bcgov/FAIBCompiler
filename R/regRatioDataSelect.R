@@ -27,119 +27,54 @@
 #'
 regRatioDataSelect <- function(sampledata, alltreedata, usage){
   if(usage == "ismc"){
-    ## in ismc, the measurement time is defined as visit number
-    sampledata[, SAMP_POINT := as.numeric(substr(CLSTR_ID, 1, 7))]
-    sampledata[, visit_no := 1]
-    sampledata[substr(CLSTR_ID, 10, 10) == "R",
-                   visit_no_add := as.numeric(substr(CLSTR_ID, 11, 11))]
-    sampledata[substr(CLSTR_ID, 10, 10) == "R", visit_no := visit_no + visit_no_add]
-    sampledata[, MEAS_DT := visit_no]
-    sampledata[,':='(visit_no = NULL,
-                     visit_no_add = NULL)]
-
-    selectedsamples <- sampledata[0, ]
     ## remove the delinearity samples also duplicated
     sampledata <- sampledata[!(PROJ_ID %in% c("037A", "DMHA", "DDCX", "DDCA", "DDCY",
                                               "DDCB", "DDCZ", "029A", "DQUE")),]
-    ## remove audit samples
-    sampledata <- sampledata[!(substr(CLSTR_ID, 9, 9) == "A" |
-                                 substr(CLSTR_ID, 10, 10) == "A" |
-                                 substr(CLSTR_ID, 11, 11) == "A"),]
+    ## remove A samples, early YSM
+    ## remove NVAF samples
+    ## remove B samples
+    A_N_B_cls <- unique(sampledata[TYPE_CD %in% c("A", "N", "B"),]$CLSTR_ID)
+    sampledata <- sampledata[!(CLSTR_ID %in% A_N_B_cls),]
 
-    ## deal with sample points that have NVAF samples
-    ##
-    nvafsamppoints <- unique(sampledata[substr(CLSTR_ID, 9, 9) == "N"]$SAMP_POINT)
-    nvafselected <- unique(sampledata[SAMP_POINT %in% nvafsamppoints &
-                                        substr(CLSTR_ID, 9, 9) == "N",],
-                           by = c("CLSTR_ID", "PLOT"))
-    nvafselected[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
-    nvafselected <- nvafselected[MEAS_DT == LASTTIME & PLOT != "I",]
-    nvafselected[, LASTTIME := NULL]
+    ## remove samples in the TAAN project
+    tann_cls <- unique(sampledata[(PROJECT_DESCRIPTOR %in% c("TFL 60 Monitoring",
+                                                      "TFL 60 Monitoring Remeasurements")),]$CLSTR_ID)
+    sampledata <- sampledata[!(CLSTR_ID %in% tann_cls),]
 
-    selectedsamples <- rbind(selectedsamples, nvafselected)
-    rm(nvafselected)
+    sampledata[, MEAS_YR_calendar := substr(MEAS_DT, 1, 4)]
+    sampledata[, sameMSYear := length(CLSTR_ID),
+               by = c("SITE_IDENTIFIER", "PLOT", "MEAS_YR_calendar")]
+    multisamp <- sampledata[sameMSYear > 1]
+    multisamp[, point_year := paste0(SITE_IDENTIFIER, "_", MEAS_YR_calendar)]
+    # fixed area plot has priority
+    multisamp_fix <- multisamp[TYPE_CD == "F",]
+    # when for a given year, there are two fixed area visit
+    # the last one wins
+    # good news is there is no such case in the database
+    multisamp_fix[, visit_max := max(VISIT_NUMBER), by = "point_year"]
+    multisamp_fix <- multisamp_fix[VISIT_NUMBER == visit_max,]
 
-    nvafselected_forIPC <- unique(sampledata[SAMP_POINT %in% nvafsamppoints &
-                                               substr(CLSTR_ID, 9, 9) != "N" &
-                                               PLOT == "I",],
-                                  by = c("CLSTR_ID"))
-
-    nvafselected_forIPC_Fix <- nvafselected_forIPC[SAMP_TYP == "F",]
-    nvafselected_forIPC_Fix[, LASTTIME := max(MEAS_DT),
-                            by = "SAMP_POINT"]
-    nvafselected_forIPC_Fix <- nvafselected_forIPC_Fix[MEAS_DT == LASTTIME,]
-    nvafselected_forIPC_Fix[, LASTTIME := NULL]
-    selectedsamples <- rbind(selectedsamples, nvafselected_forIPC_Fix)
-
-
-    nvafselected_forIPC_Var <- nvafselected_forIPC[!(SAMP_POINT %in%
-                                                       unique(nvafselected_forIPC_Fix$SAMP_POINT)),]
-    rm(nvafselected_forIPC_Fix)
-
-    nvafselected_forIPC_Var[, LASTTIME := max(MEAS_DT),
-                            by = "SAMP_POINT"]
-    nvafselected_forIPC_Var <- nvafselected_forIPC_Var[MEAS_DT == LASTTIME,]
-    nvafselected_forIPC_Var[, LASTTIME := NULL]
-    selectedsamples <- rbind(selectedsamples, nvafselected_forIPC_Var)
-    ## check sample point 0031-0005
-    testdata <- selectedsamples[SAMP_POINT == "6000201",.(CLSTR_ID, PLOT)]
-    if(!identical(testdata[order(CLSTR_ID, PLOT),],
-                  data.table(CLSTR_ID = c("6000201-N2", "6000201-N2", "6000201-N2",
-                                          "6000201-N2", "6000201-Q1"),
-                             PLOT = c("E", "N", "S", "W", "I")))){
-      stop("Sample point with NVAF data is not correctly selected.")
-    }
-    rm(testdata)
-
-    ## select the sample points that just have one sample
-    sampledata <- sampledata[!(SAMP_POINT %in% nvafsamppoints), ]
-    sampledata[, sample_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
-
-
-    sampledata_selected <- sampledata[sample_length == 1,]
-    sampledata_selected[, sample_length := NULL]
-
-    selectedsamples <- rbind(selectedsamples, sampledata_selected)
-    rm(sampledata_selected)
-    sampledata <- sampledata[sample_length != 1,]
-
-    ## for sample point have the fixed area plot
-    sampledata_fix <- sampledata[SAMP_TYP == "F",]
-    sampledata_fix[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
-    sampledata_fix <- sampledata_fix[VISIT_NUMBER == LASTTIME,]
-    sampledata_fix <- sampledata_fix[CLSTR_ID != "4742-0104-FO1",] ## need to remove when figure out what is
-    ## going on
-    sampledata_fix[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
-    if(nrow(sampledata_fix[clster_length > 1]) > 0){
-      print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, MEAS_DT, SAMP_POINT)],
-                   by = "CLSTR_ID"))
-      stop("Multiple monitoring samples were found for one sample point at same time.")
-    }
-    sampledata_fix[, ':='(LASTTIME = NULL,
-                          clster_length = NULL,
-                          sample_length = NULL)]
-    selectedsamples <- rbind(selectedsamples, sampledata_fix)
-    sampledata <- sampledata[!(SAMP_POINT %in% unique(sampledata_fix$SAMP_POINT)), ]
-
-    ## last selection for the sample point just have multiple variable plot samples
-    sampledata[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
-    sampledata <- sampledata[VISIT_NUMBER == LASTTIME,]
-    sampledata[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
-    if(nrow(sampledata[clster_length > 1]) > 0){
-      print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, MEAS_DT, SAMP_POINT)],
-                   by = "CLSTR_ID"))
-      stop("Multiple monitoring samples were found for one sample point at same time.")
-    }
-    sampledata[, ':='(LASTTIME = NULL,
-                      clster_length = NULL,
-                      sample_length = NULL)]
-    selectedsamples <- rbind(selectedsamples, sampledata)
-    selectedsamples[, uniplot := paste0(CLSTR_ID, "-", PLOT)]
+    multisamp_var <- multisamp[!(point_year %in% multisamp_fix$point_year),]
+    multisamp_var[, visit_max := max(VISIT_NUMBER), by = "point_year"]
+    multisamp_var <- multisamp_var[VISIT_NUMBER == visit_max,]
+    multisamp_final <- rbind(multisamp_fix, multisamp_var)
+    multisamp_final[,':='(MEAS_YR_calendar = NULL,
+                          sameMSYear = NULL,
+                          point_year = NULL,
+                          visit_max = NULL)]
+    sampledata <- sampledata[sameMSYear < 2,]
+    sampledata[,':='(MEAS_YR_calendar = NULL,
+                     sameMSYear = NULL)]
+    sampledata <- rbind(sampledata,
+                        multisamp_final)
+    rm(multisamp, multisamp_final, multisamp_fix, multisamp_var)
+    sampledata[, uniplot := paste0(CLSTR_ID, "-", PLOT)]
 
     alltreedata[, uniplot := paste0(CLSTR_ID, "-", PLOT)]
-    treedata_selected <- alltreedata[uniplot %in% selectedsamples$uniplot &
+    treedata_selected <- alltreedata[uniplot %in% sampledata$uniplot &
                                        MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),]
-
+    treedata_selected <- treedata_selected[BROKEN_TOP_IND %in% c("N", NA)]
+    treedata_selected[, uniplot := NULL]
   } else if (usage == "vgis"){
     sampledata[, SAMP_POINT := substr(CLSTR_ID, 1, 9)]
     selectedsamples <- sampledata[0, ]
@@ -158,8 +93,8 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     nvafselected <- unique(sampledata[SAMP_POINT %in% nvafsamppoints &
                                         substr(CLSTR_ID, 11, 11) == "N",],
                            by = c("CLSTR_ID", "PLOT"))
-    nvafselected[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
-    nvafselected <- nvafselected[MEAS_DT == LASTTIME & PLOT != "I",]
+    nvafselected[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
+    nvafselected <- nvafselected[VISIT_NUMBER == LASTTIME & PLOT != "I",]
     nvafselected[, LASTTIME := NULL]
 
     selectedsamples <- rbind(selectedsamples, nvafselected)
@@ -171,9 +106,9 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
                                   by = c("CLSTR_ID"))
 
     nvafselected_forIPC_Fix <- nvafselected_forIPC[SAMP_TYP == "F",]
-    nvafselected_forIPC_Fix[, LASTTIME := max(MEAS_DT),
+    nvafselected_forIPC_Fix[, LASTTIME := max(VISIT_NUMBER),
                             by = "SAMP_POINT"]
-    nvafselected_forIPC_Fix <- nvafselected_forIPC_Fix[MEAS_DT == LASTTIME,]
+    nvafselected_forIPC_Fix <- nvafselected_forIPC_Fix[VISIT_NUMBER == LASTTIME,]
     nvafselected_forIPC_Fix[, LASTTIME := NULL]
     selectedsamples <- rbind(selectedsamples, nvafselected_forIPC_Fix)
 
@@ -182,9 +117,9 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
                                                        unique(nvafselected_forIPC_Fix$SAMP_POINT)),]
     rm(nvafselected_forIPC_Fix)
 
-    nvafselected_forIPC_Var[, LASTTIME := max(MEAS_DT),
+    nvafselected_forIPC_Var[, LASTTIME := max(VISIT_NUMBER),
                             by = "SAMP_POINT"]
-    nvafselected_forIPC_Var <- nvafselected_forIPC_Var[MEAS_DT == LASTTIME,]
+    nvafselected_forIPC_Var <- nvafselected_forIPC_Var[VISIT_NUMBER == LASTTIME,]
     nvafselected_forIPC_Var[, LASTTIME := NULL]
     selectedsamples <- rbind(selectedsamples, nvafselected_forIPC_Var)
     ## check sample point 0031-0005
@@ -212,12 +147,12 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
 
     ## for sample point have the fixed area plot
     sampledata_fix <- sampledata[SAMP_TYP == "F",]
-    sampledata_fix[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
-    sampledata_fix <- sampledata_fix[MEAS_DT == LASTTIME,]
+    sampledata_fix[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
+    sampledata_fix <- sampledata_fix[VISIT_NUMBER == LASTTIME,]
     ## going on
     sampledata_fix[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
     if(nrow(sampledata_fix[clster_length > 1]) > 0){
-      print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, MEAS_DT, SAMP_POINT)],
+      print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, VISIT_NUMBER, SAMP_POINT)],
                    by = "CLSTR_ID"))
       stop("Multiple monitoring samples were found for one sample point at same time.")
     }
@@ -228,11 +163,11 @@ regRatioDataSelect <- function(sampledata, alltreedata, usage){
     sampledata <- sampledata[!(SAMP_POINT %in% unique(sampledata_fix$SAMP_POINT)), ]
 
     ## last selection for the sample point just have multiple variable plot samples
-    sampledata[, LASTTIME := max(MEAS_DT), by = "SAMP_POINT"]
-    sampledata <- sampledata[MEAS_DT == LASTTIME,]
+    sampledata[, LASTTIME := max(VISIT_NUMBER), by = "SAMP_POINT"]
+    sampledata <- sampledata[VISIT_NUMBER == LASTTIME,]
     sampledata[, clster_length := length(unique(CLSTR_ID)), by = "SAMP_POINT"]
     if(nrow(sampledata[clster_length > 1]) > 0){
-      print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, MEAS_DT, SAMP_POINT)],
+      print(unique(sampledata_fix[clster_length > 1,.(CLSTR_ID, SAMP_TYP, VISIT_NUMBER, SAMP_POINT)],
                    by = "CLSTR_ID"))
       stop("Multiple monitoring samples were found for one sample point at same time.")
     }
