@@ -302,25 +302,21 @@ samplePlotCompilation <- function(compilationType,
               DBH_LIMIT_TAG = as.numeric(NA),
               SAMPLE_BREAK_POINT = as.numeric(NA),
               SAMPLE_BREAK_POINT_TYPE = as.character(NA))]
-    allsample_ests <- dir(coeffPath, pattern = "sample_establishment_type")
-    allsample_ests <- gsub("sample_establishment_type_", "", allsample_ests)
-    allsample_ests <- gsub(".xlsx", "", allsample_ests)
-    allsample_est_last <- max(as.numeric(allsample_ests))
     sample_est_1 <- openxlsx::read.xlsx(file.path(coeffPath,
-                                                  paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
+                                                  "sample_establishment_type.xlsx"),
                                         sheet = "1_non_standard_site_identifier") %>%
       data.table
     sample_est_1 <- sample_est_1[,.(SITE_IDENTIFIER, SAMPLE_ESTABLISHMENT_TYPE)]
 
     sample_est_2 <- openxlsx::read.xlsx(file.path(coeffPath,
-                                                  paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
+                                                  "sample_establishment_type.xlsx"),
                                         sheet = "2_non_standard_project") %>%
       data.table
     sample_est_2 <- sample_est_2[,.(PROJECT_NAME, TYPE_CD = SAMPLE_SITE_PURPOSE_TYPE_CODE,
                                     SAMPLE_ESTABLISHMENT_TYPE2 = SAMPLE_ESTABLISHMENT_TYPE)]
 
     sample_est_3 <- openxlsx::read.xlsx(file.path(coeffPath,
-                                                  paste0("sample_establishment_type_", allsample_est_last, ".xlsx")),
+                                                  "sample_establishment_type.xlsx"),
                                         sheet = "3_standard") %>%
       data.table
     sample_est_3 <- sample_est_3[,.(TYPE_CD = sample_site_purpose_type_code,
