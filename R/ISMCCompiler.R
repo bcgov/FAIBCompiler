@@ -127,9 +127,7 @@ ISMCCompiler <- function(compilationType,
   }
   cat("    Check VOL~BA coefficients and ratios:.\n")
   if(file.exists(file.path(compilationPaths$compilation_coeff,
-                           paste0("fixedCoefs", compilationYear, ".rds"))) &
-     file.exists(file.path(compilationPaths$compilation_coeff,
-                           paste0("randomCoefs", compilationYear, ".rds"))) &
+                           paste0("bestmodels_BA_WSV", compilationYear, ".rds"))) &
      file.exists(file.path(compilationPaths$compilation_coeff,
                            paste0("ratios", compilationYear, ".rds")))){
     cat(paste0("        All coefficients and ratios for year ", compilationYear, " are checked.\n"))
@@ -710,19 +708,51 @@ ISMCCompiler <- function(compilationType,
       allbecsplvd <- unique(tree_ms7[,.(BEC_ZONE, SP0, LV_D)])
       ## if the regratiodata can not be found in coeff folder
       ## generate regratiodata and derive coeff and ratio using mixed effect models
-      regRatioData <- regRatioDataSelect(samples, tree_ms7, usage = "ismc")
+      ## use tree_ms7 and trees in PSP dataset
+      psptrees <- readRDS(file.path(compilationPath, "compilation_PSP_db", "treelist.rds"))
+      psptrees <- psptrees[MEAS_INTENSE %in% c("FULL", "H-ENHANCED"),]
+      pspsamples <- readRDS(file.path(compilationPath, "compilation_PSP_db",
+                                      "sample_msmt_header.rds"))
+      pspsites <- readRDS(file.path(compilationPath, "compilation_PSP_db",
+                                    "sample_site_header.rds"))
+      psptrees <- merge(psptrees, pspsites[,.(SITE_IDENTIFIER, BEC_ZONE)],
+                        by = "SITE_IDENTIFIER",
+                        all.x = TRUE)
+      alltrees <- rbind(tree_ms7[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SP0,
+                                    LV_D, S_F, DBH, BA_TREE, MEAS_INTENSE,
+                                    BROKEN_TOP_IND, BEC_ZONE,
+                                    VOL_WSV, VOL_MER, VOL_NTWB, VOL_DWB,
+                                    TYPE_CD)],
+                        psptrees[,.(CLSTR_ID, PLOT, TREE_NO, SPECIES, SP0,
+                                    LV_D, S_F, DBH, BA_TREE, MEAS_INTENSE,
+                                    BROKEN_TOP_IND, BEC_ZONE,
+                                    VOL_WSV, VOL_MER, VOL_NTWB, VOL_DWB,
+                                    TYPE_CD = "PSP")])
+      pspsampleplots <- readRDS(file.path(compilationPath, "compilation_PSP_db",
+                                          "sample_plot_header.rds"))
+      pspsamples <- merge(pspsampleplots, pspsamples,
+                          by = "CLSTR_ID",
+                          all.x = TRUE)
+      allsamples <- rbind(samples,
+                          pspsamples,
+                          fill = TRUE)
+      regRatioData <- regRatioDataSelect(sampledata = allsamples,
+                                         alltreedata = alltrees,
+                                         usage = "ismc")
+      rm(alltrees, allsamples, psptrees, pspsampleplots, pspsamples, pspsites)
       saveRDS(regRatioData,
               file.path(compilationPaths$compilation_coeff,
                         paste0("regRatioData", compilationYear, ".rds")))
       cat(paste0("        Selected data and saved to regRatioData", compilationYear, "\n"))
       coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
-      if(compilationYear > 2021){ ## comparison starts from 2022 to select the better model to predict BA-WSV relationship
-        fixedcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                             paste0("fixedCoefs", as.numeric(compilationYear)-1, ".rds")))
+
+      if(compilationYear > 2024){ ## comparison starts from 2024 to select the better model to predict BA-WSV relationship
+        BA_WSV_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
+                                         paste0("bestmodels_BA_WSV", as.numeric(compilationYear)-1, ".rds")))
+        fixedcoeff_prev <- BA_WSV_prev$fixedcoeff
         fixedcoeff_prev[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
-        randomcoeff_prev <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                              paste0("randomCoefs", as.numeric(compilationYear)-1, ".rds")))
+        randomcoeff_prev <- BA_WSV_prev$randomcoeff
         randomcoeff_prev[, uni_strata := paste0(BEC_ZONE, SP0, LV_D)]
 
         allfix <- merge(coefs$fixedcoeff[,.(uni_strata = paste0(BEC_ZONE, SP0, LV_D),
@@ -732,7 +762,7 @@ ISMCCompiler <- function(compilationType,
                                            YEAR_FIT_prev = YEAR_FIT)],
                         by = c("uni_strata"),
                         all = TRUE)
-        allfix[R2_Marginal_crt+0.05 >= R2_Marginal_prev,
+        allfix[R2_Marginal_crt+0.01 >= R2_Marginal_prev,
                YEAR_FIT := compilationYear] ## 0.01 was chosen as an indicator
         ## of a significant improvement
         allfix[!is.na(R2_Marginal_crt) & is.na(R2_Marginal_prev),
@@ -761,20 +791,20 @@ ISMCCompiler <- function(compilationType,
       } else {
         fixedcoeff_final <- coefs$fixedcoeff
         fixedcoeff_final[,':='(YEAR_FIT = compilationYear)]
-
         randomcoeff_final <- coefs$randomcoeff
         randomcoeff_final[,':='(YEAR_FIT = compilationYear)]
+        rm(coefs)
       }
-      bestmodels_BA_WSV <- list(fixedcoeff_final = fixedcoeff_final,
-                                randomcoeff_final = randomcoeff_final)
-
+      bestmodels_BA_WSV <- list(fixedcoeff = fixedcoeff_final,
+                                randomcoeff = randomcoeff_final)
       saveRDS(bestmodels_BA_WSV,
               file.path(compilationPaths$compilation_coeff,
                         paste0("bestmodels_BA_WSV", compilationYear, ".rds")))
       cat(paste0("        Derived and saved coefficients to bestmodels_BA_WSV",
                  compilationYear, "\n"))
 
-      ratios <- toWSVRatio(inputData = regRatioData, needCombs = allbecsplvd)
+      ratios <- toWSVRatio_curve(inputData = regRatioData,
+                                 needCombs = allbecsplvd)
       saveRDS(ratios,
               file.path(compilationPaths$compilation_coeff,
                         paste0("ratios", compilationYear, ".rds")))
@@ -785,45 +815,16 @@ ISMCCompiler <- function(compilationType,
     }
     bestmodels_BA_WSV <- readRDS(file.path(compilationPaths$compilation_coeff,
                                            paste0("bestmodels_BA_WSV", compilationYear, ".rds")))
-    fixedcoeffs <- bestmodels_BA_WSV$fixedcoeff_final
-    randomcoeffs <- bestmodels_BA_WSV$randomcoeff_final
-    randomcoeffs[, SAMP_POINT := as.numeric(SAMP_POINT)]
     ratios <- readRDS(file.path(compilationPaths$compilation_coeff,
                                 paste0("ratios", compilationYear, ".rds")))
     ## tree with H-enhanced and non-enhanced
-    auxTrees_compiled <- treeVolEst_RegRatio(tree_ms7[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),],
-                                             fixedcoeffs,
-                                             randomcoeffs,
-                                             ratios)
-    useRatioCurve <- TRUE
-    if(useRatioCurve){
-      merRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                        "mer_ratio_curve.rds"))
-      ntwbRatioCoef <- readRDS(file.path(compilationPaths$compilation_coeff,
-                                         "ntwb_ratio_curve.rds"))
-      auxTrees_compiled <- merge(auxTrees_compiled,
-                                 merRatioCoef[,.(BEC_ZONE, SP0, LV_D, a, b, c)],
-                                 by = c("BEC_ZONE", "SP0", "LV_D"),
-                                 all.x = TRUE)
-      auxTrees_compiled[, MER_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-      auxTrees_compiled[MEAS_INTENSE == "NON-ENHANCED", VOL_MER := MER_RATIO * VOL_WSV]
-      auxTrees_compiled[, c("a", "b", "c", "MER_RATIO") := NULL]
-      auxTrees_compiled <- merge(auxTrees_compiled,
-                                 ntwbRatioCoef[,.(BEC_ZONE, SP0, LV_D, a, b, c)],
-                                 by = c("BEC_ZONE", "SP0", "LV_D"),
-                                 all.x = TRUE)
+    auxTrees_compiled <- treeVolEst_RegRatio_new(tree_ms7[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),],
+                                                 bestmodels_BA_WSV,
+                                                 ratios)
 
-      auxTrees_compiled[, NTWB_RATIO := a * (1 - exp(-b * (DBH-10)))^c]
-      auxTrees_compiled[!is.na(a), VOL_NTWB := NTWB_RATIO * VOL_WSV]
-      auxTrees_compiled[, c("a", "b", "c", "NTWB_RATIO") := NULL]
-      prep_smy <- rbindlist(list(tree_ms7[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
-                                 auxTrees_compiled),
-                            fill = TRUE)
-    } else {
-      prep_smy <- rbindlist(list(tree_ms7[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
-                                 auxTrees_compiled),
-                            fill = TRUE)
-    }
+    prep_smy <- rbindlist(list(tree_ms7[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
+                               auxTrees_compiled),
+                          fill = TRUE)
     prep_smy[MEAS_INTENSE %in% c("FULL", "ENHANCED", "H-ENHANCED"),
              WSV_VOL_SRCE := "Calculated"]
     prep_smy[!is.na(VOL_WSV) &
@@ -839,19 +840,18 @@ ISMCCompiler <- function(compilationType,
                            by = "SPECIES"),
                     by = "SPECIES",
                     all.x = TRUE)
-  volVariables <- c(paste("VOL_",c("NET", "MER", "NETM", "NTW2",
-                                   "NTWB", "D", "DW", "DWB"),
-                          sep = ""), "VAL_MER")
-  prep_smy[DBH < 10, c(volVariables) := 0]
-  prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
-             VOL_NETM %>>% VOL_MER,
-           VOL_NETM := VOL_MER]
-  prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
-             VOL_NTW2 %>>% VOL_MER,
-           VOL_NTW2 := VOL_MER]
+  volVariables <- paste0("VOL_", c("MER", "NTWB", "DWB"))
+  prep_smy[DBH %<<% 10, c(volVariables) := 0]
+
+  ## for the ratio-based netted volumes, they cannot be bigger than vol_mer
+  ## in case of vol_mer is directly derived
+
   prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
              VOL_NTWB %>>% VOL_MER,
            VOL_NTWB := VOL_MER]
+  prep_smy[MEAS_INTENSE %in% c( "H-ENHANCED") &
+             VOL_DWB %>>% VOL_MER,
+           VOL_DWB := VOL_MER]
 
   ## some trees might be cut to dead, hence, the vol_mer, vol_ntwb and vol_dwb should
   ## be zero, see Rene's email on 2022-05-24
