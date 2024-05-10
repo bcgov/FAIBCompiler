@@ -20,16 +20,19 @@
 #'                                   site and species over multiple visits. \code{firstvisit} uses the site index
 #'                                   from the first visit. \code{closest50} uses the site index which has the closest
 #'                                   to the stand age of 50 years.
-#' @param treeVigorMethod character, Method to derive a tree's vigor, currently support \code{mainsub} and \code{Taan}.
+#' @param treeVigorMethod character, Method to derive a tree's vigor,
+#'                                   currently support \code{mainsub}.
 #' @param vigorAdjust08 logical, Indicates if the mean of mean of the tree height vigor needed to be adjusted to 0.8.
 #'                               Default is \code{TRUE}.
+#' @param randomSeeds numeric, The random seeds for the stem mapping extension. Default is \code{NA}, which
+#'                             does not have a seed number.
 #' @export
 #' @docType methods
-#' @importFrom data.table ':=' rbindlist
+#' @importFrom data.table ':=' rbindlist setnames
 #' @importFrom dplyr '%>%'
+#' @importFrom openxlsx write.xlsx
 #' @importFrom FAIBBase stemMappingExtension
 #' @rdname prepareTASSInputs
-#'
 #' @author Yong Luo
 prepareTASSInputs <- function(inputPath,
                               outputPath,
@@ -39,10 +42,11 @@ prepareTASSInputs <- function(inputPath,
                               siteIndexTableSource = "ISMCCompiler",
                               siteIndexMethod,
                               treeVigorMethod,
-                              vigorAdjust08 = TRUE){
+                              vigorAdjust08 = TRUE,
+                              randomSeeds = NA){
   if(dir.exists(outputPath)){
     if(length(dir(outputPath)) > 0){
-      wanttoremove <- readline("The inputPath contains files, do you want to remove them? (Yes/No)")
+      wanttoremove <- readline("The outputPath contains files, do you want to remove them? (Yes/No)")
       if(toupper(wanttoremove) %in% c("Y", "YES")){
         unlink(outputPath, recursive = TRUE)
         dir.create(outputPath)
@@ -596,6 +600,9 @@ prepareTASSInputs <- function(inputPath,
 
   allsites <- unique(treelist11$SAMP_ID)
 
+  if(!is.na(randomSeeds)){
+    set.seed(randomSeeds)
+  }
   for (indisite in allsites){
     # indicluster <- allclusters[1]
     treelist_smallplot_indisite <- unique(treelist_smallplot[SAMP_ID == indisite,

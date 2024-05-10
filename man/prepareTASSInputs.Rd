@@ -14,7 +14,8 @@ prepareTASSInputs(
   siteIndexTableSource = "ISMCCompiler",
   siteIndexMethod,
   treeVigorMethod,
-  vigorAdjust08 = TRUE
+  vigorAdjust08 = TRUE,
+  randomSeeds = NA
 )
 }
 \arguments{
@@ -41,10 +42,14 @@ site and species over multiple visits. \code{firstvisit} uses the site index
 from the first visit. \code{closest50} uses the site index which has the closest
 to the stand age of 50 years.}
 
-\item{treeVigorMethod}{character, Method to derive a tree's vigor, currently support \code{mainsub} and \code{Taan}.}
+\item{treeVigorMethod}{character, Method to derive a tree's vigor,
+currently support \code{mainsub}.}
 
 \item{vigorAdjust08}{logical, Indicates if the mean of mean of the tree height vigor needed to be adjusted to 0.8.
 Default is \code{TRUE}.}
+
+\item{randomSeeds}{numeric, The random seeds for the stem mapping extension. Default is \code{NA}, which
+does not have a seed number.}
 }
 \description{
 This function takes the compilation outputs and prepare stand age, loss factor,
