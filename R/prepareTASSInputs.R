@@ -29,7 +29,7 @@
 #' @export
 #' @docType methods
 #' @importFrom data.table ':=' rbindlist setnames
-#' @importFrom dplyr '%>%'
+#' @importFrom dplyr '%>%' distinct
 #' @importFrom openxlsx write.xlsx
 #' @importFrom FAIBBase stemMappingExtension
 #' @rdname prepareTASSInputs
@@ -233,7 +233,13 @@ prepareTASSInputs <- function(inputPath,
                      by = c("SITE_IDENTIFIER", "TREE_NO"),
                      all.x = TRUE)
   ## select stand trees in treelist3, named as treelist4
-  treelist4 <- treelist3[ST_FL == "S",]
+  if(projectName == "YSM"){
+    treelist4 <- treelist3[ST_FL == "S",]
+  } else if(projectName == "Taan"){
+    treelist4 <- data.table::copy(treelist3)
+  } else if(projectName == "special"){
+    treelist4 <- data.table::copy(treelist3)
+  }
   treelist4[is.na(mapped), mapped := FALSE]
   treelist4[, SP_org := SPECIES]
   ## remove some projects that do not in YSM, CMI and NFI, named as treelist5
@@ -593,11 +599,8 @@ prepareTASSInputs <- function(inputPath,
   treelist11[DBH < 9, PLOT := "S"]
   ## drop trees
   treelist11 <- treelist11[!(DISTANCE > 5.64 & DBH < 9),]
-
   treelist_smallplot <- treelist11[PLOT == "S",]
   treelist_bigplot <- treelist11[PLOT == "M",]
-
-
   allsites <- unique(treelist11$SAMP_ID)
 
   if(!is.na(randomSeeds)){
@@ -621,8 +624,10 @@ prepareTASSInputs <- function(inputPath,
                                         x = numeric(),
                                         y = numeric())
     }
-
-    treelist_bigplot_indisite <- treelist_bigplot[SAMP_ID == indisite,]
+    treelist_bigplot_indisite <- unique(treelist_bigplot[SAMP_ID == indisite,
+                                                         .(SAMP_ID, TREE_NO,
+                                                           AZIMUTH, DISTANCE)],
+                                        by = c("SAMP_ID", "TREE_NO"))
     if(nrow(treelist_bigplot_indisite) > 0){
       treelist_bigtrees <- stemMappingExtension(objectID = treelist_bigplot_indisite$TREE_NO,
                                                 bearing = treelist_bigplot_indisite$AZIMUTH,
@@ -646,10 +651,8 @@ prepareTASSInputs <- function(inputPath,
     }
   }
   setnames(alltree_allsites, "objectID", "TREE_NO")
-
   alltree_allsites[, nuPlot := length(unique(PLOT)),
                    by = c("SAMP_ID", "TREE_NO")]
-
   alltree_allsites[nuPlot > 1]
   alltree_allsites[, nuPlot := NULL]
   alltree_clusters <- merge(unique(treelist11[,.(CLSTR_ID, SAMP_ID)]),
@@ -659,7 +662,7 @@ prepareTASSInputs <- function(inputPath,
                             allow.cartesian = TRUE)
   rm(alltree_allsites)
   treelist12 <- merge(alltree_clusters,
-                      treelist11[,.(CLSTR_ID, TREE_NO, SP, DBH,
+                      treelist11[,.(CLSTR_ID, TREE_NO, PLOT, SP, DBH,
                                     HT, HTC, HTVG, AGE, SITE,
                                     RESID, BEC,
                                     DAM_AGNA, HTC_DAM_A, ECC_DAM_A,
@@ -668,9 +671,8 @@ prepareTASSInputs <- function(inputPath,
                                     DAM_AGND, HTC_DAM_D, ECC_DAM_D,
                                     DAM_AGNE, HTC_DAM_E, ECC_DAM_E,
                                     L, WALKTHRU, intreelist = TRUE)],
-                      by = c("CLSTR_ID", "TREE_NO"),
+                      by = c("CLSTR_ID", "TREE_NO", "PLOT"),
                       all.x = TRUE)
-
   treelist12 <- treelist12[intreelist == TRUE,]
   treelist12[, intreelist := NULL]
 
@@ -688,9 +690,7 @@ prepareTASSInputs <- function(inputPath,
                               DAM_AGND, HTC_DAM_D, ECC_DAM_D,
                               DAM_AGNE, HTC_DAM_E, ECC_DAM_E)]
   treelist12[is.na(HTC), HTC := HT/2]
-
   allmappedsamples <- unique(treelist12$CLSTR_ID)
-
   treelist12[BEC %in% c("CDF", "CWH", "MH") &
                SP %in% c("CW", "HW", "FD", "PL"),
              species_new := paste0(substr(SP, 1, 1),
