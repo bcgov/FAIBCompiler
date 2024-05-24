@@ -15,7 +15,7 @@ prepareTASSInputs(
   siteIndexMethod,
   treeVigorMethod,
   vigorAdjust08 = TRUE,
-  randomSeeds = NA
+  randomSeed = NA
 )
 }
 \arguments{
@@ -48,7 +48,7 @@ currently support \code{mainsub}.}
 \item{vigorAdjust08}{logical, Indicates if the mean of mean of the tree height vigor needed to be adjusted to 0.8.
 Default is \code{TRUE}.}
 
-\item{randomSeeds}{numeric, The random seeds for the stem mapping extension. Default is \code{NA}, which
+\item{randomSeed}{numeric, The random seeds for the stem mapping extension. Default is \code{NA}, which
 does not have a seed number.}
 }
 \description{

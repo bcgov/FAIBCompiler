@@ -24,7 +24,7 @@
 #'                                   currently support \code{mainsub}.
 #' @param vigorAdjust08 logical, Indicates if the mean of mean of the tree height vigor needed to be adjusted to 0.8.
 #'                               Default is \code{TRUE}.
-#' @param randomSeeds numeric, The random seeds for the stem mapping extension. Default is \code{NA}, which
+#' @param randomSeed numeric, The random seeds for the stem mapping extension. Default is \code{NA}, which
 #'                             does not have a seed number.
 #' @export
 #' @docType methods
@@ -43,7 +43,7 @@ prepareTASSInputs <- function(inputPath,
                               siteIndexMethod,
                               treeVigorMethod,
                               vigorAdjust08 = TRUE,
-                              randomSeeds = NA){
+                              randomSeed = NA){
   if(dir.exists(outputPath)){
     if(length(dir(outputPath)) > 0){
       wanttoremove <- readline("The outputPath contains files, do you want to remove them? (Yes/No)")
@@ -65,6 +65,8 @@ prepareTASSInputs <- function(inputPath,
   } else {
     siteIndexTableSource_des <- paste0("Provided by ISMCCompiler, i.e., ", inputPath, "/compilation_nonPSP_db/Smries_siteAge_byCLSP.rds")
   }
+
+
   logfile <- rbind(data.table(Item = "project name",
                               Description = projectName),
                    data.table(Item = "tree and sample data source",
@@ -82,7 +84,9 @@ prepareTASSInputs <- function(inputPath,
                    data.table(Item = "prepared TASS input without stem mapped in original plot",
                               Description = "trees_without_xy_all.csv"),
                    data.table(Item = "Vigor adjusted to a mean of 0.8",
-                              Description = as.character(vigorAdjust08)))
+                              Description = as.character(vigorAdjust08)),
+                   data.table(Item = "random seed",
+                              Description = as.character(randomSeed)))
   if(vigorAdjust08){
     logfile <- rbind(logfile,
                      data.table(Item = "prepared TASS input with stem mapped in 1 ha with vigor adjustement",
@@ -91,21 +95,7 @@ prepareTASSInputs <- function(inputPath,
                                 Description = "trees_without_xy_all_withVGadj.csv"))
   }
 
-  if(siteIndexTableSource == "Rene" & is.na(siteIndexTable)){
-    stop("Site index table must be provided by Rene.")
-  } else if(siteIndexTableSource == "ISMCCompiler"){
-    # when source is ISMCCompiler, the site index table will be load from the inputPath
-    # and overwrite the site index table provided
-    siteIndexTable <- readRDS(file.path(inputPath,
-                                        "compilation_nonPSP_db",
-                                        "Smries_siteAge_byCLSP.rds"))
-    siteindex <- siteIndexTable[,.(CLSTR_ID, SPECIES,
-                                   SITE = SI_M_TLSO, SI_M_TXO)]
-    siteindex[is.na(SITE) & !is.na(SI_M_TXO),
-              SITE := SI_M_TXO]
-    siteindex[, ':='(SI_M_TXO = NULL,
-                     TASS_VERSION = as.character(NA))]
-  } else {
+  if(length(siteIndexTable) > 1){
     ## provided with Rene's site index table
     write.xlsx(siteIndexTable,
                file.path(outputPath, "siteindextable_rene.xlsx"))
@@ -113,7 +103,6 @@ prepareTASSInputs <- function(inputPath,
     ## get site index by sample point and species from compiled age files
     sinames <- paste0("GRDSI_", 1:9)
     sispecies <- paste0("GRDSPC_", 1:9)
-
     siteindex <- siteIndexTable[,c("CLSTR_ID", "TASS_SRC",
                                    sinames),
                                 with = FALSE]
@@ -143,7 +132,24 @@ prepareTASSInputs <- function(inputPath,
     siteindex[,location := NULL]
     setnames(siteindex, "TASS_SRC", "TASS_VERSION")
     rm(siteindex_sp)
+  } else {
+    if(siteIndexTableSource == "Rene" & is.na(siteIndexTable)){
+      stop("Site index table must be provided by Rene.")
+    } else if(siteIndexTableSource == "ISMCCompiler"){
+      # when source is ISMCCompiler, the site index table will be load from the inputPath
+      # and overwrite the site index table provided
+      siteIndexTable <- readRDS(file.path(inputPath,
+                                          "compilation_nonPSP_db",
+                                          "Smries_siteAge_byCLSP.rds"))
+      siteindex <- siteIndexTable[,.(CLSTR_ID, SPECIES,
+                                     SITE = SI_M_TLSO, SI_M_TXO)]
+      siteindex[is.na(SITE) & !is.na(SI_M_TXO),
+                SITE := SI_M_TXO]
+      siteindex[, ':='(SI_M_TXO = NULL,
+                       TASS_VERSION = as.character(NA))]
+    }
   }
+
   rm(siteIndexTable)
   samples <- readRDS(file.path(inputPath,
                                "compilation_nonPSP_db",
@@ -168,8 +174,12 @@ prepareTASSInputs <- function(inputPath,
   rm(spatiallookup)
   samples <- unique(samples, by = "CLSTR_ID")
   if(projectName == "YSM"){
-    ## need to select the samples for this project
-    sample_selected <- "" # must define a rule
+    if(siteIndexTableSource == "Rene"){
+      sample_selected <- siteindex$CLSTR_ID
+    } else {
+      ## need to select the samples for this project
+      sample_selected <- "" # must define a rule
+    }
   } else if(projectName == "Taan"){
     ## need to select the samples for this project
     vi_a <- readRDS(file.path(inputPath,
@@ -603,8 +613,8 @@ prepareTASSInputs <- function(inputPath,
   treelist_bigplot <- treelist11[PLOT == "M",]
   allsites <- unique(treelist11$SAMP_ID)
 
-  if(!is.na(randomSeeds)){
-    set.seed(randomSeeds)
+  if(!is.na(randomSeed)){
+    set.seed(randomSeed)
   }
   for (indisite in allsites){
     # indicluster <- allclusters[1]
