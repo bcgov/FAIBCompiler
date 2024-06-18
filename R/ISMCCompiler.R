@@ -83,9 +83,6 @@
 #' @importFrom FAIBBase heightEstimateForBTOP_D heightEstimateForBTOP_H treeVolCalculator
 #' @importFrom parallel detectCores makeCluster clusterExport parLapply stopCluster
 #' @author Yong Luo
-#'
-
-
 ISMCCompiler <- function(compilationType,
                          ismcUserName,
                          ismcPassword,
@@ -106,26 +103,9 @@ ISMCCompiler <- function(compilationType,
                          saveCSV = TRUE,
                          recompile = FALSE,
                          archiveDate = as.character(NA)){
-
-  # Load logging functions
-  source("C:/ISMC_TEST/FAIBCompiler/R/logging_functions.R")
-
-  # Define log file path
-  logFilePath <- "C:/ISMCCompiler_Test/compilation_log.txt"
-  createLog(logFilePath)
-
-  tryCatch({
-
-    # Log start of the function
-    writeLog(logFilePath, "ISMCCompiler function started.")
-
-    # Check compilation type
-    writeLog(logFilePath, "Check compilation type.")
   if(!(compilationType %in% c("PSP", "nonPSP"))){
     stop("The compilationType must be either PSP or nonPSP")
   }
-
-    writeLog(logFilePath, "Prepare folders in compilation path.")
   cat(paste(substr(Sys.time(), 1, 16), ": Prepare folders in compilation path.\n", sep = ""))
   compilationDate <- gsub("-", "", Sys.Date())
   compilationPaths <- compilerPathSetup_new(compilationPath,
@@ -134,8 +114,6 @@ ISMCCompiler <- function(compilationType,
                                             recompile = recompile,
                                             download = download,
                                             archiveDate = archiveDate)
-
-  writeLog(logFilePath, "Check requirements for compilation:")
 
   cat(paste(substr(Sys.time(), 1, 16), ": Check requirements for compilation:\n", sep = ""))
   checkMaps(mapPath = compilationPaths$compilation_map)
@@ -159,10 +137,6 @@ ISMCCompiler <- function(compilationType,
     cat("        and will be calculated by this compiler.\n")
     needNewCoffs <- TRUE
   }
-
-
-  writeLog(logFilePath, "Checked VOL~BA coefficients and ratios.")
-
   cat("    Check DBH-Height models:.\n")
   if(file.exists(file.path(compilationPaths$compilation_coeff,
                            paste0("bestmodels_ht_dbh_bysp", compilationYear, ".rds")))){
@@ -174,7 +148,6 @@ ISMCCompiler <- function(compilationType,
     newDBH_HTfit <- TRUE
   }
 
-  writeLog(logFilePath, ": Checked DBH-Height models.")
 
   if(recompile == FALSE){
     if(download == TRUE){
@@ -189,9 +162,6 @@ ISMCCompiler <- function(compilationType,
       }
 
       ### 2. load oracle data
-
-      writeLog(logFilePath, "Load data from ISMC database.")
-
       cat(paste(substr(Sys.time(), 1, 16), ": Load data from ISMC database.\n", sep = ""))
       FAIBOracle::loadISMC_bySampleType(userName = ismcUserName,
                                         passWord = ismcPassword,
@@ -208,17 +178,11 @@ ISMCCompiler <- function(compilationType,
     downloaddate <- gsub("_AccessNotes.rds", "", downloaddate)
     cat(paste(substr(Sys.time(), 1, 16), paste0(": The compiler recompiles existing raw data: ", downloaddate, "\n"), sep = ""))
   }
-
-  writeLog(logFilePath, " Prepare sample data for compilation.")
-
   cat(paste(substr(Sys.time(), 1, 16), ": Prepare sample data for compilation.\n", sep = ""))
   dataPrepSample(compilationType = compilationType,
                  inputPath = compilationPaths$raw_from_oracle,
                  outputPath = compilationPaths$compilation_sa,
                  coeffPath = compilationPaths$compilation_coeff)
-
-  writeLog(logFilePath,  "Compile sample and plot information.")
-
   cat(paste(substr(Sys.time(), 1, 16), ": Compile sample and plot information.\n", sep = ""))
   samplePlotResults <- samplePlotCompilation(compilationType = compilationType,
                                              dataSourcePath = compilationPaths$compilation_sa,
@@ -227,13 +191,7 @@ ISMCCompiler <- function(compilationType,
   saveRDS(samplePlotResults$sampleplots,
           file.path(compilationPaths$compilation_db, "sample_plot_header.rds"))
   cat("    Saved compiled sample plot information. \n")
-
-  writeLog(logFilePath, "Saved compiled sample plot information.")
-
   cat(paste(substr(Sys.time(), 1, 16), ": Update stand age from vegcomp layer.\n", sep = ""))
-
-  writeLog(logFilePath, " Update stand age from vegcomp layer.")
-
   sample_site_msmt <- updateSA_vegcomp(compilationType = compilationType,
                                        coeffPath = compilationPaths$compilation_coeff,
                                        bcgwUserName = bcgwUserName,
@@ -244,10 +202,6 @@ ISMCCompiler <- function(compilationType,
           file.path(compilationPaths$compilation_db,
                     "sample_site_header.rds"))
   cat("    Saved compiled site information. \n")
-
-  writeLog(logFilePath, "Saved compiled site information.")
-
-  writeLog(logFilePath,  " Prepare tree data for compilation.")
 
   cat(paste(substr(Sys.time(), 1, 16), ": Prepare tree data for compilation.\n", sep = ""))
   sampleMsmts <- dataPrepTree(compilationType = compilationType,
@@ -271,13 +225,9 @@ ISMCCompiler <- function(compilationType,
                     "sample_msmt_header.rds"))
   rm(samples_tmp, sampleMsmts)
   cat("    Saved compiled sample visit information. \n")
-  writeLog(logFilePath, "Saved compiled sample visit information.")
 
 
   cat(paste(substr(Sys.time(), 1, 16), ": Assign component change at tree level.\n", sep = ""))
-
-  writeLog(logFilePath, " Assign component change at tree level.")
-
   ## the species correct depends on BEC and BECsubzone, hence should be
   ## done after the bec zone information updated
   treemsmt <- readRDS(file.path(compilationPaths$compilation_sa,
@@ -335,9 +285,6 @@ ISMCCompiler <- function(compilationType,
 
 
   cat(paste(substr(Sys.time(), 1, 16), ": Compile tree-level WSV_VOL and MER_VOL for volume trees.\n", sep = ""))
-
-  writeLog(logFilePath, " Compile tree-level WSV_VOL and MER_VOL for volume trees.")
-
   ## The volume trees are in two files: vi_c and vi_i
   ##
   ## the vi_c contains the trees of: 1) fully measured trees in IPC (trees have dbh, height and call grading)
@@ -359,9 +306,6 @@ ISMCCompiler <- function(compilationType,
                         dataSourcePath = compilationPaths$compilation_sa)
 
   ## vi_d contains call grading data for fully measured trees and enhanced trees
-
-  writeLog(logFilePath, " Loading vi_d data and assigning measurement intensity.")
-
   tree_callGrading <- vidPrep(dataSourcePath = compilationPaths$compilation_sa)
   saveRDS(tree_callGrading$lossfactors_full,
           file.path(compilationPaths$compilation_db, "compiled_vi_d.rds"))
@@ -377,9 +321,6 @@ ISMCCompiler <- function(compilationType,
 
   rm(tree_ms1, tree_callGrading, tree_nonHT)
   # treat broken top trees
-
-  writeLog(logFilePath, " Developing DBH-Height models if necessary.")
-
   if(newDBH_HTfit){
     cat(paste0("    Start to develop DBH-Height models for year ", compilationYear, ".\n"))
     DBH_Height_MEM(compilationPath = compilationPath,
@@ -388,9 +329,6 @@ ISMCCompiler <- function(compilationType,
   }
   HTEstimateMethod <-  "bestMEM"
   if(HTEstimateMethod == "bestMEM"){
-
-    writeLog(logFilePath,  " Calculating tree heights based on Mixed effect model.")
-
     best_height_models <- readRDS(file.path(compilationPaths$compilation_coeff,
                                             paste0("bestmodels_ht_dbh_bysp", compilationYear, ".rds")))
     ## for all the trees calculate tree heights based on Mixed effect model
@@ -414,9 +352,6 @@ ISMCCompiler <- function(compilationType,
     }
     # for btop trees, if field projected height is available,
     ## use this as HT_TOTAL
-
-    writeLog(logFilePath, " Continuing calculation based on tree characteristics.")
-
     treelist_db[BROKEN_TOP_IND == "Y" &
                   !is.na(HT_PROJ),
                 ':='(HT_TOTAL = round(FAIBBase::heightEstimateForBTOP_H(HT_PROJ), 1),
@@ -437,9 +372,6 @@ ISMCCompiler <- function(compilationType,
     # treat nonHT trees
     ## only PSP needs to calculate height for the volume calculation
     ## while nonPSP is used regression method for whole stem volumen estimate based on BA
-
-    writeLog(logFilePath, " Treating nonHT trees.")
-
     if(compilationType == "PSP"){
       voltrees <- rbindlist(list(alltrees$fullDimTrees, alltrees$nonHTTrees),
                             fill = TRUE)
@@ -449,9 +381,6 @@ ISMCCompiler <- function(compilationType,
     }
 
     # this is the best height-dbh model in the mixed effect model forms
-
-    writeLog(logFilePath, " Merging tree data with other relevant information.")
-
     voltrees <- merge(voltrees,
                       treelist_db[,.(CLSTR_ID, PLOT, TREE_NO,
                                      HT_TOTAL, HT_TOTAL_SOURCE)],
@@ -459,9 +388,6 @@ ISMCCompiler <- function(compilationType,
                       all.x = TRUE)
     rm(alltrees, treelist_db)
     gc()
-
-    writeLog(logFilePath,  " Updating specific attributes for broken top trees.")
-
     voltrees[BROKEN_TOP_IND == "Y" & HT_BTOP %==% 1.3, HT_BTOP := 1.4]
     voltrees[BROKEN_TOP_IND == "Y" & (HT_TOTAL < HEIGHT | is.na(HT_TOTAL)),
              HT_TOTAL := HEIGHT]
@@ -479,9 +405,6 @@ ISMCCompiler <- function(compilationType,
                  TREE_PLANTED_IND = NULL,
                  HT_PROJ = NULL)]
   gc()
-
-  writeLog(logFilePath, " Enabling parallel computation.")
-
   allclusters <- unique(voltrees$CLSTR_ID)
 
   numCore <- as.integer(0.5*detectCores())
@@ -505,9 +428,6 @@ ISMCCompiler <- function(compilationType,
   }
   rm(voltrees)
   gc()
-
-  writeLog(logFilePath, " Exporting necessary variables to the parallel environment.")
-
   clusterExport(clusterInFunction,
                 varlist = c("grossVolCal_kozak",
                             "data.table", "setnames", ":=",
@@ -516,9 +436,6 @@ ISMCCompiler <- function(compilationType,
                             "heightEstimateForBTOP_D", "heightEstimateForBTOP_H",
                             "treeVolCalculator"),
                 envir = environment())
-
-  writeLog(logFilePath, " Performing parallel computation using parLapply.")
-
   allresults <- parLapply(cl = clusterInFunction,
                           voltrees_list,
                           function(x){grossVolCal_kozak(compilationType = x$compilationType,
@@ -541,32 +458,20 @@ ISMCCompiler <- function(compilationType,
      numofrow)
   gc()
 
-  writeLog(logFilePath,  " Assigning source of WSV_VOL_SRCE attribute.")
-
   tree_ms6[, WSV_VOL_SRCE := "Calculated"]
   if(compilationType == "nonPSP"){
     tree_ms6 <- rbindlist(list(tree_ms6, nonHTTrees), fill = TRUE)
   }
   cat(paste(substr(Sys.time(), 1, 16), ": Compile age trees.\n", sep = ""))
-
-  # Logging for compiling age trees
-  writeLog(logFilePath, " Compiling age trees.")
-
   ## vi_h data is the site age trees
   tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
   ## if a tree was bored multiple times, the age from the last measurements will be used
   ## to adjust the previous measurements
-
-  writeLog(logFilePath, " Preparing site age trees and adjusting previous measurements.")
-
   tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
                                             by = "CLSTR_ID"),
                       siteAgeTrees = data.table::copy(tree_ah1))
   treelist_db <- readRDS(file.path(compilationPaths$compilation_db,
                                    "treelist.rds"))
-
-  writeLog(logFilePath,  " Merging site age trees with tree list data.")
-
   if(compilationType == "PSP"){
     tree_ah1 <- merge(tree_ah1,
                       treelist_db[,.(CLSTR_ID, PLOT, TREE_NO, HT_TOTAL, HT_TOTAL_SOURCE)],
@@ -586,9 +491,6 @@ ISMCCompiler <- function(compilationType,
                     all.x = TRUE)
   # if &bec_in in ('CWH','CDF','MH') then bec_i_c = 'C';
   # else bec_i_c = 'I';
-
-  writeLog(logFilePath,  ": Handling missing FIZ values.")
-
   tree_ah1[is.na(FIZ),
            FIZ := ifelse(BEC_ZONE %in% c("CWH", "CDF", "MH"), "C", "I")]
   tree_ah2 <- siteAgeCompiler(siteAgeData = data.table::copy(tree_ah1),
@@ -612,9 +514,6 @@ ISMCCompiler <- function(compilationType,
   saveRDS(tree_ah2_temp, file.path(compilationPaths$compilation_db,
                                    "compiled_vi_h.rds"))
   # site age and site index summaries are different between nonPSP and PSP data
-
-  writeLog(logFilePath," Performing site age and site index summaries based on compilation type.")
-
   if(compilationType == "nonPSP"){
     rm(tree_ah2_temp, treelist_db)
     siteAgeSummaries <- siteAgeSummary(tree_ah2)
@@ -684,9 +583,6 @@ ISMCCompiler <- function(compilationType,
   ######################
   ### 5. start the decay, waste and breakage calculation for full/enhanced trees in vi_c
   cat(paste(substr(Sys.time(), 1, 16), ": Compile DWB.\n", sep = ""))
-
-  writeLog(logFilePath, "Start decay, waste and breakage calculation for full/enhanced trees in vi_c")
-
   tree_ms6 <- FAIBBase::merge_dupUpdate(tree_ms6,
                                         unique(samples[,.(CLSTR_ID, PROJ_ID,
                                                           TSA)],
@@ -695,18 +591,9 @@ ISMCCompiler <- function(compilationType,
                                         all.x = TRUE)
   tree_callGrading <- readRDS(file.path(compilationPaths$compilation_sa,
                                         "vi_d_tmp.rds"))
-
-  writeLog(logFilePath, "Read vi_d_tmp.rds into tree_callGrading", )
-
   file.remove(file.path(compilationPaths$compilation_sa,
                         "vi_d_tmp.rds"))
-
-  writeLog(logFilePath,  "Removed vi_d_tmp.rds file")
-
   if(compilationType == "nonPSP"){
-
-    writeLog(logFilePath, " Performing site age and site index summaries based on compilation type.\n")
-
     siteAgeTable <- FAIBBase::merge_dupUpdate(cl_ah[,.(CLSTR_ID, AT_M_TLS = AT_M_TLSO, AT_M_TXO)],
                                               unique(samples[,.(CLSTR_ID, PROJ_ID, SAMP_NO, TYPE_CD)],
                                                      by = "CLSTR_ID"),
@@ -720,8 +607,6 @@ ISMCCompiler <- function(compilationType,
                             treeMS = tree_ms6[MEAS_INTENSE %in% c("FULL", "ENHANCED"),],
                             siteAge = unique(siteAgeTable, by = "CLSTR_ID"),
                             treeLossFactors = tree_callGrading)
-    writeLog(logFilePath, "Ran DWBCompiler for nonPSP")
-
     tree_ms7[, NET_FCT_METHOD := "JF_reg"]
     tree_ms7 <- rbindlist(list(tree_ms7,
                                tree_ms6[MEAS_INTENSE %in% c("H-ENHANCED", "NON-ENHANCED"),]),
@@ -784,9 +669,6 @@ ISMCCompiler <- function(compilationType,
                       paste0("LOG_D_", (i+1):9)) := NA]
     }
     rm(i)
-
-    writeLog(logFilePath, "Adjusted LOG_L_ and LOG_D_ values in tree_ms7_temp for broken tops")
-
     tree_ms7_temp[BROKEN_TOP_IND == "Y" &
                     !is.na(LOG_BTOP),
                   NO_LOGS := LOG_BTOP]
@@ -809,14 +691,8 @@ ISMCCompiler <- function(compilationType,
                       "LOG_UTOP",
                       "LOG_L_10", "LOG_D_10",
                       "MEASUREMENT_ANOMALY_CODE") := NULL]
-
-    writeLog(logFilePath,  "Removed unnecessary columns from tree_ms7_temp")
-
     saveRDS(tree_ms7_temp, file.path(compilationPaths$compilation_db,
                                      "compiled_vi_c.rds"))
-
-    writeLog(logFilePath,  "Saved compiled_vi_c.rds")
-
     rm(tree_ms7_temp, siteAgeTable, tree_ms6)
   }
   gc()
@@ -825,13 +701,9 @@ ISMCCompiler <- function(compilationType,
   ### 6. start to calculate tree volume components for H-enhanced and non-enhanced trees in auxi plots
   ### this is specific to nonPSP compilation
   if(compilationType == "nonPSP"){
-
-    writeLog(logFilePath,  "Compile NON-/H-enhanced trees for nonPSP using regression and ratio approach.")
-
     cat(paste(substr(Sys.time(), 1, 16), ": Compile NON-/H-enhanced trees for nonPSP using regression and ratio approach.\n", sep = ""))
     # derive ratio and regression routine
     if(needNewCoffs){
-      writeLog(logFilePath, "Start to derive coefficients and ratios for year ", compilationYear)
       cat(paste0("    Start to derive coefficients and ratios for year ", compilationYear, "\n"))
       allbecsplvd <- unique(tree_ms7[,.(BEC_ZONE, SP0, LV_D)])
       ## if the regratiodata can not be found in coeff folder
@@ -871,9 +743,6 @@ ISMCCompiler <- function(compilationType,
       saveRDS(regRatioData,
               file.path(compilationPaths$compilation_coeff,
                         paste0("regRatioData", compilationYear, ".rds")))
-
-      writeLog(logFilePath,  "Selected data and saved to regRatioData", compilationYear)
-
       cat(paste0("        Selected data and saved to regRatioData", compilationYear, "\n"))
       coefs <- regBA_WSV(regRatioData, needCombs = allbecsplvd)
 
@@ -931,9 +800,6 @@ ISMCCompiler <- function(compilationType,
       saveRDS(bestmodels_BA_WSV,
               file.path(compilationPaths$compilation_coeff,
                         paste0("bestmodels_BA_WSV", compilationYear, ".rds")))
-
-      writeLog(logFilePath,  "Derived and saved coefficients to bestmodels_BA_WSV", compilationYear)
-
       cat(paste0("        Derived and saved coefficients to bestmodels_BA_WSV",
                  compilationYear, "\n"))
 
@@ -942,9 +808,6 @@ ISMCCompiler <- function(compilationType,
       saveRDS(ratios,
               file.path(compilationPaths$compilation_coeff,
                         paste0("ratios", compilationYear, ".rds")))
-
-      writeLog(logFilePath,  "Calculated and saved ratios to ratios", compilationYear)
-
       cat(paste0("        Calculated and saved ratios to ratios", compilationYear, "\n"))
       rm(coefs, ratios, regRatioData)
     } else {
@@ -1099,8 +962,6 @@ ISMCCompiler <- function(compilationType,
   gc()
 
   ## 7. sammarize and save compiled tree-level data at cluster and cluster/species level
-  writeLog(logFilePath, " Summarize volume at sample level.")
-
   cat(paste(substr(Sys.time(), 1, 16), ": Summarize volume at sample level.\n", sep = ""))
   if(compilationType == "nonPSP"){
     nvafratio <- read.xlsx(file.path(compilationPaths$compilation_coeff, "nvafall.xlsx")) %>%
@@ -1186,18 +1047,14 @@ ISMCCompiler <- function(compilationType,
   saveRDS(vrisummaries$heightsmry_byc, file.path(compilationPaths$compilation_db, "Smries_height_byCL.rds"))
   saveRDS(vrisummaries$compositionsmry_byc, file.path(compilationPaths$compilation_db, "Smries_speciesComposition_byCL.rds"))
 
-  writeLog(logFilePath, "Saved Smries_volume_byCLSP.rds, Smries_volume_byCL.rds, Smries_height_byCL.rds, Smries_speciesComposition_byCL.rds")
   rm(vrisummaries)
   gc()
 
   ## 8. small tree and stump compilation
   ## stump data
-  writeLog(logFilePath,  " Small tree and stump compilation.")
-
   cat(paste(substr(Sys.time(), 1, 16), ": Small tree and stump compilation.\n", sep = ""))
   vi_e <- readRDS(file.path(compilationPaths$compilation_sa, "vi_e.rds")) %>% data.table
   vi_e <- vi_e[CLSTR_ID %in% unique(samples$CLSTR_ID),]
-  writeLog(logFilePath, " Read and filtered 'vi_e' data.")
 
   ## small tree data
   vi_f <- readRDS(file.path(compilationPaths$compilation_sa, "vi_f.rds")) %>% data.table
@@ -1206,8 +1063,6 @@ ISMCCompiler <- function(compilationType,
   vi_f[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_e[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_f <- vi_f[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
-  writeLog(logFilePath, " Read and processed 'vi_f' data.")
-
   smalltreecompile <- smallTreeSmry(smallTreeData = vi_f,
                                     smallTreePlotHeader = vi_e[PL_ORIG == "SML_TR",])
   if(compilationType == "nonPSP"){
@@ -1247,7 +1102,6 @@ ISMCCompiler <- function(compilationType,
   vi_g <- readRDS(file.path(compilationPaths$compilation_sa, "vi_g.rds")) %>% data.table
   vi_g[, clusterplot := paste(CLSTR_ID, "_", PLOT, sep = "")]
   vi_g <- vi_g[clusterplot %in% unique(vi_e[PL_ORIG == "SML_TR",]$clusterplot),]
-  writeLog(logFilePath,  " Read and processed 'vi_g' data.")
 
   ## plot header for stump and small trees
   stumpCompile <- stumpVolSmry(stumpData = vi_g,
@@ -1258,7 +1112,6 @@ ISMCCompiler <- function(compilationType,
           file.path(compilationPaths$compilation_db, "Smries_stump_byCLSP.rds"))
 
   #############################
-  writeLog(logFilePath, " Generate data dictionary.")
   cat(paste(substr(Sys.time(), 1, 16), ": Generate data dictionary.\n", sep = ""))
   allfiles_db <- dir(compilationPaths$compilation_db, pattern = ".rds")
   allfiles_db <- gsub(".rds", "", allfiles_db)
@@ -1344,7 +1197,6 @@ ISMCCompiler <- function(compilationType,
 
 
   if(recompile == FALSE){
-    writeLog(logFilePath, " Generate reports in report folder.")
     cat(paste(substr(Sys.time(), 1, 16), ": Generate reports in report folder.\n", sep = ""))
     vegcompversion <- readRDS(file.path(compilationPaths$compilation_coeff,
                                         paste0("SA_VEGCOMP_", compilationType, ".rds")))
@@ -1366,7 +1218,6 @@ ISMCCompiler <- function(compilationType,
                       output_file = "compilation_report",
                       output_dir = compilationPaths$compilation_report,
                       quiet = TRUE)
-    writeLog(logFilePath,  " Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".", sep = "")
     cat(paste(substr(Sys.time(), 1, 16), ": Archive compilation to Archive_", gsub("-", "", Sys.Date()), ".\n", sep = ""))
     if(dir.exists(compilationPaths$compilation_archive)){
       unlink(compilationPaths$compilation_archive, recursive = TRUE)
@@ -1423,27 +1274,6 @@ ISMCCompiler <- function(compilationType,
                       output_dir = compilationPaths$compilation_report,
                       quiet = TRUE)
   }
-
-  cat(paste(substr(Sys.time(), 1, 16), ": Compilation is done. \n", sep = ""))
-  writeLog(logFilePath,  ": Compilation is done.")
-
-  # Close the log file
-  closeLog(logFilePath)
-
-
-  }, error = function(e) {
-    # Log error if an exception occurs
-    writeLog(logFilePath, paste(" Error occurred:  \n", e$message))
-    # Close the log file
-    closeLog(logFilePath)
-  })
-
-  # code to check if log passes the check before syncing
-
-  if (!file.exists(logFilePath) || file.size(logFilePath) == 0) {
-    stop("Log file is empty or missing. Check the compilation process.")
-  }
-
   if(!is.na(syncTo)){ ## let's sync the compilation to the target folder
     cat(paste(substr(Sys.time(), 1, 16), ": Sync compilation to network drive.\n", sep = ""))
     if(!dir.exists(syncTo)){
@@ -1453,4 +1283,5 @@ ISMCCompiler <- function(compilationType,
     fs::dir_copy(compilationPaths$compilation_archive,
                  syncTo)
   }
+  cat(paste(substr(Sys.time(), 1, 16), ": Compilation is done. \n", sep = ""))
 }
