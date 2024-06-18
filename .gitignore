@@ -1,7 +1,7 @@
 .Rproj.user
 inst/doc
 .Rhistory
-developmentTools.R
+*.R
 *.rds
 *.xlsx
 runningCodes.r
