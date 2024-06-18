@@ -28,6 +28,16 @@
 #'                             does not have a seed number.
 #' @export
 #' @docType methods
+#' @note mainsub in treeVigorMethod:
+#'       •	For each combination of site_identifier by visit_number by species, select the 6 tallest trees from the main plot and the single tallest tree from the subplot.
+#'       •	From this subset, drop all trees with
+#'              o	BROKEN_TOP_IND = Y
+#'              o	CR_CL = I, S
+#'              o	RESIDUAL = Y
+#'              o	WALKTHRU = O
+#'       •	Compute site_height as the average height of remaining trees
+#'       •	If no trees remain, then compute an alternate site_height as the average height of all trees in the plot by site_identifier * visit_number * species (ie., no exclusion for height, broken top, crown class, residual class, or walkthru class.
+#'
 #' @importFrom data.table ':=' rbindlist setnames
 #' @importFrom dplyr '%>%' distinct
 #' @importFrom openxlsx write.xlsx
@@ -414,11 +424,9 @@ prepareTASSInputs <- function(inputPath,
   ## get tree height vigor, assign them to treelist7, name as treelist8
   ## rm the residual tree
   ## remove btop trees
-  htvg0 <- treelist7[!is.na(HEIGHT) &
-                       LV_D == "L" &
-                       WALKTHRU %in% c(NA, "W") &
-                       RESIDUAL == "N",]
   if(treeVigorMethod == "mainsub"){
+    htvg0 <- treelist7[!is.na(HEIGHT) &
+                       LV_D == "L",]
     ## this method is suggested by Rene to select 6 tallest trees in main plot
     ## if can not find 6 trees, adding 1 tallest tree from subplot
     htvg0[DBH >= 9, plot_source := "Main"]

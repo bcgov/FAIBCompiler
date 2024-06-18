@@ -5,7 +5,7 @@
 \alias{toWSVRatio_curve}
 \title{To toWSV ratio for each of strata}
 \usage{
-toWSVRatio_curve(inputData, needCombs, minDBH = 10, minObs = 30)
+toWSVRatio_curve(inputData, needCombs, minDBH = 10, minObs = 100)
 }
 \arguments{
 \item{inputData}{data.table, The data for deriving ratios, that must contain full and enhanced

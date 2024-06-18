@@ -39,7 +39,8 @@ preparePublishData <- function(compilationPath,
   faib_header <- sampsites_org[,.(SITE_IDENTIFIER, TOTAL_PERIOD,
                                   BC_ALBERS_X, BC_ALBERS_Y, SITE_STATUS_CODE,
                                   BEC_ZONE, BEC_SBZ,
-                                  BEC_VAR, FIZ, IP_UTM, IP_EAST, IP_NRTH, Latitude, Longitude,
+                                  BEC_VAR, FIZ, IP_UTM, IP_EAST, IP_NRTH,
+                                  UTM_SOURCE, Latitude, Longitude,
                                   OWNER, SCHEDULE,
                                   SAMPLE_ESTABLISHMENT_TYPE,
                                   TFL, TSA = as.numeric(TSA),
@@ -102,8 +103,7 @@ preparePublishData <- function(compilationPath,
                      GRID_SIZE = "UNKN")]
     faib_header[, grid_fill := NULL]
   } else {
-    faib_header[,
-                ':='(GRID_BASE = as.character(NA),
+    faib_header[,':='(GRID_BASE = as.character(NA),
                      GRID_SIZE = as.character(NA))]
   }
 
