@@ -55,6 +55,17 @@ does not have a seed number.}
 This function takes the compilation outputs and prepare stand age, loss factor,
 site index and stem mapping, so that the outputs are ready for TASS run
 }
+\note{
+mainsub in treeVigorMethod:
+•	For each combination of site_identifier by visit_number by species, select the 6 tallest trees from the main plot and the single tallest tree from the subplot.
+•	From this subset, drop all trees with
+o	BROKEN_TOP_IND = Y
+o	CR_CL = I, S
+o	RESIDUAL = Y
+o	WALKTHRU = O
+•	Compute site_height as the average height of remaining trees
+•	If no trees remain, then compute an alternate site_height as the average height of all trees in the plot by site_identifier * visit_number * species (ie., no exclusion for height, broken top, crown class, residual class, or walkthru class.
+}
 \author{
 Yong Luo
 }

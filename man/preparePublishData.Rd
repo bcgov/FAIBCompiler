@@ -5,11 +5,18 @@
 \alias{preparePublishData}
 \title{Prepare the compiled data for publish}
 \usage{
-preparePublishData(compilationPath, publishPath, compilationType)
+preparePublishData(
+  compilationPath,
+  compilationDate,
+  publishPath,
+  compilationType
+)
 }
 \arguments{
-\item{compilationPath}{character, The path to the compiled PSP data, which is configured
+\item{compilationPath}{character, The path to the compiled data, which is configured
 from \code{ISMCCompiler}.}
+
+\item{compilationDate}{numeric, The date of the compiled data.}
 
 \item{publishPath}{character, The path to save prepared data.}
 
