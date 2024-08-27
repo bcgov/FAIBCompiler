@@ -231,6 +231,13 @@ dataPrepSample <- function(compilationType,
          DBH_TAGGING_LIMIT := 2]
     vi_a[SAMPLE_BREAK_POINT < DBH_TAGGING_LIMIT,
          ':='(SAMPLE_BREAK_POINT = 4)]
+    ## manually force the DBH_TAGGING_LIMIT to 4, which is the same as the break_point
+    ## for 12 clsters
+    ## as there is no subplot size information
+    vi_a[CLSTR_ID %in% c("4000002-PSP2", "4000057-PSP1", "4000057-PSP2", "4000918-PSP1",
+                         "4000924-PSP1", "4000925-PSP1", "4000988-PSP1", "4000989-PSP1",
+                         "4001792-PSP7", "4016875-PSP7", "4041541-PSP1", "4041561-PSP1"),
+         DBH_TAGGING_LIMIT := 4]
   }
   saveRDS(vi_a, file.path(outputPath, "vi_a.rds"))
   plotdetails <- readRDS(dir(inputPath, pattern = "PlotDetails.rds",
