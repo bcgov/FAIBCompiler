@@ -50,7 +50,6 @@ samplePlotCompilation <- function(compilationType,
   vi_a[VISIT_NUMBER == visit_last, LAST_MSMT := "Y"]
   vi_a[is.na(LAST_MSMT), LAST_MSMT := "N"]
 
-
   vi_a[TYPE_CD %in% c("M", "Y", "F", "PSP"),
        VISIT_TYPE := "REP"] # permanent site with repeated visit
   vi_a[is.na(VISIT_TYPE),
@@ -121,7 +120,12 @@ samplePlotCompilation <- function(compilationType,
 
     vi_a <- updateSpatial_badUTM_PSP(mapPath = mapPath,
                                      samplesites = vi_a)
-    vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
+  }
+  vi_a[TSA == 25,
+       TSA_DESC := "Haida Gwaii TSA"]
+  vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
+
+  if(compilationType == "PSP"){
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
@@ -137,8 +141,8 @@ samplePlotCompilation <- function(compilationType,
                                      REP_VST_YR_FIRST, REP_VST_YR_LAST,
                                      TOTAL_PERIOD)],
                              by = "SAMP_POINT")
+
   } else {
-    vi_a[, OWNERSHIP_DESCRIPTION := gsub(", ", "/", OWNERSHIP_DESCRIPTION)]
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
                                      IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
@@ -154,7 +158,9 @@ samplePlotCompilation <- function(compilationType,
                                      REP_VST_YR_FIRST, REP_VST_YR_LAST,
                                      TOTAL_PERIOD)],
                              by = "SAMP_POINT")
+
   }
+
   vi_a <- vi_a[,.(CLSTR_ID,
                   SITE_IDENTIFIER,
                   VISIT_NUMBER,
