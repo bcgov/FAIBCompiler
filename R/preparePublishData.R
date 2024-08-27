@@ -1,8 +1,9 @@
 #' Prepare the compiled data for publish
 #' @description To prepare the compiled data for publish, currently supporting nonPSP part
 #'
-#' @param compilationPath character, The path to the compiled PSP data, which is configured
+#' @param compilationPath character, The path to the compiled data, which is configured
 #'                        from \code{ISMCCompiler}.
+#' @param compilationDate numeric, The date of the compiled data.
 #' @param publishPath character, The path to save prepared data.
 #' @param compilationType character, Specifies the compilation type either \code{nonPSP} or code{PSP}.
 #' @return no value returned. Instead, all the files will be saved into the \code{tempPath} including a readme file.
@@ -17,10 +18,10 @@
 #'
 #' @author Yong Luo
 preparePublishData <- function(compilationPath,
+                               compilationDate,
                                publishPath,
                                compilationType){
-  todaydate <- gsub("-", "", Sys.Date())
-  tempPath <- file.path(tempdir(), paste0(compilationType, "_", todaydate))
+  tempPath <- file.path(tempdir(), paste0(compilationType, "_", compilationDate))
   if(dir.exists(tempPath)){
     unlink(tempPath, recursive = TRUE)
   }
@@ -451,7 +452,15 @@ preparePublishData <- function(compilationPath,
            HEIGHT := LENGTH]
   treemsmt[is.na(TREE_STANCE_CODE),
            TREE_STANCE_CODE := "S"]
-  faib_tree_detail <- treemsmt[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NO = TREE_NUMBER,
+  treemsmt[substr(CLSTR_ID, 9, 9) == "A" & grepl("-SizeMOD", MEASUREMENT_ANOMALY_CODE),
+              ':='(HEIGHT = HEIGHT - 7,
+                   DBH = NA,
+                   MEASUREMENT_ANOMALY_CODE = gsub("-SizeMOD", "", MEASUREMENT_ANOMALY_CODE))]
+  treemsmt[substr(CLSTR_ID, 9, 9) == "A" & MEASUREMENT_ANOMALY_CODE == "NA",
+              MEASUREMENT_ANOMALY_CODE := NA]
+
+  faib_tree_detail <- treemsmt[MEASUREMENT_ANOMALY_CODE != "PSP-TALLY" | is.na(MEASUREMENT_ANOMALY_CODE),
+                               .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, PLOT, TREE_NO = TREE_NUMBER,
                                   SPECIES = TREE_SPECIES_CODE,
                                   DBH, HEIGHT,
                                   LV_D = TREE_EXTANT_CODE,
