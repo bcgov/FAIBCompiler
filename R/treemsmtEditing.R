@@ -180,20 +180,29 @@ treemsmtEditing <- function(compilationType,
   treemsmts_rep[, firstdf := NULL]
   rm(firstdf)
   gc()
-
   # not found, Harvest and dropped trees
   NHDtrees <- unique(treemsmts_rep[MEASUREMENT_ANOMALY_CODE %in% c("N", "H", "D")]$unitreeid)
   treemsmts_rep_bad <- treemsmts_rep[(unitreeid %in% NHDtrees),
-                                     .(unitreeid, MEASUREMENT_ANOMALY_CODE, VISIT_NUMBER)]
+                                     .(unitreeid, MEASUREMENT_ANOMALY_CODE, VISIT_NUMBER,
+                                       DIAMETER_MEASMT_HEIGHT, DIAMETER)]
+  treemsmts_rep_bad[DIAMETER_MEASMT_HEIGHT > 0 & DIAMETER > 0,
+                    measure := "good"]
+  treemsmts_rep_bad_good_last <- treemsmts_rep_bad[measure == "good",.(measure_good_last = max(VISIT_NUMBER)),
+                                                   by = "unitreeid"]
   treemsmts_rep_bad <- treemsmts_rep_bad[order(unitreeid, VISIT_NUMBER)]
   treemsmts_rep_bad[, visit_prev := shift(VISIT_NUMBER, type = "lag"),
                     by = "unitreeid"]
+
 
   treemsmts_rep_bad <- treemsmts_rep_bad[MEASUREMENT_ANOMALY_CODE %in% c("N", "H", "D"),
                                          .(unitreeid, MEASUREMENT_ANOMALY_CODE,
                                            VISIT_NUMBER, visit_prev)]
   treemsmts_rep_bad_last <- treemsmts_rep_bad[,.SD[which.min(VISIT_NUMBER)],
                                               by = "unitreeid"]
+  treemsmts_rep_bad_last <- merge(treemsmts_rep_bad_last,
+                                  treemsmts_rep_bad_good_last,
+                                  by = "unitreeid",
+                                  all.x = TRUE)
   setnames(treemsmts_rep_bad_last,
            c("MEASUREMENT_ANOMALY_CODE", "VISIT_NUMBER"),
            c("ANOMALY_CODE_last", "visit_last"))
@@ -201,6 +210,18 @@ treemsmtEditing <- function(compilationType,
                          treemsmts_rep_bad_last,
                          by = "unitreeid",
                          all.x = TRUE)
+  ## remove current N and next found tree
+  treemsmts_rep[visit_last < measure_good_last &
+                  MEASUREMENT_ANOMALY_CODE == "N",
+                comeback := "yes"]
+  treemsmts_rep[visit_last < measure_good_last,
+                ':='(visit_last = NA,
+                     visit_prev = NA)]
+
+  treemsmts_rep <- treemsmts_rep[is.na(comeback),]
+  treemsmts_rep[,':='(measure_good_last = NULL,
+                      comeback = NULL)]
+
   # retain three sets of data
   # 1) unstopped trees, 2) stop trees before N,H,D, 3) back to tally trees after dropped
   treemsmts_rep <- treemsmts_rep[is.na(visit_last) | # this is unstopped trees
@@ -407,6 +428,7 @@ treemsmtEditing <- function(compilationType,
                                     PRORATE_LENGTH = NA,
                                     AGE_MEASURE_CODE = NA,
                                     AGE_MEASMT_HEIGHT = NA,
+                                    TREE_MEASUREMENT_COMMENT = NA,
                                     MSMT_MISSING_EDIT = "Missing in between. added")]
   treemsmts_rep <- rbind(treemsmts_rep, treemsmts_missing_inbetween,
                          fill = TRUE)
