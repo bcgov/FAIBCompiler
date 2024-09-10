@@ -501,6 +501,17 @@ prepareTASSInputs <- function(inputPath,
                            UTM_NORTHING = IP_NRTH,
                            UTM_EASTING = IP_EAST,
                            WALKTHRU)]
+  # if a tree was saw as residual in one msmt, all measurements were residual
+  # (see email on 20240909 from Dan)
+  residualtrees <- unique(treelist9[RESID == "R",.(SAMP_ID, PLOT, TREE_NO, RESID_new = "R")])
+  treelist9 <- merge(treelist9, residualtrees,
+                     by = c("SAMP_ID", "PLOT", "TREE_NO"),
+                     all.x = TRUE)
+  treelist9[is.na(RESID) & !is.na(RESID_new),
+            RESID := RESID_new]
+  treelist9[, RESID_new := NULL]
+  rm(residualtrees)
+
   # set htvg of residual trees as 0.8
   treelist9[RESID == "R",
             HTVG := 0.8]
