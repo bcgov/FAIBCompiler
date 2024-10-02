@@ -127,7 +127,7 @@ samplePlotCompilation <- function(compilationType,
 
   if(compilationType == "PSP"){
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
-                                     IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
+                                     IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, COORDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
                                      BEC_SOURCE,
                                      TSA, TSA_DESC, FIZ, TFL, TFL_LICENCEE, OWNER, SCHEDULE, OWNERSHIP_DESCRIPTION,
@@ -144,7 +144,7 @@ samplePlotCompilation <- function(compilationType,
 
   } else {
     spatialLookups <- unique(vi_a[,.(SITE_IDENTIFIER, SAMP_POINT = SITE_IDENTIFIER,
-                                     IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, CORRDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
+                                     IP_UTM, IP_NRTH, IP_EAST, UTM_SOURCE, COORDINATE_SOURCE, BC_ALBERS_X, BC_ALBERS_Y,
                                      Longitude, Latitude, BEC_ZONE = BEC, BEC_SBZ, BEC_VAR,
                                      BEC_SOURCE,
                                      TSA, TSA_DESC, FIZ, TFL, TFL_LICENCEE, OWNER, SCHEDULE, OWNERSHIP_DESCRIPTION,
