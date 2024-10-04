@@ -37,7 +37,7 @@ preparePublishData <- function(compilationPath,
   sampsites_org <- readRDS(file.path(compilationPath,
                                      paste0("compilation_", compilationType, "_db"),
                                      "sample_site_header.rds"))
-  faib_header <- sampsites_org[,.(SITE_IDENTIFIER, TOTAL_PERIOD,
+  faib_header <- sampsites_org[,.(SITE_IDENTIFIER, SITE_CONDITION_CODE, TOTAL_PERIOD,
                                   BC_ALBERS_X, BC_ALBERS_Y, SITE_STATUS_CODE,
                                   BEC_ZONE, BEC_SBZ,
                                   BEC_VAR, FIZ, IP_UTM, IP_EAST, IP_NRTH,
