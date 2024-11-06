@@ -139,6 +139,7 @@ preparePublishData <- function(compilationPath,
   sampplot_org <- readRDS(file.path(compilationPath,
                                     paste0("compilation_", compilationType, "_db"),
                                     "sample_plot_header.rds"))
+  sampplot_org <- sampplot_org[CLSTR_ID %in% sampvisits$CLSTR_ID,]
   write.csv(sampplot_org,
             file.path(tempPath,
                       "faib_plot_header.csv"),
@@ -281,14 +282,15 @@ preparePublishData <- function(compilationPath,
                                    all.x = TRUE)
   datadictionary_publish[["faib_sample_byvisit"]] <- faib_sample_byvisit_dic
 
-
   volsmry <- readRDS(file.path(compilationPath,
                                paste0("compilation_", compilationType, "_db"),
                                "Smries_volume_byCL.rds"))
   volsmry <- merge(volsmry,
-                   sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
+                   sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, keep = "yes")],
                    by = "CLSTR_ID",
                    all.x = TRUE)
+  volsmry <- volsmry[keep == "yes",]
+  volsmry[, keep := NULL]
 
   spcomp <- readRDS(file.path(compilationPath,
                               paste0("compilation_", compilationType, "_db"),
@@ -345,7 +347,7 @@ preparePublishData <- function(compilationPath,
   } else {
     faib_compiled_ht_smeries <- data.table::copy(htsmry)
   }
-
+  faib_compiled_ht_smeries <- faib_compiled_ht_smeries[CLSTR_ID %in% sampvisits$CLSTR_ID,]
   write.csv(faib_compiled_ht_smeries,
             file.path(tempPath,
                       "faib_compiled_smeries_ht.csv"),
@@ -367,9 +369,11 @@ preparePublishData <- function(compilationPath,
                                   "Smries_volume_byCLSP.rds"))
 
   volsmry_sp <- merge(volsmry_sp,
-                      sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER)],
+                      sampvisits[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, keep = "yes")],
                       by = "CLSTR_ID",
                       all.x = TRUE)
+  volsmry_sp <- volsmry_sp[keep == "yes",]
+  volsmry_sp[, keep := NULL]
 
   if(compilationType == "nonPSP"){
     faib_compiled_spcsmries <- volsmry_sp[,.(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER,
@@ -425,6 +429,7 @@ preparePublishData <- function(compilationPath,
                                                      SI1, SI2, SI3)]
 
   }
+  faib_compiled_siteage_spcsmries <- faib_compiled_siteage_spcsmries[CLSTR_ID %in% sampvisits$CLSTR_ID,]
   write.csv(faib_compiled_siteage_spcsmries,
             file.path(tempPath,
                       "faib_compiled_spcsmries_siteage.csv"),
@@ -545,6 +550,7 @@ preparePublishData <- function(compilationPath,
                    MEAS_INTENSE := "OUT_OF_PLOT"]
 
   faib_tree_detail[, OUT_OF_PLOT_IND := NULL]
+  faib_tree_detail <- faib_tree_detail[CLSTR_ID %in% sampvisits$CLSTR_ID,]
   # there still two variables missing x y coord
   write.csv(faib_tree_detail,
             file.path(tempPath,
