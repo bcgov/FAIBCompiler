@@ -189,6 +189,21 @@ setMethod(
     setnames(cl_spc, "SPB_CPCT", "SPB_CPCT_LS")
     cl_spc2 <- speciesComp_byC(CSSmryTable = volsmy_cs, basedOn = "BA_HA_DS", speciesMaxNO = 12)
     setnames(cl_spc2, "SPB_CPCT", "SPB_CPCT_DS")
+    ## species composition without residual
+    allVolumeTrees_nonresid <- allVolumeTrees[RESIDUAL %in% c(NA, "N"),]
+    volsmy_cs_nonresid <- volSmry_byCS(treeMC = data.table::copy(allVolumeTrees_nonresid),
+                                       utilLevel = utilLevel,
+                                       weirdUtil = weirdUtil,
+                                       equation = equation)
+    rm(allVolumeTrees_nonresid)
+    volsmy_cs_nonresid <- merge(volsmy_cs_nonresid,
+                                specieslookup,
+                                by = "SPECIES",
+                                all.x = TRUE)
+    cl_spc_nonresid <- speciesComp_byC(CSSmryTable = volsmy_cs_nonresid,
+                                       basedOn = "BA_HA_LS", speciesMaxNO = 12)
+    setnames(cl_spc_nonresid, "SPB_CPCT", "SPB_CPCT_LS_NONRESIDUAL")
+
     allclustersByUtil <- data.table(expand.grid(CLSTR_ID = unique(clusterPlotHeader$CLSTR_ID),
                                                 UTIL = dbhcatlist))
 
@@ -225,6 +240,10 @@ setMethod(
     cl_spc <- merge(cl_spc, cl_spc2,
                     by = c("CLSTR_ID", "UTIL"),
                     all = TRUE)
+    cl_spc <- merge(cl_spc, cl_spc_nonresid,
+                    by = c("CLSTR_ID", "UTIL"),
+                    all = TRUE)
+
     volsmy_cs[, c(paste0("DBH2", c("_LS", "_LF", "_DS", "_DF")),
                   paste0("QMD", c("_LF", "_DF")),
                   "MATURITY1", "MATURITY2",

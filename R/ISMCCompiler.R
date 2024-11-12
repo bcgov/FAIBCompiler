@@ -922,6 +922,11 @@ ISMCCompiler <- function(compilationType,
                          all.x = TRUE)
     treelist_db[is.na(HEIGHT) & BROKEN_TOP_IND == "N" & VOLUME_TREE == "Y",
                 BROKEN_TOP_IND := as.character(NA)]
+    prep_smy <- merge(prep_smy,
+                      treelist_db[,.(CLSTR_ID, PLOT, TREE_NO, RESIDUAL_IND)],
+                      by = c("CLSTR_ID", "PLOT", "TREE_NO"),
+                      all.x = TRUE)
+    prep_smy[, RESIDUAL := RESIDUAL_IND]
   } else {
     treelist_db <- readRDS(file.path(compilationPaths$compilation_db,
                                      "treelist.rds"))
