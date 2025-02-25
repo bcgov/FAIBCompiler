@@ -113,6 +113,7 @@ updateSA_vegcomp <- function(compilationType,
                            paste0("SA_VEGCOMP_hist_", compilationType, ".rds")))){
     sa_veg_hist <- readRDS(file.path(coeffPath,
                                      paste0("SA_VEGCOMP_hist_", compilationType, ".rds")))
+    sa_veg_hist <- unique(sa_veg_hist)
     sampleMsmts <- merge(sampleMsmts,
                          sa_veg_hist,
                          by = "CLSTR_ID",
