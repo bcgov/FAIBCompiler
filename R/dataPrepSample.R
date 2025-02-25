@@ -98,11 +98,25 @@ dataPrepSample <- function(compilationType,
   SampleSiteVisits <- readRDS(dir(inputPath, pattern = "SampleSiteVisits.rds",
                                   full.names = TRUE)) %>%
     data.table
+
+  plotBoundaies <- unique(SampleSiteVisits[!is.na(BEARING_BOUNDARY) &
+                                      !is.na(DISTANCE_BOUNDARY),
+                                    .(SITE_IDENTIFIER, VISIT_NUMBER, BEARING_BOUNDARY,
+                                      DISTANCE_BOUNDARY)])
+  saveRDS(plotBoundaies,
+          file.path(outputPath, "plot_boundaries.rds"))
+  SampleSiteVisits[, ':='(BEARING_BOUNDARY = NULL,
+                          DISTANCE_BOUNDARY = NULL)]
+  SampleSiteVisits <- unique(SampleSiteVisits)
+
   SampleSiteVisits[, newMD := SAMPLE_SITE_VISIT_START_DATE + 60*60]
   # for nonPSP
   # extract suit_si from notes there are 7912 observations found, with 7900 have valid suit_si code, i.e., yes or no
+
   if(compilationType == "nonPSP"){
-    samplesitevisitenotes <- SampleSiteVisits[,.(SITE_IDENTIFIER, VISIT_NUMBER, SAMPLE_SITE_VISIT_COMMENT)]
+    samplesitevisitenotes <- unique(SampleSiteVisits[,.(SITE_IDENTIFIER, VISIT_NUMBER,
+                                                 SAMPLE_SITE_VISIT_COMMENT)],
+                                    by = c("SITE_IDENTIFIER", "VISIT_NUMBER"))
     samplesitevisitenotes[, SAMPLE_SITE_VISIT_COMMENT := toupper(gsub(" ", "", SAMPLE_SITE_VISIT_COMMENT))]
     samplesitevisitenotes <- samplesitevisitenotes[grepl("SITEINDEXTREESUITABILITY", SAMPLE_SITE_VISIT_COMMENT, fixed = TRUE), ]
     suit_si_from_notes <- NULL
