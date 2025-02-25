@@ -583,15 +583,15 @@ dataPrepTree <- function(compilationType,
                    AGE_CORE_MISSED_YEARS_FIELD := 0]
   treemeasurements[is.na(AGE_CORE_MISSED_YEARS_LAB),
                    AGE_CORE_MISSED_YEARS_LAB := 0]
+  treemeasurements[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NUMBER)]
+  ## all site trees
+  allsitetrees <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
+                                   .(age_msmt_last = max(VISIT_NUMBER)),
+                                   by = "unitreeid"]
+  vi_h <- merge(treemeasurements,
+                allsitetrees,
+                by = "unitreeid")
   if(compilationType == "PSP"){
-    treemeasurements[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NUMBER)]
-    ## all site trees
-    allsitetrees <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
-                                     .(age_msmt_last = max(VISIT_NUMBER)),
-                                     by = "unitreeid"]
-    vi_h <- merge(treemeasurements,
-                  allsitetrees,
-                  by = "unitreeid")
     vi_h <- vi_h[,
                  .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
                    TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,  SP0,
@@ -614,30 +614,28 @@ dataPrepTree <- function(compilationType,
                    AGE_CORE_TAKEN_IND,
                    LAB_AGE_EDIT)]
   } else {
-    vi_h <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
-                             .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
-                               TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,  SP0,
-                               CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
-                               BORE_AGE_FLD = BORING_AGE + AGE_CORE_MISSED_YEARS_FIELD,
-                               BORE_AGE_LAB = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS_LAB,
-                               AGE_CORR = AGE_CORRECTION,  TOTAL_AG = TOTAL_AGE,
-                               PHYS_AGE = as.numeric(NA), GROW_20YR = RADIAL_INCREMENT_LAST_20_YR,
-                               GROW_10YR = RADIAL_INCREMENT_LAST_10_YR,
-                               GROW_5YR = RADIAL_INCREMENT_LAST_5_YR,
-                               PRO_LEN = PRORATE_LENGTH, TREE_LEN = LENGTH,
-                               BNG_DIAM = DIAMETER_AT_BORING_HEIGHT, BARK_THK = BARK_THICKNESS,
-                               SUIT_TR = SUITABLE_FOR_AGE_IND, BORED_HT = AGE_MEASMT_HEIGHT,
-                               SUIT_HT = SUITABLE_FOR_HEIGHT_IND,
-                               SUIT_SI = SUITABLE_FOR_SITE_INDEX_IND,
-                               PLOT_TYP = NA, # not sure
-                               BARK_THKX = NA, # not sure
-                               AGE_MEASURE_CODE,
-                               RANDOM_TREE_IND, RESIDUAL_IND,
-                               AGE_CORE_TAKEN_IND,
-                               LAB_AGE_EDIT = as.character(NA))]
+    vi_h <- vi_h[,
+                 .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,
+                   TREE_NO = TREE_NUMBER,  SPECIES = TREE_SPECIES_CODE,  SP0,
+                   CR_CL = CROWN_CLASS_CODE, PRO_RING = PRORATE_RING_COUNT,
+                   BORE_AGE_FLD = BORING_AGE + AGE_CORE_MISSED_YEARS_FIELD,
+                   BORE_AGE_LAB = MICROSCOPE_AGE + AGE_CORE_MISSED_YEARS_LAB,
+                   AGE_CORR = AGE_CORRECTION,  TOTAL_AG = TOTAL_AGE,
+                   PHYS_AGE = as.numeric(NA), GROW_20YR = RADIAL_INCREMENT_LAST_20_YR,
+                   GROW_10YR = RADIAL_INCREMENT_LAST_10_YR,
+                   GROW_5YR = RADIAL_INCREMENT_LAST_5_YR,
+                   PRO_LEN = PRORATE_LENGTH, TREE_LEN = LENGTH,
+                   BNG_DIAM = DIAMETER_AT_BORING_HEIGHT, BARK_THK = BARK_THICKNESS,
+                   SUIT_TR = SUITABLE_FOR_AGE_IND, BORED_HT = AGE_MEASMT_HEIGHT,
+                   SUIT_HT = SUITABLE_FOR_HEIGHT_IND,
+                   SUIT_SI = SUITABLE_FOR_SITE_INDEX_IND,
+                   PLOT_TYP = NA, # not sure
+                   BARK_THKX = NA, # not sure
+                   AGE_MEASURE_CODE,
+                   RANDOM_TREE_IND, RESIDUAL_IND,
+                   AGE_CORE_TAKEN_IND,
+                   LAB_AGE_EDIT = as.character(NA))]
   }
-
-
   vi_h_th <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
                               .(CLSTR_ID, PLOT,
                                 TREE_NO = TREE_NUMBER,
@@ -690,48 +688,6 @@ dataPrepTree <- function(compilationType,
        TH_TREE := "N"]
   vi_h[, RESIDUAL := RESIDUAL_IND]
   vi_h[, RESIDUAL_IND := NULL]
-
-  # for nonPSP
-  if(compilationType == "nonPSP"){
-    vi_h[, site_id := substr(CLSTR_ID, 1, 7)]
-    vi_h_add <- vi_h[!is.na(BORED_HT),
-                     .(BORED_HT_pre = unique(BORED_HT)),
-                     by = c("site_id", "PLOT", "TREE_NO")]
-    vi_h_add <- unique(vi_h_add, by = c("site_id", "PLOT", "TREE_NO"))
-    vi_h <- merge(vi_h, vi_h_add,
-                  by = c("site_id", "PLOT", "TREE_NO"),
-                  all.x = TRUE)
-    vi_h[is.na(BORED_HT) &
-           !is.na(BORED_HT_pre),
-         BORED_HT := BORED_HT_pre]
-    vi_h[, ':='(site_id = NULL,
-                BORED_HT_pre = NULL)]
-    vi_h[is.na(BORED_HT), BORED_HT := 1.3] # temporary fix for the bored trees with bored height
-    vi_h <- merge(vi_h,
-                  unique(sampleMsmts[,.(CLSTR_ID, MEAS_DT)],
-                         by = "CLSTR_ID"),
-                  by = "CLSTR_ID",
-                  all.x = TRUE)
-    agecorrecttable <- siteAgeCorrection(vih = vi_h)
-    agecorrecttable <- agecorrecttable$age_corrected
-    agecorrecttable[BORE_AGE_crt < 0,
-                    BORE_AGE_crt := BORE_AGE_org]
-    vi_h <- merge(vi_h,
-                  agecorrecttable,
-                  by = c("CLSTR_ID", "PLOT", "TREE_NO"),
-                  all.x = TRUE)
-    vi_h[!is.na(BORE_AGE_crt),
-         BORE_AGE_LAB := BORE_AGE_crt]
-    vi_h[!is.na(BORAG_FL_crt),
-         BORE_AGE_FLD := BORAG_FL_crt]
-    vi_h[!is.na(TOTAL_AG_crt),
-         TOTAL_AG := TOTAL_AG_crt]
-    set(vi_h, , c("MEAS_DT", "refer_year",
-                  "BORE_AGE_org", "BORE_AGE_crt", "BORE_AGE_dif", "BORAG_FL_org",
-                  "BORAG_FL_crt", "BORAG_FL_dif", "TOTAL_AG_org", "TOTAL_AG_crt",
-                  "TOTAL_AG_dif", "meas_year.x", "meas_year.y", "obsn"),
-        NULL)
-  }
   saveRDS(vi_h, file.path(outputPath, "vi_h.rds"))
   rm(vi_h, vi_h_th)
   gc()
