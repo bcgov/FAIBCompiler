@@ -304,7 +304,6 @@ ISMCCompiler <- function(compilationType,
   tree_nonHT <- viiPrep(compilationType = compilationType,
                         clusterplotHeader = data.table::copy(samples),
                         dataSourcePath = compilationPaths$compilation_sa)
-
   ## vi_d contains call grading data for fully measured trees and enhanced trees
   tree_callGrading <- vidPrep(dataSourcePath = compilationPaths$compilation_sa)
   saveRDS(tree_callGrading$lossfactors_full,
@@ -467,6 +466,7 @@ ISMCCompiler <- function(compilationType,
   tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
   ## if a tree was bored multiple times, the age from the last measurements will be used
   ## to adjust the previous measurements
+
   tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
                                             by = "CLSTR_ID"),
                       siteAgeTrees = data.table::copy(tree_ah1))
@@ -911,7 +911,8 @@ ISMCCompiler <- function(compilationType,
                 MEASUREMENT_ANOMALY_CODE := NA]
     prep_smy_temp <- prep_smy[,.(CLSTR_ID, PLOT, TREE_NO, MEAS_INTENSE,
                                  H_MERCH, BA_TREE,
-                                 PHF_TREE, TREE_WT, VOL_WSV, VOL_STUMP, VOL_MER, VOL_NTWB,
+                                 PHF_TREE, PHF_TREE_WK, TREE_WT, TREE_WT_WK,
+                                 VOL_WSV, VOL_STUMP, VOL_MER, VOL_NTWB,
                                  VOL_DWB, NET_FCT_METHOD, WSV_VOL_SRCE,
                                  VOLUME_TREE = "Y")]
     prep_smy_temp[is.na(TREE_WT),
@@ -996,6 +997,22 @@ ISMCCompiler <- function(compilationType,
                               QMD_DS = NA)]
     vrisummaries$vol_bycs[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
     vrisummaries$vol_byc[,':='(SAMPLE_ESTABLISHMENT_TYPE = NULL)]
+    ## to summarize the wk through samples
+    prep_smy_wk <- prep_smy[CLSTR_ID %in% samples[YSM_WKTHROUGH == "Yes",]$CLSTR_ID,]
+    prep_smy_wk[,':='(TREE_WT = TREE_WT_WK,
+                      PHF_TREE = PHF_TREE_WK)]
+    vrisummaries_wk <- VRISummaries(allVolumeTrees = data.table::copy(prep_smy_wk),
+                                 clusterPlotHeader = samples[YSM_WKTHROUGH == "Yes",],
+                                 utilLevel = utilLevel,
+                                 weirdUtil = weirdUtil,
+                                 equation = "KBEC",
+                                 nvafRatio = nvafratio)
+    saveRDS(vrisummaries_wk$vol_bycs,
+            file.path(compilationPaths$compilation_db, "Smries_vol_byCLSP_WK.rds"))
+    saveRDS(vrisummaries_wk$vol_byc,
+            file.path(compilationPaths$compilation_db, "Smries_vol_byCL_WK.rds"))
+    saveRDS(vrisummaries_wk$compositionsmry_byc,
+            file.path(compilationPaths$compilation_db, "Smries_spComp_byCL_WK.rds"))
   } else {
     samples_tmp <- data.table::copy(samples)
     samples_tmp[, NO_PLOTS := 1]

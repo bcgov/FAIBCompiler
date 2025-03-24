@@ -460,6 +460,25 @@ dataPrepTree <- function(compilationType,
                        by = c("CLSTR_ID"),
                        all.x = TRUE)
   rm(treemsmt_live_inplot, stem_mapped_smry_live)
+  if(compilationType == "nonPSP"){
+    wkthroughsamples_a <- unique(treemeasurements[CMI_WALKTHROUGH_CODE %in% c("O", "W"),]$CLSTR_ID)
+    sampleMsmts[CLSTR_ID %in% wkthroughsamples_a,
+                YSM_WKTHROUGH := "Yes"]
+    wkthroughsamples_b <- readRDS(file.path(outputPath, "plot_boundaries.rds"))
+    sampleMsmts <- merge(sampleMsmts,
+                         unique(wkthroughsamples_b[,.(SITE_IDENTIFIER, VISIT_NUMBER,
+                                                      YSM_WKTHROUGH_BOUNDARY = "Yes")]),
+                         by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
+                         all.x = TRUE)
+    sampleMsmts[YSM_WKTHROUGH_BOUNDARY == "Yes" & is.na(YSM_WKTHROUGH),
+                YSM_WKTHROUGH := "Yes"]
+    sampleMsmts[YSM_WKTHROUGH == "Yes" & is.na(YSM_WKTHROUGH_BOUNDARY),
+                YSM_WKTHROUGH_BOUNDARY := "No"]
+    rm(wkthroughsamples_a, wkthroughsamples_b)
+  } else {
+    sampleMsmts[,':='(YSM_WKTHROUGH = as.character(NA),
+                      YSM_WKTHROUGH_BOUNDARY = as.character(NA))]
+  }
   saveRDS(treemeasurements, file.path(outputPath, "treemeasurements.rds"))
 
   # specieslookup <- lookup_species()
@@ -591,6 +610,7 @@ dataPrepTree <- function(compilationType,
   vi_h <- merge(treemeasurements,
                 allsitetrees,
                 by = "unitreeid")
+  vi_h <- vi_h[TREE_EXTANT_CODE == "L",]
   if(compilationType == "PSP"){
     vi_h <- vi_h[,
                  .(CLSTR_ID, SITE_IDENTIFIER, VISIT_NUMBER, TYPE_CD, PLOT,

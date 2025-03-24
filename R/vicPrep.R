@@ -41,11 +41,12 @@ vicPrep<- function(compilationType,
   vi_c[DBH != 0, BA_TREE := pi * ((DBH/200)^2)]
   # remove get_vars function as SP0 remains same as that in vi_pc table
   vi_c[DBH == 0, ':='(BA_TREE = 0)]
-  vi_c[, TREE_WT := 1]
+  vi_c[, ':='(TREE_WT = 1,
+              TREE_WT_WK = 1)]
   if(compilationType == "nonPSP"){
     if(walkThru){
-      vi_c[toupper(WALKTHRU_STATUS) == "O", TREE_WT := 0] # tree is out and is not used
-      vi_c[toupper(WALKTHRU_STATUS) == "W", TREE_WT := 2] # tree is
+      vi_c[toupper(WALKTHRU_STATUS) == "O", TREE_WT_WK := 0] # tree is out and is not used
+      vi_c[toupper(WALKTHRU_STATUS) == "W", TREE_WT_WK := 2] # tree is
     }
   }
   vi_c <- FAIBBase::merge_dupUpdate(vi_c,
@@ -63,10 +64,14 @@ vicPrep<- function(compilationType,
     vi_c[, PHF_TREE := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
                                                treeWeight = TREE_WT, plotWeight = PLOT_WT,
                                                treeBasalArea = BA_TREE)]
+    vi_c[, PHF_TREE_WK := FAIBBase::PHFCalculator(sampleType = SAMP_TYP, blowUp = BLOWUP_MAIN,
+                                               treeWeight = TREE_WT_WK, plotWeight = PLOT_WT,
+                                               treeBasalArea = BA_TREE)]
   # for NFI (F), CMI and YSMI, the plots use a 100 m2 subplot for
   # trees with a dbh < 9, therefore should be extrapolate to 400 m2 (size of large tree plot)
   vi_c[TYPE_CD %in% c("F", "M", "Y", "L") & DBH < 9,
-       PHF_TREE := PHF_TREE*4]
+       ':='(PHF_TREE = PHF_TREE*4,
+            PHF_TREE_WK = PHF_TREE_WK*4)]
   #   2)	FHYSM Only - Can we change the PHF_TREE from 25 to 100 for the 4-9cm DBH deciduous trees in the 5.64m subplot?
   #   •	The reason why is because there are non-standard diameter limits used in this project. All conifers >1m height in the 11.28m radius main plot are tagged (all conifers get a PHF_TREE = 25) while deciduous are tagged using standard YSM/CMI protocol.  ie., trees 4-9cm dbh in the 5.64m radius subplot (PHF_TREE = 100), and trees >9cm dbh in the 11.28m radius main plot (PHF_TREE = 25).
   #   •	It looks like it only impacts one tree so far but these FHYSM samples will be remeasured and we may get more.
@@ -100,7 +105,9 @@ vicPrep<- function(compilationType,
                                                   TYPE_CD, TREE_NO,
                                                   SPECIES,
                                                   LV_D, S_F, NO_LOGS = 1,
-                                                  TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,
+                                                  TREE_WT, TREE_WT_WK = as.numeric(NA),
+                                                  DBH, SP0, BA_TREE,
+                                                  PHF_TREE, PHF_TREE_WK = as.numeric(NA),
                                                   HEIGHT = TREE_LEN, BARK_PER,
                                                   HT_PROJ, DIAM_BTP, BROKEN_TOP_IND,
                                                   HT_BTOP,
@@ -117,7 +124,8 @@ vicPrep<- function(compilationType,
                                                   TYPE_CD, TREE_NO,
                                                   SPECIES,
                                                   LV_D, S_F, NO_LOGS,
-                                                  TREE_WT, DBH, SP0, BA_TREE, PHF_TREE,
+                                                  TREE_WT, TREE_WT_WK, DBH, SP0, BA_TREE,
+                                                  PHF_TREE, PHF_TREE_WK,
                                                   HEIGHT = TREE_LEN, BARK_PER,
                                                   HT_PROJ, DIAM_BTP, BROKEN_TOP_IND,
                                                   HT_BTOP,
