@@ -52,7 +52,6 @@ vihPrep <- function(msmtInterval,
                     AGE_MOD_COMMENT = "Total age can not taken above 0 height, moved to field age")]
   siteAgeTrees[AGE_MOD_COMMENT == "Total age can not taken above 0 height, moved to field age",
                TOTAL_AG := NA]
-
   tree_last_msmt <- siteAgeTrees[(!is.na(BORED_HT) | !is.na(AGE_MEASURE_CODE)) &
                                    (!is.na(BORE_AGE_FLD) | !is.na(BORE_AGE_LAB) | !is.na(TOTAL_AG)) &
                                    (!AGE_MEASURE_CODE %in% c("PRE", "NOC") | is.na(AGE_MEASURE_CODE)),
@@ -62,6 +61,7 @@ vihPrep <- function(msmtInterval,
                         tree_last_msmt,
                         by = c("SITE_IDENTIFIER", "PLOT", "TREE_NO"),
                         all.x = TRUE)
+
   siteAgeTrees_last <- siteAgeTrees[VISIT_NUMBER == tree_last_times,
                                     .(SITE_IDENTIFIER,
                                       PLOT,
@@ -82,7 +82,7 @@ vihPrep <- function(msmtInterval,
   siteAgeTrees[!is.na(BORE_AGE_LAB) & lab_age_remove == TRUE,
                BORE_AGE_LAB := NA]
   # choose last fld age over prevous lab age as the reference to correct
-  siteAgeTrees[MEAS_YR == MEAS_YR_REF,
+  siteAgeTrees[VISIT_NUMBER == tree_last_times,
                BORED_AGE_FLAG := "Reference"]
   siteAgeTrees[AGE_MEASURE_CODE %in% c("PRE", "NOC") &
                  BORED_HT != BORED_HT_last,
@@ -90,14 +90,15 @@ vihPrep <- function(msmtInterval,
                                           # adjusted to reference bored height
 
   siteAgeTrees[is.na(BORED_HT) & is.na(AGE_MEASURE_CODE) &
-                 MEAS_YR != MEAS_YR_REF,
+                 VISIT_NUMBER != tree_last_times,
                ':='(BORED_AGE_FLAG = "Added from Reference",
+                    AGE_MEASURE_CODE = "CALC",
                     BORED_HT = BORED_HT_last,
                     BORE_AGE_FLD = BORAG_FL_last - (MEAS_YR_REF - MEAS_YR),
                     BORE_AGE_LAB = BORE_AGE_last - (MEAS_YR_REF - MEAS_YR),
                     TOTAL_AG = TOTAL_AG_last - (MEAS_YR_REF - MEAS_YR))] # the age information is from last measurement
   siteAgeTrees[(!is.na(BORED_HT) | !is.na(AGE_MEASURE_CODE)) & ## have measurement flag
-                 MEAS_YR != MEAS_YR_REF & # not from last measurement
+                 VISIT_NUMBER != tree_last_times & # not from last measurement
                  is.na(BORED_AGE_FLAG), # not added
                ':='(BORE_AGE_adj = BORE_AGE_last - (MEAS_YR_REF - MEAS_YR),
                     BORE_FLD_adj = BORAG_FL_last - (MEAS_YR_REF - MEAS_YR),
@@ -123,6 +124,7 @@ vihPrep <- function(msmtInterval,
                ':='(BORED_HT = BORED_HT_last, # bored ht set to reference
                     BORED_AGE_FLAG = "FLD_AGE Corrected from Reference, BORED_HT set to Reference")]
 
+
   siteAgeTrees[((TOTAL_AG != TOTAL_AGE_adj |
                    is.na(TOTAL_AG))) &
                  !is.na(TOTAL_AGE_adj) &
@@ -134,6 +136,8 @@ vihPrep <- function(msmtInterval,
                ':='(BORED_HT = BORED_HT_last, # bored ht set to reference
                     BORED_AGE_FLAG = "TOTAL_AGE Corrected from Reference, BORED_HT set to Reference")]
 
+  siteAgeTrees[is.na(AGE_MEASURE_CODE) & !is.na(BORED_AGE_FLAG),
+               AGE_MEASURE_CODE := "CALC"]
   siteAgeTrees[,':='(tree_last_times = NULL,
                      BORAG_FL_last = NULL,
                      BORE_AGE_last = NULL,
