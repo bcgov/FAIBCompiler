@@ -34,8 +34,7 @@ vidPrep<- function(dataSourcePath){
                 paste0("OLD_AGN", LETTERS[1:8]),
                 "maxseq",
                 "SITE_IDENTIFIER", "VISIT_NUMBER",
-                "TYPE_CD", "BEC_ZONE", "BEC_SBZ",
-                "BEC_VAR", "SPECIES_ORG", "SP0") := NULL]
+                "TYPE_CD", "SP0") := NULL]
   setnames(lossfactors, "STEM", "STEM_MAPPED_IND")
   return(list(lossfactors_simp = lossfactors_simp,
               lossfactors_full = lossfactors))
