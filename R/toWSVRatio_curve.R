@@ -55,7 +55,6 @@ toWSVRatio_curve <- function(inputData, needCombs,
   all_vol_attributes <- c("mer", "ntwb", "dwb")
   all_ratio <- list()
   for(indivol in all_vol_attributes){
-    browser()
     if(indivol == "mer"){
       fitdata_all <- data.table::copy(all_trees_ratio)
     } else if(indivol == "ntwb"){
@@ -149,7 +148,6 @@ toWSVRatio_curve <- function(inputData, needCombs,
     needCombs_done[, uniid := NULL]
     rm(i, needCombs_rest)
     all_ratio[[paste0(indivol, "_ratio")]] <- needCombs_done
-    browser()
   }
   return(all_ratio)
 }
