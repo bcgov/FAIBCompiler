@@ -75,18 +75,76 @@ treemsmtEditing <- function(compilationType,
   treemsmts[, ':='(diam_new = NULL)]
   # for z trees, always out of plot
   ztrees <- unique(treemsmts[MEASUREMENT_ANOMALY_CODE == "Z"]$unitreeid)
-  treemsmts[unitreeid %in% ztrees,
-            OUT_OF_PLOT_IND := "Y"]
+  treemsmts[unitreeid %in% ztrees &
+              OUT_OF_PLOT_IND %in% c("N", NA),
+            ':='(OUT_OF_PLOT_IND = "Y",
+                 OUT_OF_PLOT_EDIT = "Corrected to Y due to Z tree")]
   rm(ztrees)
-
-
+  ## for PSPs, there are some trees were cut at the first measurement
+  ## these trees should be removed
+  htrees <- treemsmts[MEASUREMENT_ANOMALY_CODE == "H"]$unitreeid
+  htrees <- treemsmts[unitreeid %in% htrees,
+                      .(unitreeid, VISIT_NUMBER, MEASUREMENT_ANOMALY_CODE)]
+  htrees[, first_visit := min(VISIT_NUMBER),
+         by = "unitreeid"]
+  htrees_cut <- htrees[MEASUREMENT_ANOMALY_CODE == "H",
+                       .(first_cut = min(VISIT_NUMBER)),
+                       by = "unitreeid"]
+  htrees <- merge(htrees, htrees_cut,
+                  by = "unitreeid",
+                  all.x = TRUE)
+  cut_at_firstM <- unique(htrees[first_visit == first_cut]$unitreeid)
+  treemsmts <- treemsmts[!(unitreeid %in% cut_at_firstM),]
+  rm(htrees_cut, htrees, cut_at_firstM)
+  ## if a tree's measurement is out of plot,
+  ## the previous measurement is out of plot
+  treemsmts_out <- treemsmts[OUT_OF_PLOT_IND == "Y",
+                             .(last_out_visit = max(VISIT_NUMBER)),
+                             by = "unitreeid"]
   treemsmts <- merge(treemsmts,
-                     sitevisits[,.(SITE_IDENTIFIER, VISIT_NUMBER, VISIT_TYPE)],
+                     treemsmts_out,
+                     by = "unitreeid",
+                     all.x = TRUE)
+  treemsmts[VISIT_NUMBER < last_out_visit &
+              OUT_OF_PLOT_IND %in% c("N", NA),
+            ':='(OUT_OF_PLOT_IND = "Y",
+                 OUT_OF_PLOT_EDIT = "Corrected to Y due out tree at a later measurement")] # correct them to Y
+
+  treemsmts[, last_out_visit := NULL]
+  treemsmts <- merge(treemsmts,
+                     sitevisits[,.(SITE_IDENTIFIER, VISIT_NUMBER,
+                                   VISIT_TYPE, TYPE_CD)],
                      by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
                      all.x = TRUE)
   treemsmts_rep <- treemsmts[VISIT_TYPE == "REP",]
+  HNtrees_A <- treemsmts[TYPE_CD == "A" &
+                           MEASUREMENT_ANOMALY_CODE %in% c("H", "N"),]
+  HNtrees_A[, first_visit := min(VISIT_NUMBER),
+            by = "unitreeid"]
+  HNtrees_A <- HNtrees_A[VISIT_NUMBER == first_visit,]
+  HNtrees_A[, first_visit := NULL]
+  treemsmts_rep <- rbind(treemsmts_rep,
+                         HNtrees_A)
   treemsmts_tmp <- treemsmts[VISIT_TYPE == "TMP",]
+
   rm(treemsmts)
+
+  treemsmts_rep[, TREE_MEASUREMENT_COMMENT := tolower(TREE_MEASUREMENT_COMMENT)]
+  # based on tree measurement comments
+  ## if it is "not dead" or "dying", the previous dead will be corrected
+  treemsmts_not_dead <- treemsmts_rep[(grepl("not dead", TREE_MEASUREMENT_COMMENT) |
+                                         grepl("dying", TREE_MEASUREMENT_COMMENT)),
+                                      .(last_no_dead_visit = max(VISIT_NUMBER)),
+                                      by = "unitreeid"]
+  treemsmts_rep <- merge(treemsmts_rep,
+                         treemsmts_not_dead,
+                         by = "unitreeid",
+                         all.x = TRUE)
+  treemsmts_rep[VISIT_NUMBER <= last_no_dead_visit &
+                  TREE_EXTANT_CODE %in% c("D", NA),
+                ':='(TREE_EXTANT_CODE = "L",
+                     LVD_EDIT = "Back to L based on tree measurement comments")]
+  treemsmts_rep[,last_no_dead_visit := NULL]
 
 
   # for stem mapping, use the last available stem mapping information for
@@ -118,22 +176,7 @@ treemsmtEditing <- function(compilationType,
                       bearing_ref = NULL,
                       distance_ref = NULL)]
 
-  # for drop trees,
-  # as discussed with Dan on 2023-10-19, when a treemsmt is marked as dropped
-  # the msmts before and equal to this msmt will be marked as out of plot for compilation
-  # so that these msmts will not be included into tally but for age, if age is available
-  droppedmsmt <- treemsmts_rep[MEASUREMENT_ANOMALY_CODE == "D",
-                               .(lastvisit = max(VISIT_NUMBER)),
-                               by = "unitreeid"]
-  treemsmts_rep <- merge(treemsmts_rep,
-                         droppedmsmt,
-                         by = "unitreeid",
-                         all.x = TRUE)
-  treemsmts_rep[VISIT_NUMBER <= lastvisit &
-                  (OUT_OF_PLOT_IND == "N" | is.na(OUT_OF_PLOT_IND)),
-                ':='(OUT_OF_PLOT_IND = "Y",
-                     OUT_OF_PLOT_EDIT = "Corrected to Y due to dropped")]
-  treemsmts_rep[, lastvisit := NULL]
+
 
   if(compilationType == "nonPSP"){
     # correct cmi walkthrough code based on communication with Dan on 2023-10-12
@@ -180,80 +223,164 @@ treemsmtEditing <- function(compilationType,
   treemsmts_rep[, firstdf := NULL]
   rm(firstdf)
   gc()
-  # not found, Harvest and dropped trees
-  NHDtrees <- unique(treemsmts_rep[MEASUREMENT_ANOMALY_CODE %in% c("N", "H", "D")]$unitreeid)
-  treemsmts_rep_bad <- treemsmts_rep[(unitreeid %in% NHDtrees),
-                                     .(unitreeid, MEASUREMENT_ANOMALY_CODE, VISIT_NUMBER,
-                                       DIAMETER_MEASMT_HEIGHT, DIAMETER)]
-  treemsmts_rep_bad[DIAMETER_MEASMT_HEIGHT > 0 & DIAMETER > 0,
-                    measure := "good"]
-  treemsmts_rep_bad_good_last <- treemsmts_rep_bad[measure == "good",.(measure_good_last = max(VISIT_NUMBER)),
-                                                   by = "unitreeid"]
-  treemsmts_rep_bad <- treemsmts_rep_bad[order(unitreeid, VISIT_NUMBER)]
-  treemsmts_rep_bad[, visit_prev := shift(VISIT_NUMBER, type = "lag"),
+  ## treat not found, harvest and drop trees separately
+  anomaly_codes <- c("N", # not found
+                     "H", # harvested
+                     "D") # dropped trees
+  for(indi_anomaly_code in anomaly_codes){
+    # for not found, it may not come back, if do not see come back assign a stop
+    anomalTrees <- unique(treemsmts_rep[MEASUREMENT_ANOMALY_CODE == indi_anomaly_code]$unitreeid)
+    if(length(anomalTrees) > 0){
+      anomalTrees <- treemsmts_rep[(unitreeid %in% anomalTrees),
+                                   .(unitreeid, VISIT_NUMBER, MEASUREMENT_ANOMALY_CODE)]
+      anomalTrees[MEASUREMENT_ANOMALY_CODE == "M",
+                  MEASUREMENT_ANOMALY_CODE := as.character(NA)] # missing is for previous measurement
+      # the current measurement is normal
+      ## last normal measurement
+      anomalTrees_norm_meas <- anomalTrees[is.na(MEASUREMENT_ANOMALY_CODE),
+                                           .(last_norm_visit = max(VISIT_NUMBER)),
+                                           by = "unitreeid"]
+      ## first N or H cases
+      anomalTrees_NH_meas <- anomalTrees[!is.na(MEASUREMENT_ANOMALY_CODE),
+                                         .(first_NH_visit = min(VISIT_NUMBER)),
+                                         by = "unitreeid"]
+      ## last D cases
+      anomalTrees_D_meas <- anomalTrees[!is.na(MEASUREMENT_ANOMALY_CODE),
+                                        .(last_D_visit = max(VISIT_NUMBER)),
+                                        by = "unitreeid"]
+
+      anomalTrees <- merge(anomalTrees,
+                           anomalTrees_norm_meas,
+                           by = "unitreeid",
+                           all.x = TRUE)
+
+      anomalTrees <- merge(anomalTrees,
+                           anomalTrees_NH_meas,
+                           by = "unitreeid",
+                           all.x = TRUE)
+
+      anomalTrees <- merge(anomalTrees,
+                           anomalTrees_D_meas,
+                           by = "unitreeid",
+                           all.x = TRUE)
+      rm(anomalTrees_norm_meas,
+         anomalTrees_NH_meas,
+         anomalTrees_D_meas)
+
+      if(indi_anomaly_code == "N"){
+        ## in nonPSP there are some trees marked as N in the first visit, i.e.,
+        ## last_norm_visit is NA, example is 1307441-I-355
+        ## should be removed from the tree list
+        first_N_trees <- anomalTrees[is.na(last_norm_visit),]$unitreeid
+        treemsmts_rep <- treemsmts_rep[!(unitreeid %in% first_N_trees),]
+        ## if the last normal measurement is after not found
+        ## force the N to normal for all the measurements before the last normal visit
+        anomalTrees[last_norm_visit > first_NH_visit &
+                      VISIT_NUMBER < last_norm_visit &
+                      MEASUREMENT_ANOMALY_CODE == "N",
+                    MEASUREMENT_ANOMALY_CODE := as.character(NA)]
+        ## recalculate the first N codes
+        ## first N or H cases
+        anomalTrees_NH_meas <- anomalTrees[MEASUREMENT_ANOMALY_CODE == "N",
+                                           .(first_NH_visit = min(VISIT_NUMBER)),
+                                           by = "unitreeid"]
+        anomalTrees[, first_NH_visit := NULL]
+        anomalTrees <- merge(anomalTrees,
+                             anomalTrees_NH_meas,
+                             by = "unitreeid",
+                             all.x = TRUE)
+
+        anomalTrees <- anomalTrees[VISIT_NUMBER == last_norm_visit,
+                                   .(unitreeid, last_norm_visit, first_NH_visit)]
+        anomalTrees[, stop_NH := "S_N"]
+        anomalTrees[is.na(first_NH_visit), stop_NH := as.character(NA)]
+
+        treemsmts_rep <- merge(treemsmts_rep,
+                               anomalTrees,
+                               by = "unitreeid",
+                               all.x = TRUE)
+        treemsmts_rep[VISIT_NUMBER < last_norm_visit &
+                        MEASUREMENT_ANOMALY_CODE == "N",
+                      MEASUREMENT_ANOMALY_CODE := as.character(NA)] # correct the previous N to NA
+        treemsmts_rep[!is.na(stop_NH) &
+                        VISIT_NUMBER == last_norm_visit,
+                      STOP := stop_NH]
+        treemsmts_rep <- treemsmts_rep[is.na(last_norm_visit) |
+                                         VISIT_NUMBER <= last_norm_visit,]
+        treemsmts_rep[,':='(last_norm_visit = NULL,
+                            first_NH_visit = NULL,
+                            stop_NH = NULL)]
+        rm(anomalTrees)
+      } else if(indi_anomaly_code == "H"){
+        ## deal with harvest case
+        ## if a tree was found harvest, the sequential measurements will be removed
+        ## a stop sign will be assigned
+        anomalTrees[first_NH_visit < last_norm_visit &
+                      VISIT_NUMBER > first_NH_visit,
+                    MEASUREMENT_ANOMALY_CODE := "H"]
+        ## after fix
+        ## last normal measurement
+        anomalTrees_norm_meas <- anomalTrees[is.na(MEASUREMENT_ANOMALY_CODE),
+                                             .(last_norm_visit = max(VISIT_NUMBER)),
+                                             by = "unitreeid"]
+        anomalTrees[, last_norm_visit := NULL]
+        anomalTrees <- merge(anomalTrees,
+                             anomalTrees_norm_meas,
+                             by = "unitreeid",
+                             all.x = TRUE)
+
+        anomalTrees <- anomalTrees[VISIT_NUMBER == last_norm_visit,
+                                   .(unitreeid, last_norm_visit, stop_NH = "S_H")]
+        treemsmts_rep <- merge(treemsmts_rep,
+                               anomalTrees,
+                               by = "unitreeid",
+                               all.x = TRUE)
+        treemsmts_rep <- treemsmts_rep[is.na(last_norm_visit) |
+                                         VISIT_NUMBER <= last_norm_visit]
+        treemsmts_rep[!is.na(stop_NH) & VISIT_NUMBER == last_norm_visit,
+                      STOP := stop_NH]
+        treemsmts_rep[,':='(last_norm_visit = NULL,
+                            stop_NH = NULL)]
+        treemsmts_rep[MEASUREMENT_ANOMALY_CODE == "H" &
+                        TYPE_CD == "A",
+                      remove := TRUE]
+        treemsmts_rep <- treemsmts_rep[is.na(remove),]
+        treemsmts_rep[, remove := NULL]
+        rm(anomalTrees)
+      } else {
+        # for drop trees,
+        # as discussed with Dan on 2023-10-19, when a treemsmt is marked as dropped
+        # the msmts before and equal to this msmt will be marked as out of plot for compilation
+        # so that these msmts will not be included into tally but for age, if age is available
+        anomalTrees <- anomalTrees[order(unitreeid, VISIT_NUMBER),]
+        anomalTrees[, next_visit := shift(VISIT_NUMBER, fill = NA, type = "lead"),
                     by = "unitreeid"]
-
-
-  treemsmts_rep_bad <- treemsmts_rep_bad[MEASUREMENT_ANOMALY_CODE %in% c("N", "H", "D"),
-                                         .(unitreeid, MEASUREMENT_ANOMALY_CODE,
-                                           VISIT_NUMBER, visit_prev)]
-  treemsmts_rep_bad_last <- treemsmts_rep_bad[,.SD[which.min(VISIT_NUMBER)],
-                                              by = "unitreeid"]
-  treemsmts_rep_bad_last <- merge(treemsmts_rep_bad_last,
-                                  treemsmts_rep_bad_good_last,
-                                  by = "unitreeid",
-                                  all.x = TRUE)
-  setnames(treemsmts_rep_bad_last,
-           c("MEASUREMENT_ANOMALY_CODE", "VISIT_NUMBER"),
-           c("ANOMALY_CODE_last", "visit_last"))
-  treemsmts_rep <- merge(treemsmts_rep,
-                         treemsmts_rep_bad_last,
-                         by = "unitreeid",
-                         all.x = TRUE)
-  ## remove current N and next found tree
-  treemsmts_rep[visit_last < measure_good_last &
-                  MEASUREMENT_ANOMALY_CODE == "N",
-                comeback := "yes"]
-  treemsmts_rep[visit_last < measure_good_last,
-                ':='(visit_last = NA,
-                     visit_prev = NA)]
-
-  treemsmts_rep <- treemsmts_rep[is.na(comeback),]
-  treemsmts_rep[,':='(measure_good_last = NULL,
-                      comeback = NULL)]
-
-  # retain three sets of data
-  # 1) unstopped trees, 2) stop trees before N,H,D, 3) back to tally trees after dropped
-  treemsmts_rep <- treemsmts_rep[is.na(visit_last) | # this is unstopped trees
-                                   VISIT_NUMBER < visit_last | # this is for stopped trees before N H D
-                                   (VISIT_NUMBER > visit_last & ANOMALY_CODE_last == "D"), # this is for back to tally trees
-  ]
-  treemsmts_rep[VISIT_NUMBER == visit_prev,
-                STOP := paste0("S_", ANOMALY_CODE_last)]
-  treemsmts_rep[,':='(ANOMALY_CODE_last = NULL,
-                      visit_last = NULL,
-                      visit_prev = NULL)]
-  rm(treemsmts_rep_bad, treemsmts_rep_bad_last, NHDtrees)
+        anomalTrees <- anomalTrees[VISIT_NUMBER == last_D_visit,
+                                   .(unitreeid, last_norm_visit, last_D_visit, next_visit)]
+        treemsmts_rep <- merge(treemsmts_rep,
+                               anomalTrees,
+                               by = "unitreeid",
+                               all.x = TRUE)
+        treemsmts_rep[VISIT_NUMBER <= last_D_visit &
+                        (OUT_OF_PLOT_IND == "N" | is.na(OUT_OF_PLOT_IND)),
+                      ':='(OUT_OF_PLOT_IND = "Y",
+                           OUT_OF_PLOT_EDIT = "Corrected to Y due to dropped")]
+        treemsmts_rep[VISIT_NUMBER == last_D_visit,
+                      ':='(STOP = "S_D")]
+        ## if the last normal visit is later than last dropped visit
+        ## there is a resume, i.e., trees back to normal remeasurement
+        treemsmts_rep[last_norm_visit > last_D_visit &
+                        VISIT_NUMBER == next_visit,
+                      STOP := "RESUME"]
+        treemsmts_rep[, ':='(last_norm_visit = NULL,
+                             last_D_visit = NULL,
+                             next_visit = NULL)]
+        rm(anomalTrees)
+      }
+    }
+  }
   gc()
   # 1. correct lv code
-  # based on tree measurement comments
-  treemsmts_rep[, TREE_MEASUREMENT_COMMENT := tolower(TREE_MEASUREMENT_COMMENT)]
-  treemsmts_rep[grepl("live", TREE_MEASUREMENT_COMMENT) |
-                  grepl("not dead", TREE_MEASUREMENT_COMMENT) |
-                  grepl("not cut", TREE_MEASUREMENT_COMMENT) |
-                  grepl("found tagged with no data.", TREE_MEASUREMENT_COMMENT) |
-                  grepl("dying", TREE_MEASUREMENT_COMMENT) |
-                  grepl("found w/ no data.", TREE_MEASUREMENT_COMMENT) |
-                  grepl("tagged with no prev. measurement data.", TREE_MEASUREMENT_COMMENT) |
-                  grepl("found w/no data.", TREE_MEASUREMENT_COMMENT),
-                lvd_comment := "L"]
-
-  treemsmts_rep[lvd_comment == "L" &
-                  TREE_EXTANT_CODE == "D",
-                ':='(TREE_EXTANT_CODE = "L",
-                     LVD_EDIT = "Back to L based on tree measurement comments")] # any msmt before this visit and lv_d == "D" need to be corrected
-
-
   ## to deal with missing lv codes
   treemsmt_lastlive <- treemsmts_rep[TREE_EXTANT_CODE == "L",
                                      .(vst_last_live = max(VISIT_NUMBER)),
@@ -283,8 +410,7 @@ treemsmtEditing <- function(compilationType,
                   TREE_EXTANT_CODE == "D",
                 ':='(TREE_EXTANT_CODE = "L",
                      LVD_EDIT = "Corrected to L as found alive later")]
-  treemsmts_rep[, ':='(vst_last_live = NULL,
-                       lvd_comment = NULL)]
+  treemsmts_rep[, ':='(vst_last_live = NULL)]
 
 
   # correction 4. if the last msmt do not have diameter information, assign lvd as D
@@ -429,6 +555,7 @@ treemsmtEditing <- function(compilationType,
                                     AGE_MEASURE_CODE = NA,
                                     AGE_MEASMT_HEIGHT = NA,
                                     TREE_MEASUREMENT_COMMENT = NA,
+                                    STOP = NA,
                                     MSMT_MISSING_EDIT = "Missing in between. added")]
   treemsmts_rep <- rbind(treemsmts_rep, treemsmts_missing_inbetween,
                          fill = TRUE)
@@ -443,43 +570,33 @@ treemsmtEditing <- function(compilationType,
   treemsmts_rep <- merge(treemsmts_rep, sitevisits_last,
                          by = "SITE_IDENTIFIER",
                          all.x = TRUE)
+
+  ## as talked to Scott on 2025-04-03
+  ## a dead small tree (DBH < 10cm) in previous msmt is not exported for next field measurement for PSPs
+  ## hence, they can not reach the last visit
+  ## see email with Scott on 2025-04-03
+  if(compilationType == "PSP"){
+    treemsmts_rep[visit_tree_last == VISIT_NUMBER &
+                    visit_site_last != visit_tree_last &
+                    is.na(STOP) &
+                    DIAMETER < 10 &
+                    TREE_EXTANT_CODE == "D",
+                  ':='(STOP = "S_DLT",
+                       MSMT_MISSING_EDIT = "Stop msmt as Dead Less than Ten cm")]
+  }
+
+
   # tree's last visit have not reached the site's last visit, and
   # there is no stop sign
   # lv_d = L at the last visit of this tree and with diameter msmt
-  treemsmts_missing_tail <- treemsmts_rep[visit_tree_last == VISIT_NUMBER &
-                                            visit_site_last != visit_tree_last &
-                                            is.na(STOP),]
-  treemsmts_missing_tail <- merge(treemsmts_missing_tail,
-                                  sitevisits[,.(SITE_IDENTIFIER, VISIT_NUMBER, VISIT_NUMBER_next)],
-                                  by = c("SITE_IDENTIFIER", "VISIT_NUMBER"),
-                                  all.x = TRUE)
-  treemsmts_missing_tail[, ':='(VISIT_NUMBER = VISIT_NUMBER_next, # add next visit
-                                TREE_EXTANT_CODE = "D", # force to dead
-                                TREE_CLASS_CODE = 4,
-                                LENGTH = NA,
-                                MSMT_MISSING_EDIT = "Missing at tail. added",
-                                DIAMETER_EDIT = "Diameter assinged based on previous msmt")]
-
-  treemsmts_missing_tail[,':='(BORING_AGE = NA,
-                               AGE_CORE_MISSED_YEARS_FIELD = NA,
-                               MICROSCOPE_AGE = NA,
-                               AGE_CORE_MISSED_YEARS_LAB = NA,
-                               AGE_CORRECTION = NA,
-                               TOTAL_AGE = NA,
-                               RADIAL_INCREMENT_LAST_10_YR = NA,
-                               RADIAL_INCREMENT_LAST_5_YR = NA,
-                               RADIAL_INCREMENT_LAST_20_YR = NA,
-                               PRORATE_LENGTH = NA,
-                               AGE_MEASURE_CODE = NA,
-                               AGE_MEASMT_HEIGHT = NA)]
-  treemsmts_rep <- rbind(treemsmts_rep,
-                         treemsmts_missing_tail,
-                         fill = TRUE)
-  rm(treemsmts_missing_tail)
+  treemsmts_rep[visit_tree_last == VISIT_NUMBER &
+                  visit_site_last != visit_tree_last &
+                  is.na(STOP),
+                ':='(STOP = "S_N",
+                     MSMT_MISSING_EDIT = "Missing at tail. Not found assumed, STOP S_N added")]
   gc()
   treemsmts_rep[, ':='(visit_tree_last = NULL,
-                       visit_site_last = NULL,
-                       VISIT_NUMBER_next = NULL)]
+                       visit_site_last = NULL)]
   # for missing diameter msmt height
   treemsmts_rep[is.na(DIAMETER_MEASMT_HEIGHT) &
                   !is.na(DIAMETER),
@@ -789,6 +906,7 @@ treemsmtEditing <- function(compilationType,
   }
   treemsmts <- rbind(treemsmts_rep, treemsmts_tmp, fill = TRUE)
   treemsmts[,":="(VISIT_TYPE = NULL,
-                  unitreeid = NULL)]
+                  unitreeid = NULL,
+                  TYPE_CD = NULL)]
   return(treemsmts)
 }
