@@ -59,57 +59,63 @@ dataPrepTree <- function(compilationType,
                          VERT_DISTANCE_MEAS_REQ_IND = NULL,
                          LEANING_TREE_BEARING = NULL,
                          SPECIES_CHANGE_IND = NULL)]
-  # browser()
-  # treemeasurements <- treemsmtEditing(compilationType = "PSP",
-  #                 treemsmts = treemeasurements,
-  #                 sitevisits = sampleMsmts)
-  gc()
-  allsites <- unique(sampleMsmts$SITE_IDENTIFIER)
-  numCore <- as.integer(0.5*detectCores())
-  clusterInFunction <- makeCluster(numCore)
-  numofrow <- as.integer(length(allsites)/numCore)
-  inputdata_list <- list()
-  for (indicore in 1:numCore) {
-    if(indicore != numCore){
-      indisites <- allsites[((indicore-1)*numofrow+1):(indicore*numofrow)]
-    } else {
-      indisites <- allsites[((indicore-1)*numofrow+1):(length(allsites))]
+  debugTreeEditing <- FALSE
+  if(debugTreeEditing){
+    browser()
+    treemeasurements <- treemsmtEditing(compilationType = compilationType,
+                                        treemsmts = treemeasurements,
+                                        sitevisits = sampleMsmts)
+    gc()
+  } else {
+    allsites <- unique(sampleMsmts$SITE_IDENTIFIER)
+    numCore <- as.integer(0.5*detectCores())
+    clusterInFunction <- makeCluster(numCore)
+    numofrow <- as.integer(length(allsites)/numCore)
+    inputdata_list <- list()
+    for (indicore in 1:numCore) {
+      if(indicore != numCore){
+        indisites <- allsites[((indicore-1)*numofrow+1):(indicore*numofrow)]
+      } else {
+        indisites <- allsites[((indicore-1)*numofrow+1):(length(allsites))]
+      }
+      indi_treemsmt <- treemeasurements[SITE_IDENTIFIER %in% indisites,]
+      indi_sampleMsmts <- unique(sampleMsmts[SITE_IDENTIFIER %in% indisites,
+                                             .(SITE_IDENTIFIER, VISIT_NUMBER,
+                                               VISIT_TYPE, TYPE_CD)])
+      inputdata_list[[indicore]] <- list("treemeasurements" = indi_treemsmt,
+                                         "sitevisits" = indi_sampleMsmts)
+      rm(indi_treemsmt, indisites, indi_sampleMsmts)
     }
-    indi_treemsmt <- treemeasurements[SITE_IDENTIFIER %in% indisites,]
-    indi_sampleMsmts <- unique(sampleMsmts[SITE_IDENTIFIER %in% indisites,
-                                           .(SITE_IDENTIFIER, VISIT_NUMBER, VISIT_TYPE)])
-    inputdata_list[[indicore]] <- list("treemeasurements" = indi_treemsmt,
-                                       "sitevisits" = indi_sampleMsmts)
-    rm(indi_treemsmt, indisites, indi_sampleMsmts)
-  }
-  rm(treemeasurements)
-  gc()
-  clusterExport(clusterInFunction,
-                varlist = c("treemsmtEditing",
-                            "dbhManualCorrection",
-                            "data.table", ":=",
-                            "compilationType",
-                            "shift"),
-                envir = environment())
-  allresults <- parLapply(cl = clusterInFunction,
-                          inputdata_list,
-                          function(x){treemsmtEditing(compilationType = compilationType,
-                                                      treemsmts = x$treemeasurements,
-                                                      sitevisits = x$sitevisits)})
-  stopCluster(clusterInFunction)
-  rm(inputdata_list)
-  gc()
-  for (i in 1:length(allresults)) {
-    if(i == 1){
-      treemeasurements <- allresults[[i]]
-    } else {
-      treemeasurements <- rbind(treemeasurements, allresults[[i]],
-                                fill = TRUE)
+    rm(treemeasurements)
+    gc()
+    clusterExport(clusterInFunction,
+                  varlist = c("treemsmtEditing",
+                              "dbhManualCorrection",
+                              "data.table", ":=",
+                              "compilationType",
+                              "shift"),
+                  envir = environment())
+    allresults <- parLapply(cl = clusterInFunction,
+                            inputdata_list,
+                            function(x){treemsmtEditing(compilationType = compilationType,
+                                                        treemsmts = x$treemeasurements,
+                                                        sitevisits = x$sitevisits)})
+    stopCluster(clusterInFunction)
+    rm(inputdata_list)
+    gc()
+    for (i in 1:length(allresults)) {
+      if(i == 1){
+        treemeasurements <- allresults[[i]]
+      } else {
+        treemeasurements <- rbind(treemeasurements, allresults[[i]],
+                                  fill = TRUE)
+      }
     }
+    rm(allsites, numCore, clusterInFunction, numofrow,
+       allresults)
+    gc()
   }
-  rm(allsites, numCore, clusterInFunction, numofrow,
-     allresults)
-  gc()
+
 
   ## based on discussion between Dan and sampling team on April 25, 2023
   ## for the ages that were measured as rotten (ROT) and cannot reach center (CRC)
