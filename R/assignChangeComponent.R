@@ -33,7 +33,8 @@
 #' @author Yong Luo
 assignChangeComponent <- function(treelist, samples){
   treelist <- treelist[OUT_OF_PLOT_IND == "N" &
-                         !(MEASUREMENT_ANOMALY_CODE %in% c("Z")),
+                         (is.na(MEASUREMENT_ANOMALY_CODE) |
+                            MEASUREMENT_ANOMALY_CODE != "PSP-TALLY"),
                        .(SITE_IDENTIFIER, VISIT_NUMBER,
                          PLOT,
                          DIAMETER,
@@ -44,7 +45,6 @@ assignChangeComponent <- function(treelist, samples){
                          MSMT_MISSING_EDIT,
                          DIAMETER_EDIT,
                          MEASUREMENT_ANOMALY_CODE)]
-
   treelist <- rbind(treelist[MEASUREMENT_ANOMALY_CODE == "H"], # harvest trees regardless of diameter
                     treelist[(MEASUREMENT_ANOMALY_CODE != "H" |
                                 is.na(MEASUREMENT_ANOMALY_CODE)) &
@@ -87,12 +87,14 @@ assignChangeComponent <- function(treelist, samples){
            ':='(COMPONENT_CHANGE = "I",
                 VISIT_NUMBER_PREVIOUS = NA)]
   treelist[VISIT_NUMBER != VISIT_NUMBER_SITE_FIRST &
-             first_dead == VISIT_NUMBER & first_dead != firstVisit_tree,
+             first_dead == VISIT_NUMBER &
+             first_dead != firstVisit_tree,
            COMPONENT_CHANGE := "M"]
   treelist[first_dead == VISIT_NUMBER &
              VISIT_NUMBER != VISIT_NUMBER_SITE_FIRST &
-             first_dead == firstVisit_tree,
-           COMPONENT_CHANGE := "D"] # tree at first msmt is dead
+             first_dead == firstVisit_tree &
+             is.na(COMPONENT_CHANGE),
+           COMPONENT_CHANGE := "ID"] # tree at first msmt is dead
   treelist[LV_D == "D" & is.na(COMPONENT_CHANGE) &
              VISIT_NUMBER != VISIT_NUMBER_SITE_FIRST,
            COMPONENT_CHANGE := "D"] # dead trees after it turns to M and standing

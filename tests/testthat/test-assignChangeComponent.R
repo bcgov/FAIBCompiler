@@ -18,15 +18,15 @@ test_that("assignChangeComponent.R: assign component change at tree level.", {
                          MEASUREMENT_ANOMALY_CODE = as.character(NA),
                          OUT_OF_PLOT_IND = "N",
                          STOP = as.character(NA))
-  treelist_withchange <- assignChangeComponent(treelist = treelist,
-                                               samples = samples)
+  treelist_withchange <- suppressWarnings(assignChangeComponent(treelist = treelist,
+                                               samples = samples))
   expect_equal(nrow(treelist_withchange), 0) # as no change of component smried for variable plots
   rm(samples, treelist_withchange)
   samples <- data.table(SITE_IDENTIFIER = 1234567,
                         VISIT_NUMBER = 1:3,
                         SAMP_TYP = "F")
-  treelist_withchange <- assignChangeComponent(treelist = treelist,
-                                               samples = samples)
+  treelist_withchange <- suppressWarnings(assignChangeComponent(treelist = treelist,
+                                               samples = samples))
   expect_equal(treelist_withchange$COMPONENT_CHANGE,
                c(NA, "S", "S")) # as no change of component smried for variable plots
   rm(treelist, treelist_withchange)
@@ -44,28 +44,10 @@ test_that("assignChangeComponent.R: assign component change at tree level.", {
                          MEASUREMENT_ANOMALY_CODE = as.character(NA),
                          OUT_OF_PLOT_IND = "Y",
                          STOP = as.character(NA)) # all out of plot trees, should be removed
-  treelist_withchange <- assignChangeComponent(treelist = treelist,
-                                               samples = samples)
+  treelist_withchange <- suppressWarnings(assignChangeComponent(treelist = treelist,
+                                               samples = samples))
   expect_equal(nrow(treelist_withchange), 0) # as no change of component smried for variable plots
   rm(treelist, treelist_withchange)
-
-  treelist <- data.table(SITE_IDENTIFIER = 1234567,
-                         VISIT_NUMBER = 1:3,
-                         PLOT = "I",
-                         DIAMETER = 7:9,
-                         TREE_NUMBER = 1,
-                         TREE_EXTANT_CODE = "L",
-                         LVD_EDIT = as.character(NA),
-                         MSMT_MISSING_EDIT = as.character(NA),
-                         DIAMETER_EDIT = as.character(NA),
-                         MEASUREMENT_ANOMALY_CODE = "Z",
-                         OUT_OF_PLOT_IND = "N",
-                         STOP = as.character(NA)) # all out of plot trees, should be removed
-  treelist_withchange <- assignChangeComponent(treelist = treelist,
-                                               samples = samples)
-  expect_equal(nrow(treelist_withchange), 0) # as no change of component smried for variable plots
-  rm(treelist, treelist_withchange)
-
 
   # for ingrowth tree and survival tree
   treelist <- data.table(SITE_IDENTIFIER = 1234567,
@@ -101,6 +83,24 @@ test_that("assignChangeComponent.R: assign component change at tree level.", {
   treelist_withchange <- assignChangeComponent(treelist = treelist,
                                                samples = samples)
   expect_equal(treelist_withchange$COMPONENT_CHANGE, c("I", "M")) # as no change of component smried for variable plots
+  rm(treelist, treelist_withchange)
+
+  # for ingrowth tree and mortality tree
+  treelist <- data.table(SITE_IDENTIFIER = 1234567,
+                         VISIT_NUMBER = 2:3,
+                         PLOT = "I",
+                         DIAMETER = 8:9,
+                         TREE_NUMBER = 1,
+                         TREE_EXTANT_CODE = c("D", "D"),
+                         LVD_EDIT = as.character(NA),
+                         MSMT_MISSING_EDIT = as.character(NA),
+                         DIAMETER_EDIT = as.character(NA),
+                         MEASUREMENT_ANOMALY_CODE = as.character(NA),
+                         OUT_OF_PLOT_IND = "N",
+                         STOP = as.character(NA)) # all out of plot trees, should be removed
+  treelist_withchange <- assignChangeComponent(treelist = treelist,
+                                               samples = samples)
+  expect_equal(treelist_withchange$COMPONENT_CHANGE, c("ID", "D")) # as no change of component smried for variable plots
   rm(treelist, treelist_withchange, samples)
 
 
