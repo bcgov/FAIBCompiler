@@ -218,8 +218,12 @@ ISMCCompiler <- function(compilationType,
                                    SAMPLE_BREAK_POINT_TYPE, DBH_LIMIT_COUNT = DBHLIMIT_COUNT,
                                    DBH_LIMIT_TAG, SA_VEGCOMP, SA_VEGCOMP_SOURCE,
                                    NO_LIVE_TREE_MAPPED, NO_TOTAL_LIVE_TREE,
-                                   STEM_MAPPED_SAMPLE)],
+                                   STEM_MAPPED_SAMPLE, YSM_WKTHROUGH, YSM_WKTHROUGH_BOUNDARY)],
                         by = "CLSTR_ID")
+  if(compilationType == "PSP"){
+    samples_tmp[,':='(YSM_WKTHROUGH = NULL,
+                      YSM_WKTHROUGH_BOUNDARY = NULL)]
+  }
   saveRDS(samples_tmp,
           file.path(compilationPaths$compilation_db,
                     "sample_msmt_header.rds"))
