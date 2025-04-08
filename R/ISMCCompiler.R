@@ -248,7 +248,12 @@ ISMCCompiler <- function(compilationType,
   saveRDS(treelist_compchange,
           file.path(compilationPaths$compilation_db,
                     "component_change_treelevel.rds"))
-  rm(treelist_compchange, treemsmt_rep)
+  plotDynamicsTable <- plotDynamics(treelist = treelist_compchange,
+                                    samples = samples[VISIT_TYPE == "REP",])
+  saveRDS(plotDynamicsTable,
+          file.path(compilationPaths$compilation_db,
+                    "component_change_plotlevel.rds"))
+  rm(treelist_compchange, treemsmt_rep, plotDynamicsTable)
   gc()
   treelist_db <- treemsmt[,.(CLSTR_ID,
                              SITE_IDENTIFIER, VISIT_NUMBER,
@@ -470,7 +475,6 @@ ISMCCompiler <- function(compilationType,
   tree_ah1 <- readRDS(file.path(compilationPaths$compilation_sa, "vi_h.rds"))
   ## if a tree was bored multiple times, the age from the last measurements will be used
   ## to adjust the previous measurements
-
   tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
                                             by = "CLSTR_ID"),
                       siteAgeTrees = data.table::copy(tree_ah1))
