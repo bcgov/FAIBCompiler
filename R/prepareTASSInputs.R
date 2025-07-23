@@ -646,7 +646,8 @@ prepareTASSInputs <- function(inputPath,
                                                   bearing = treelist_smallplot_indisite$AZIMUTH,
                                                   distance = treelist_smallplot_indisite$DISTANCE,
                                                   plotRadius = 5.64,
-                                                  randomRotate = TRUE)
+                                                  randomRotate = TRUE,
+                                                  randomSeed = randomSeed)
     } else {
       treelist_smalltrees <- data.table(hexagonID = numeric(),
                                         objectID = numeric(),
@@ -662,7 +663,8 @@ prepareTASSInputs <- function(inputPath,
                                                 bearing = treelist_bigplot_indisite$AZIMUTH,
                                                 distance = treelist_bigplot_indisite$DISTANCE,
                                                 plotRadius = 11.28,
-                                                randomRotate = TRUE)
+                                                randomRotate = TRUE,
+                                                randomSeed = randomSeed)
     } else {
       treelist_bigtrees <- data.table(hexagonID = numeric(),
                                       objectID = numeric(),
