@@ -131,7 +131,10 @@ setMethod(
                        AGE_TP = as.numeric(NA))]
     treatdata <- siteAgeData[AGE_BOR %>>% 0 & HEIGHT %>>% 0 & SI_SP %>=% 0, ]
     untreatdata <- siteAgeData[!(uniObs %in% treatdata$uniObs),]
-    treatdata[, AGE_TP := 1]
+    ## the below is to derive site index based on height, age
+    ## (total age is indicated as ageType = 0, breast height age is indicated as ageType = 1)
+    treatdata[HT_CALC %==% 0, AGE_TP := 0] # using total age
+    treatdata[is.na(AGE_TP), AGE_TP := 1] # using breast height age, assuming bored height is 1.3 if missing
     treatdata_siinf <- SiteTools_HTBoredAge2SI(boredAge = treatdata$AGE_BOR,
                                                height = treatdata$HEIGHT,
                                                species = treatdata$SP_SINDEX,
@@ -164,8 +167,8 @@ setMethod(
                                                GROW_5YR, GROW_10YR, GROW_20YR, RATE_5, RATE_10, RATE_20,
                                                BORED_HT, BORE_AGE_LAB, LAB_AGE_EDIT, BORE_AGE_FLD, TOTAL_AG, PHYS_AGE,
                                                PRO_LEN, PRO_RING, BORED_AGE_FINAL, BORED_AGE_SOURCE, AGE_ADJUST_TO_BH,
-                                               SI_SP, CURVE_SOURCE, CURVE_NAME, AGE_BH, AGE_TO_BH = CORR,
-                                               AGE_TOT, SI_TREE, AGE_MEASURE_CODE,
+                                               SI_SP, AGE_TP, SI_TREE, CURVE_SOURCE, CURVE_NAME,
+                                               AGE_BH, AGE_TO_BH = CORR, AGE_TOT, AGE_MEASURE_CODE,
                                                RESIDUAL, BORED_AGE_FLAG)]
     return(siteAgeData)
   })
