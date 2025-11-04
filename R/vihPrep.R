@@ -61,7 +61,6 @@ vihPrep <- function(msmtInterval,
                         tree_last_msmt,
                         by = c("SITE_IDENTIFIER", "PLOT", "TREE_NO"),
                         all.x = TRUE)
-
   siteAgeTrees_last <- siteAgeTrees[VISIT_NUMBER == tree_last_times,
                                     .(SITE_IDENTIFIER,
                                       PLOT,
@@ -86,12 +85,14 @@ vihPrep <- function(msmtInterval,
                BORED_AGE_FLAG := "Reference"]
   siteAgeTrees[AGE_MEASURE_CODE %in% c("PRE", "NOC") &
                  BORED_HT != BORED_HT_last,
-               BORED_HT := BORED_HT_last] # for the pre msmt, the bored height should be
+               ':='(BORED_HT = BORED_HT_last,
+                    BORED_HT_FLAG = "Mismatch/missing, set to reference BORED_HT")] # for the pre msmt, the bored height should be
                                           # adjusted to reference bored height
 
   siteAgeTrees[is.na(BORED_HT) & is.na(AGE_MEASURE_CODE) &
                  VISIT_NUMBER != tree_last_times,
                ':='(BORED_AGE_FLAG = "Added from Reference",
+                    BORED_HT_FLAG = "Mismatch/missing, set to reference BORED_HT",
                     AGE_MEASURE_CODE = "CALC",
                     BORED_HT = BORED_HT_last,
                     BORE_AGE_FLD = BORAG_FL_last - (MEAS_YR_REF - MEAS_YR),
@@ -112,7 +113,8 @@ vihPrep <- function(msmtInterval,
   siteAgeTrees[BORED_AGE_FLAG == "LAB_AGE Corrected from Reference" &
                  (BORED_HT_last != BORED_HT | is.na(BORED_HT)),
                ':='(BORED_HT = BORED_HT_last, # bored ht set to reference
-                    BORED_AGE_FLAG = "LAB_AGE Corrected from Reference, BORED_HT set to Reference")]
+                    BORED_AGE_FLAG = "LAB_AGE Corrected from Reference",
+                    BORED_HT_FLAG = "Mismatch/missing, set to reference BORED_HT")]
   siteAgeTrees[((BORE_AGE_FLD != BORE_FLD_adj |
                    is.na(BORE_AGE_FLD))) &
                  !is.na(BORE_FLD_adj) &
@@ -122,7 +124,8 @@ vihPrep <- function(msmtInterval,
   siteAgeTrees[BORED_AGE_FLAG == "FLD_AGE Corrected from Reference" &
                  (BORED_HT_last != BORED_HT | is.na(BORED_HT)),
                ':='(BORED_HT = BORED_HT_last, # bored ht set to reference
-                    BORED_AGE_FLAG = "FLD_AGE Corrected from Reference, BORED_HT set to Reference")]
+                    BORED_AGE_FLAG = "FLD_AGE Corrected from Reference",
+                    BORED_HT_FLAG = "Mismatch/missing, set to reference BORED_HT")]
 
 
   siteAgeTrees[((TOTAL_AG != TOTAL_AGE_adj |
@@ -134,8 +137,11 @@ vihPrep <- function(msmtInterval,
   siteAgeTrees[BORED_AGE_FLAG == "TOTAL_AGE Corrected from Reference" &
                  (BORED_HT_last != BORED_HT | is.na(BORED_HT)),
                ':='(BORED_HT = BORED_HT_last, # bored ht set to reference
-                    BORED_AGE_FLAG = "TOTAL_AGE Corrected from Reference, BORED_HT set to Reference")]
-
+                    BORED_AGE_FLAG = "TOTAL_AGE Corrected from Reference",
+                    BORED_HT_FLAG = "Mismatch/missing, set to reference BORED_HT")]
+  siteAgeTrees[is.na(BORED_HT),
+               ':='(BORED_HT = 1.3,
+                    BORED_HT_FLAG = "Missing, set to 1.3m")] # a fix for the bored trees missing bored height
   siteAgeTrees[is.na(AGE_MEASURE_CODE) & !is.na(BORED_AGE_FLAG),
                AGE_MEASURE_CODE := "CALC"]
   siteAgeTrees[,':='(tree_last_times = NULL,
