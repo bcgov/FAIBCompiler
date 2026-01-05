@@ -44,17 +44,17 @@ setMethod(
     siteAgeData[BARK_THK %>>% 0 & BNG_DIAM %>>% 0, BARK_PCT := 100*((BARK_THK*0.2)/BNG_DIAM)]
     ## CALL annualGrowthRataCalculator function
     siteAgeData[!is.na(BNG_DIAM), ':='(RATE_5 = FAIBBase::annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
-                                                                           growthIncrement = GROW_5YR,
-                                                                           growthYear = 5,
-                                                                           barkThickness = BARK_TEMP),
+                                                                                     growthIncrement = GROW_5YR,
+                                                                                     growthYear = 5,
+                                                                                     barkThickness = BARK_TEMP),
                                        RATE_10 = FAIBBase::annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
-                                                                            growthIncrement = GROW_10YR,
-                                                                            growthYear = 10,
-                                                                            barkThickness = BARK_TEMP),
+                                                                                      growthIncrement = GROW_10YR,
+                                                                                      growthYear = 10,
+                                                                                      barkThickness = BARK_TEMP),
                                        RATE_20 = FAIBBase::annualGrowthRateCalculator(boredDiameter = BNG_DIAM,
-                                                                            growthIncrement = GROW_20YR,
-                                                                            growthYear = 20,
-                                                                            barkThickness = BARK_TEMP))]
+                                                                                      growthIncrement = GROW_20YR,
+                                                                                      growthYear = 20,
+                                                                                      barkThickness = BARK_TEMP))]
     siteAgeData[BARK_THK %>>% 0 & BNG_DIAM %>>% 0,
                 BARK_PCT := 100*(BARK_THK*0.2)/BNG_DIAM]
 
@@ -66,53 +66,43 @@ setMethod(
     siteAgeData[, ':='(HT_OLD = HEIGHT)]
     siteAgeData[HEIGHT %<=% 1.3, ':='(HEIGHT = 1.31)]
 
-    ## assign bored age, first part of the age-ind.sas
-    ## need check with rene to make sure the order makes sense
-    siteAgeData[, unitreeid := paste0(SITE_IDENTIFIER, "-", PLOT, "-", TREE_NO)]
+    #######################
     siteAgeData[, HT_CALC := BORED_HT]
-    siteAgeData[!(BORE_AGE_LAB %in% c(NA, 0)),
-                ':='(AGE_BOR = boredAgeCalculator_Bore(officeBoredAge = as.numeric(BORE_AGE_LAB)),
-                     BORED_AGE_SOURCE = "Lab Age")]
-    siteAgeData[is.na(BORED_AGE_SOURCE) &
-                  !(BORE_AGE_FLD %in% c(NA, 0)),
-                ':='(AGE_BOR = boredAgeCalculator_Bore(fieldBoredAge = as.numeric(BORE_AGE_FLD)),
-                     BORED_AGE_SOURCE = "Field Age")]
-    siteAgeData[is.na(BORED_AGE_SOURCE) &
-                  !(TOTAL_AG %in% c(NA, 0)),
-                ':='(AGE_BOR = boredAgeCalculator_Total(as.numeric(TOTAL_AG)),
-                     BORED_AGE_SOURCE = "Total Age")]
-    totagetrees <- unique(siteAgeData[BORED_AGE_SOURCE == "Total Age"]$unitreeid)
-    siteAgeData[unitreeid %in% totagetrees,
-                BORED_AGE_SOURCE := "Total Age"]
-
-    siteAgeData[is.na(BORED_AGE_SOURCE) &
-                  !(PHYS_AGE %in% c(NA, 0)),
-                ':='(AGE_BOR = boredAgeCalculator_Phys(as.numeric(PHYS_AGE)),
-                     BORED_AGE_SOURCE = "Physiologic Age")]
-    physagetrees <- unique(siteAgeData[BORED_AGE_SOURCE == "Physiologic Age"]$unitreeid)
-    siteAgeData[unitreeid %in% physagetrees,
-                BORED_AGE_SOURCE := "Physiologic Age"]
-
-
+    siteAgeData[BORED_AGE_SOURCE == "Lab Age",
+                AGE_BOR := boredAgeCalculator_Bore(officeBoredAge = as.numeric(BORE_AGE_LAB))]
+    siteAgeData[BORED_AGE_SOURCE == "Field Age",
+                AGE_BOR := boredAgeCalculator_Bore(fieldBoredAge = as.numeric(BORE_AGE_FLD))]
+    siteAgeData[BORED_AGE_SOURCE == "Total Age",
+                AGE_BOR := boredAgeCalculator_Total(as.numeric(TOTAL_AG))]
+    siteAgeData[BORED_AGE_SOURCE == "Physiologic Age",
+                AGE_BOR := boredAgeCalculator_Phys(as.numeric(PHYS_AGE))]
     ## for the rot and crc, if prorated age is missing
-    ## use microscope_age as prorated age, if microscope_age is missing
-    siteAgeData[AGE_MEASURE_CODE %in% c("ROT", "CRC") &
-                  PRO_LEN %>>% 0 &
-                  PRO_RING %>>% 0,
-                ':='(AGE_BOR = boredAgeCalculator_Prorated(ringLength_prorated = PRO_LEN,
-                                                           ringCount_prorated = PRO_RING,
-                                                           boreDiameter = BNG_DIAM,
-                                                           barkThickness = BARK_TEMP),
-                     BORED_AGE_SOURCE = "Prorated Age")]
-    proragetrees <- unique(siteAgeData[BORED_AGE_SOURCE == "Prorated Age"]$unitreeid)
-    siteAgeData[unitreeid %in% proragetrees,
-                BORED_AGE_SOURCE := "Prorated Age"]
+    siteAgeData[BORED_AGE_SOURCE == "Prorated Age from CRC/ROT" &
+                  BORED_AGE_FLAG == "Reference",
+                AGE_BOR := boredAgeCalculator_Prorated(ringLength_prorated = PRO_LEN,
+                                                       ringCount_prorated = PRO_RING,
+                                                       boreDiameter = BNG_DIAM,
+                                                       barkThickness = BARK_TEMP)]
+    ## use microscope_age as prorated age for NOP trees
+    siteAgeData[BORED_AGE_SOURCE == "Lab Prorated Age from NOP",
+                AGE_BOR := BORE_AGE_LAB]
+    ## otherwise use field ages
+    siteAgeData[BORED_AGE_SOURCE == "Field Prorated Age from NOP",
+                AGE_BOR := BORE_AGE_FLD]
     siteAgeData[MEAS_YR == MEAS_YR_REF,
                 age_ref := AGE_BOR]
     siteAgeData[, age_ref := mean(age_ref, na.rm = TRUE),
                 by = "unitreeid"]
-    siteAgeData[BORED_AGE_SOURCE %in% c("Total Age", "Physiologic Age", "Prorated Age"),
-                AGE_BOR := age_ref - (MEAS_YR_REF - MEAS_YR)]
+
+    siteAgeData[BORED_AGE_FLAG != "Reference" &
+                  BORED_AGE_SOURCE == "Prorated Age from CRC/ROT",
+                ':='(AGE_BOR = age_ref - (MEAS_YR_REF - MEAS_YR),
+                     BORED_AGE_FLAG = "Prorated age from Reference")]
+    siteAgeData[BORED_AGE_SOURCE == "Prorated Age from CRC/ROT" &
+                  AGE_BOR < 0,
+                ':='(AGE_BOR = NA,
+                     BORED_AGE_FLAG = "Adjusted prorated age less than 0",
+                     BORED_AGE_SOURCE = "Not Applicable")]
     siteAgeData[,':='(BORED_AGE_FINAL = AGE_BOR)]
     ## call boredagecalculator_crted
     siteAgeData[HT_CALC %!=% 1.3 & HT_CALC %!=% 0,
@@ -159,7 +149,7 @@ setMethod(
     siteAgeData[, HEIGHT := HT_OLD]
     siteAgeData[, ':='(HT_OLD = NULL)]
     siteAgeData[SUIT_HT == "N" | SUIT_TR == "N", SI_TREE := as.numeric(NA)]
-    siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID,
+    siteAgeData <- siteAgeData[order(uniObs),.(CLSTR_ID, SITE_IDENTIFIER,
                                                PLOT, TREE_NO, SPECIES, SP_SINDEX,
                                                SUIT_TR, SUIT_HT, SUIT_SI, FIZ, BEC_ZONE, REGION_IC,
                                                TH_TREE, TP_TREE, RA_TREE, SP0,
