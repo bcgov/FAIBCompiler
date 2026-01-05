@@ -54,7 +54,6 @@ vihPrep <- function(msmtInterval,
                TOTAL_AG := NA]
 
   ## the below codes to determine the best age measurement for multiple measure
-  # only one measurement
   siteAgeTrees[, unitreeid := paste0(SITE_IDENTIFIER, "_", PLOT, "_", TREE_NO)]
   siteAgeTrees[AGE_MEASURE_CODE == "PTH" & # for PTH trees
                  (BORE_AGE_FLD > 0 | # field age > 0
@@ -89,9 +88,10 @@ vihPrep <- function(msmtInterval,
   tree_only_one <- siteAgeTrees_good[,.(tree_last_time = max(VISIT_NUMBER),
                                    tree_visits = length(BORED_HT)),
                                 by = "unitreeid"]
+  # only one measurement
   tree_last_msmt <- tree_only_one[tree_visits == 1, .(unitreeid, tree_last_time)]
   ## based on Scott's recommandation the priority order is
-  ## PTH>NOP>WHO>OUT>CRC>ROT>PHY
+  ## PTH>NOP>WHO>OUT>CRC>ROT>PHY>EST
   ## for multiple trees
   ## 1. last pth is the most reliable source
   tree_last_pth <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
