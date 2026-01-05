@@ -43,7 +43,34 @@ This is a basic example which shows you how to solve a common problem:
 ## basic example code
 ```
 
-### Project Status
+### Project Updates
+
+#### 2026-01-05
+
+1.  Specified age information availability based on an age measurement
+    code.
+
+    PTH, must have either lab age or field age.
+
+    NOP, must have eigher lab age or field age, plus lab/field missing
+    age.
+
+    WHO, must have field age.
+
+    OUT, must have lab/field age.
+
+    CRC and ROT, must have pro-length, pro-count and diameter. However,
+    for historic PSP data, lab/field age provided.
+
+    PHY, must have phy_age.
+
+    EST, must have either lab or field age.’
+
+2.  improvement on the best age for multiple age measurements with
+    different measure codes. The order of age quality among different
+    measurement codes is PTH\>NOP\>WHO\>OUT\>CRC\>ROT\>PHY\>EST.
+
+3.  include small tree summaries in the publish data.
 
 ### Getting Help or Reporting an Issue
 
