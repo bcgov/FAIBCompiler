@@ -638,6 +638,42 @@ preparePublishData <- function(compilationPath,
                                 all.x = TRUE)
   datadictionary_publish[["faib_tree_detail"]] <- faib_tree_detail_dic
 
+  small_tree_bycl <- readRDS(file.path(compilationPath,
+                                paste0("compilation_", compilationType, "_db"),
+                                "Smries_smallTree_byCL.rds"))
+  write.csv(small_tree_bycl,
+            file.path(publishPath,
+                      "faib_smltree_smries_cl.csv"),
+            row.names = FALSE,
+            na = "")
+  write.xlsx(list(SHEET1 = small_tree_bycl),
+             file.path(publishPath,
+                       "faib_smltree_smries_cl.xlsx"))
+  smallsmrie_dic <- data.table(Attribute = names(small_tree_bycl))
+  smallsmrie_dic <- merge(smallsmrie_dic,
+                                datadictionary_all,
+                                by = "Attribute",
+                                all.x = TRUE)
+  datadictionary_publish[["faib_smltree_smries_cl"]] <- smallsmrie_dic
+
+  small_tree_byclsp <- readRDS(file.path(compilationPath,
+                                paste0("compilation_", compilationType, "_db"),
+                                "Smries_smallTree_byCLSP.rds"))
+  write.csv(small_tree_byclsp,
+            file.path(publishPath,
+                      "faib_smltree_smries_clsp.csv"),
+            row.names = FALSE,
+            na = "")
+  write.xlsx(list(SHEET1 = small_tree_byclsp),
+             file.path(publishPath,
+                       "faib_smltree_smries_clsp.xlsx"))
+  smallsmrie_dic_sp <- data.table(Attribute = names(small_tree_byclsp))
+  smallsmrie_dic_sp <- merge(smallsmrie_dic_sp,
+                          datadictionary_all,
+                          by = "Attribute",
+                          all.x = TRUE)
+  datadictionary_publish[["faib_smltree_smries_clsp"]] <- smallsmrie_dic_sp
+
   write.xlsx(datadictionary_publish,
              file.path(publishPath, "data_dictionary.xlsx"))
   ## prepare readme file
@@ -706,7 +742,9 @@ preparePublishData <- function(compilationPath,
                                    "faib_compiled_spcsmries", "Summaries for BA and VOLs without walk-through adjustment for all samples at CLSTR_ID+SPECIES+UTIL",
                                    "faib_compiled_spcsmries_wk", "Summaries for BA and VOLs with walk-through adjustment for walk-through samples at CLSTR_ID+SPECIES+UTIL",
                                    "faib_compiled_spcsmries_siteage", "Summaries for ages and site index at CLSTR_ID+SPECIES",
-                                   "faib_tree_detail", "Tree details at CLSTR_ID+PLOT+TREE_NO")) %>%
+                                   "faib_tree_detail", "Tree details at CLSTR_ID+PLOT+TREE_NO",
+                                   "faib_smltree_smries_cl",  "Small tree summaries at CLSTR_ID",
+                                   "faib_smltree_smries_clsp",  "Small tree summaries at CLSTR_ID+SPECIES")) %>%
     data.table
   allfiles_desc <- allfiles_desc[V1 %in% allfiles,]
   allfiles_desc[, outputText := paste0("    ", V1, ": ", V2, "\n")]
