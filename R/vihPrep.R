@@ -6,7 +6,7 @@
 #'
 #' @param msmtInterval data.table, contains sample visits.
 #' @param siteAgeTrees data.table, sample trees.
-#'
+#' @param compilationType character, Compilation type, either \code{nonPSP} or \code{PSP}.
 #'
 #' @return A data table
 #'
@@ -19,7 +19,8 @@
 #'
 #' @author Yong Luo
 vihPrep <- function(msmtInterval,
-                    siteAgeTrees){
+                    siteAgeTrees,
+                    compilationType){
   siteAgeTrees <- merge(siteAgeTrees, msmtInterval,
                         by = "CLSTR_ID",
                         all.x = TRUE)
@@ -52,9 +53,43 @@ vihPrep <- function(msmtInterval,
                     AGE_MOD_COMMENT = "Total age can not taken above 0 height, moved to field age")]
   siteAgeTrees[AGE_MOD_COMMENT == "Total age can not taken above 0 height, moved to field age",
                TOTAL_AG := NA]
+  siteAgeTrees[, unitreeid := paste0(SITE_IDENTIFIER, "_", PLOT, "_", TREE_NO)]
+  ## the below codes to fix psp site tree measurements
+  if(compilationType == "PSP"){
+    ## 1. pre measurement without previous measurement code, only for PSP
+    agetrees_onlypre <- unique(siteAgeTrees[!(AGE_MEASURE_CODE %in% c(NA, "CALC")),
+                                            .(unitreeid,
+                                              AGE_MEASURE_CODE)])
+    agetrees_onlypre[, code_num := length(AGE_MEASURE_CODE),
+                     by = "unitreeid"]
+    agetrees_onlypre <- agetrees_onlypre[code_num == 1 &
+                                           AGE_MEASURE_CODE == "PRE",
+                                         .(unitreeid, age_meas_code_new = "PTH")]
+    ## 2. Missing measurement code but with either lab or field age and bored height
+    agetrees_onlyNA <- unique(siteAgeTrees[is.na(AGE_MEASURE_CODE) |
+                                             AGE_MEASURE_CODE != "CALC",
+                                           .(unitreeid,
+                                             AGE_MEASURE_CODE)])
+    agetrees_onlyNA[, code_num := length(AGE_MEASURE_CODE),
+                    by = "unitreeid"]
+    agetrees_onlyNA <- agetrees_onlyNA[code_num == 1 &
+                                         is.na(AGE_MEASURE_CODE),
+                                       .(unitreeid, age_meas_code_new = "PTH")]
+    siteAgeTrees <- merge(siteAgeTrees,
+                          rbind(agetrees_onlypre, agetrees_onlyNA),
+                          by = "unitreeid",
+                          all.x = TRUE)
+    siteAgeTrees[is.na(AGE_MEASURE_CODE) &
+                   age_meas_code_new == "PTH" &
+                   (BORE_AGE_FLD > 0 |
+                      BORE_AGE_LAB > 0 |
+                      TOTAL_AG > 0),
+                 AGE_MEASURE_CODE := "PTH"] # assume they were PTH
+    siteAgeTrees[, age_meas_code_new := NULL]
+    rm(agetrees_onlypre, agetrees_onlyNA)
+  }
 
   ## the below codes to determine the best age measurement for multiple measure
-  siteAgeTrees[, unitreeid := paste0(SITE_IDENTIFIER, "_", PLOT, "_", TREE_NO)]
   siteAgeTrees[AGE_MEASURE_CODE == "PTH" & # for PTH trees
                  (BORE_AGE_FLD > 0 | # field age > 0
                     BORE_AGE_LAB > 0 | # or lab age > 0
@@ -74,11 +109,24 @@ vihPrep <- function(msmtInterval,
                     BORE_AGE_LAB > 0),  # or lab age > 0
                ageinfor := "OK"]
   siteAgeTrees[AGE_MEASURE_CODE %in% c("CRC", "ROT") & # for CRC and ROT trees
-               (PRO_LEN > 0 & PRO_RING > 0 & BNG_DIAM > 0), # all pro_len, pro_ring and bng_diam
+                 (PRO_LEN > 0 & PRO_RING > 0 & BNG_DIAM > 0), # all pro_len, pro_ring and bng_diam
                ageinfor := "OK"]                            # needed for prorate
+  # for PSP prior to 2020, the CRC and ROT is OK
+  # if the lab or field age is present
+  if(compilationType == "PSP"){
+    siteAgeTrees[AGE_MEASURE_CODE %in% c("CRC", "ROT") & # for CRC and ROT trees
+                   (BORE_AGE_FLD  > 0 |
+                      BORE_AGE_LAB > 0) &
+                   MEAS_YR < 2021, # either lab age or field age is available
+                 ageinfor := "OK"]
+  }
   siteAgeTrees[AGE_MEASURE_CODE == "PHY" & # for PHY trees
                  PHYS_AGE > 0, # phys_age must present
                ageinfor := "OK"]
+  siteAgeTrees[AGE_MEASURE_CODE == "EST" & # for EST trees
+                 is.na(BORE_AGE_FLD) &
+                 BORE_AGE_LAB  > 0, # merge lab age to field
+               BORE_AGE_FLD := BORE_AGE_LAB]
   siteAgeTrees[AGE_MEASURE_CODE == "EST" & # for EST trees
                  BORE_AGE_FLD > 0, # estimate age must be from field
                ageinfor := "OK"]
@@ -86,8 +134,8 @@ vihPrep <- function(msmtInterval,
   siteAgeTrees_good <- siteAgeTrees[ageinfor == "OK",]
   siteAgeTrees[, ageinfor := NULL]
   tree_only_one <- siteAgeTrees_good[,.(tree_last_time = max(VISIT_NUMBER),
-                                   tree_visits = length(BORED_HT)),
-                                by = "unitreeid"]
+                                        tree_visits = length(BORED_HT)),
+                                     by = "unitreeid"]
   # only one measurement
   tree_last_msmt <- tree_only_one[tree_visits == 1, .(unitreeid, tree_last_time)]
   ## based on Scott's recommandation the priority order is
@@ -95,9 +143,9 @@ vihPrep <- function(msmtInterval,
   ## for multiple trees
   ## 1. last pth is the most reliable source
   tree_last_pth <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "PTH",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "PTH",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_pth)
   ## 2. last nop wins the rest
   tree_last_nop <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
@@ -108,40 +156,40 @@ vihPrep <- function(msmtInterval,
 
   ## 3. last WHO wins the rest
   tree_last_who <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "WHO",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "WHO",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_who)
   ## 4. last out wins the rest
   tree_last_out <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "OUT",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "OUT",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_out)
   ## 5. last crc wins the rest
   tree_last_crc <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "CRC",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "CRC",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_crc)
   ## 6. last ROT wins the rest
   tree_last_rot <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "ROT",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "ROT",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_rot)
   ## 7. last phy wins
   tree_last_phy <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "PHY",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "PHY",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_phy)
 
   ## 8. last est wins
   tree_last_est <- siteAgeTrees_good[!(unitreeid %in% tree_last_msmt$unitreeid) &
-                                  AGE_MEASURE_CODE == "EST",
-                                .(tree_last_time = max(VISIT_NUMBER)),
-                                by = "unitreeid"]
+                                       AGE_MEASURE_CODE == "EST",
+                                     .(tree_last_time = max(VISIT_NUMBER)),
+                                     by = "unitreeid"]
   tree_last_msmt <- rbind(tree_last_msmt, tree_last_est)
 
   siteAgeTrees <- merge(siteAgeTrees,
@@ -163,7 +211,7 @@ vihPrep <- function(msmtInterval,
   ### first from NOP trees
   ## for NOP trees, the age should be prorated
   siteAgeTrees_last[AGE_MEASURE_CODE == "NOP",
-              BORED_AGE_SOURCE := "prorated_needed"]
+                    BORED_AGE_SOURCE := "prorated_needed"]
   ## the age_bor should take order from
   ## 1. lab age + lab missing age
   ## 2. lab age + field missing age
@@ -171,23 +219,23 @@ vihPrep <- function(msmtInterval,
   ## 4. field age + field missing age
   ## 5. field age
   siteAgeTrees_last[BOREAG_LB_last > 0 &
-                AGE_CORE_MISSED_YEARS_LAB > 0 &
-                BORED_AGE_SOURCE == "prorated_needed",
-              ':='(BOREAG_LB_last = BOREAG_LB_last + AGE_CORE_MISSED_YEARS_LAB,
-                   BORED_AGE_SOURCE = "Lab Prorated Age from NOP")]
+                      AGE_CORE_MISSED_YEARS_LAB > 0 &
+                      BORED_AGE_SOURCE == "prorated_needed",
+                    ':='(BOREAG_LB_last = BOREAG_LB_last + AGE_CORE_MISSED_YEARS_LAB,
+                         BORED_AGE_SOURCE = "Lab Prorated Age from NOP")]
   siteAgeTrees_last[BOREAG_LB_last > 0 &
-                AGE_CORE_MISSED_YEARS_FIELD > 0 &
-                BORED_AGE_SOURCE == "prorated_needed",
-              ':='(BOREAG_LB_last = BOREAG_LB_last + AGE_CORE_MISSED_YEARS_FIELD,
-                   BORED_AGE_SOURCE = "Lab Prorated Age from NOP")]
+                      AGE_CORE_MISSED_YEARS_FIELD > 0 &
+                      BORED_AGE_SOURCE == "prorated_needed",
+                    ':='(BOREAG_LB_last = BOREAG_LB_last + AGE_CORE_MISSED_YEARS_FIELD,
+                         BORED_AGE_SOURCE = "Lab Prorated Age from NOP")]
   siteAgeTrees_last[BOREAG_LB_last > 0 &
-                BORED_AGE_SOURCE == "prorated_needed",
-              ':='(BOREAG_LB_last = BOREAG_LB_last,
-                   BORED_AGE_SOURCE = "Lab Prorated Age from NOP")]
+                      BORED_AGE_SOURCE == "prorated_needed",
+                    ':='(BOREAG_LB_last = BOREAG_LB_last,
+                         BORED_AGE_SOURCE = "Lab Prorated Age from NOP")]
   siteAgeTrees_last[BOREAG_FD_last > 0 &
-                BORED_AGE_SOURCE == "prorated_needed",
-              ':='(BOREAG_FD_last = BOREAG_FD_last + AGE_CORE_MISSED_YEARS_FIELD,
-                   BORED_AGE_SOURCE = "Field Prorated Age from NOP")]
+                      BORED_AGE_SOURCE == "prorated_needed",
+                    ':='(BOREAG_FD_last = BOREAG_FD_last + AGE_CORE_MISSED_YEARS_FIELD,
+                         BORED_AGE_SOURCE = "Field Prorated Age from NOP")]
   ##
   ### this is a temp fix for PTH trees, when there is a missing age available
   siteAgeTrees_last[AGE_MEASURE_CODE == "PTH",
@@ -197,22 +245,22 @@ vihPrep <- function(msmtInterval,
   siteAgeTrees_last[AGE_MEASURE_CODE %in% c("CRC", "ROT"),
                     BORED_AGE_SOURCE := "Prorated Age from CRC/ROT"]
 
-  ## for crc and rot, it only can be prorated
+  ## for est
   siteAgeTrees_last[AGE_MEASURE_CODE == "EST",
                     BORED_AGE_SOURCE := "Estimated Age"]
 
   siteAgeTrees_last[BOREAG_LB_last > 0 &
                       is.na(BORED_AGE_SOURCE),
-              BORED_AGE_SOURCE := "Lab Age"]
+                    BORED_AGE_SOURCE := "Lab Age"]
   siteAgeTrees_last[BOREAG_FD_last > 0 &
                       is.na(BORED_AGE_SOURCE),
-              BORED_AGE_SOURCE := "Field Age"]
+                    BORED_AGE_SOURCE := "Field Age"]
   siteAgeTrees_last[TOTAL_AG_last > 0 &
                       is.na(BORED_AGE_SOURCE),
-              BORED_AGE_SOURCE := "Total Age"]
+                    BORED_AGE_SOURCE := "Total Age"]
   siteAgeTrees_last[PHYS_AGE_last > 0 &
                       is.na(BORED_AGE_SOURCE),
-              BORED_AGE_SOURCE := "Physiologic Age"]
+                    BORED_AGE_SOURCE := "Physiologic Age"]
 
   siteAgeTrees_last[is.na(BORED_HT_last) &
                       BORED_AGE_SOURCE == "Total Age",
@@ -242,19 +290,13 @@ vihPrep <- function(msmtInterval,
                BORED_AGE_FLAG := "Reference"]
   siteAgeTrees[is.na(BORED_AGE_FLAG),
                BORED_AGE_FLAG := "NA"]
-  ## add populated trees
-  siteAgeTrees[is.na(BORED_HT) & is.na(AGE_MEASURE_CODE) &
-                 VISIT_NUMBER != tree_last_time &
-                 !is.na(MEAS_YR_REF),
-               ':='(AGE_MEASURE_CODE = "CALC")] # the age information is from last measurement
-
   ## for bored height adjustment
   siteAgeTrees[BORED_HT != BORED_HT_last |
                  is.na(BORED_HT) &
                  !is.na(MEAS_YR_REF),
                ':='(BORED_HT = BORED_HT_last,
                     BORED_HT_FLAG = "Mismatch/missing, set to reference BORED_HT")] # for the pre msmt, the bored height should be
-                                          # adjusted to reference bored height
+  # adjusted to reference bored height
 
   siteAgeTrees[!is.na(MEAS_YR_REF), # all have reference
                ':='(BORE_AGE_adj = BOREAG_LB_last - (MEAS_YR_REF - MEAS_YR),
@@ -272,31 +314,31 @@ vihPrep <- function(msmtInterval,
                  BORED_AGE_SOURCE %in% c("Lab Age", "Lab Prorated Age from NOP") &
                  (BORE_AGE_LAB != BORE_AGE_adj |
                     is.na(BORE_AGE_LAB)),
-               ':='(BORED_AGE_FLAG = "Lab age mismatch/missing Corrected from Reference",
+               ':='(BORED_AGE_FLAG = "Lab age mismatch/missing Extrapolated from Reference",
                     BORE_AGE_LAB = BORE_AGE_adj)]
   ## only need to adjust field age for below cases
   siteAgeTrees[BORED_AGE_FLAG != "Reference" &
-                 BORED_AGE_SOURCE %in% c("Field Age", "Field Prorated Age from NOP") &
+                 BORED_AGE_SOURCE %in% c("Field Age", "Field Prorated Age from NOP",
+                                         "Estimated Age") &
                  (BORE_AGE_FLD != BORE_FLD_adj |
                     is.na(BORE_AGE_FLD)),
-               ':='(BORED_AGE_FLAG = "Field age mismatch/missing Corrected from Reference",
+               ':='(BORED_AGE_FLAG = "Field age mismatch/missing Extrapolated from Reference",
                     BORE_AGE_FLD = BORE_FLD_adj)]
   ## only need to adjust total age for below cases
   siteAgeTrees[BORED_AGE_FLAG != "Reference" &
                  BORED_AGE_SOURCE == "Total Age" &
                  (TOTAL_AG != TOTAL_AGE_adj |
-                     is.na(TOTAL_AG)),
-               ':='(BORED_AGE_FLAG = "Total age mismatch/missing Corrected from Reference",
+                    is.na(TOTAL_AG)),
+               ':='(BORED_AGE_FLAG = "Total age mismatch/missing Extrapolated from Reference",
                     TOTAL_AG = TOTAL_AGE_adj)]
   ## only need to adjust phys age for below cases
   siteAgeTrees[BORED_AGE_FLAG != "Reference" &
                  BORED_AGE_SOURCE == "Physiologic Age" &
                  (PHYS_AGE != PHYS_AGE_adj |
-                     is.na(PHYS_AGE)),
-               ':='(BORED_AGE_FLAG = "Phys age mismatch/missing Corrected from Reference",
+                    is.na(PHYS_AGE)),
+               ':='(BORED_AGE_FLAG = "Phys age mismatch/missing Extrapolated from Reference",
                     PHYS_AGE = PHYS_AGE_adj)]
   ## for the crc and rot the age will be adjusted after prorating
-
   siteAgeTrees[,':='(tree_last_time = NULL,
                      BOREAG_FD_last = NULL,
                      BOREAG_LB_last = NULL,
@@ -312,11 +354,15 @@ vihPrep <- function(msmtInterval,
                      AGE_CORE_MISSED_YEARS_LAB = NULL)]
   siteAgeTrees[BORE_AGE_LAB <= 0,
                ':='(BORE_AGE_LAB = NA,
-                    BORED_AGE_FLAG = "Adjusted lab age less than 0",
+                    BORED_AGE_FLAG = "Extrapolated age less than 0",
                     BORED_AGE_SOURCE = "Not Applicable")]
   siteAgeTrees[BORE_AGE_FLD <= 0,
                ':='(BORE_AGE_FLD = NA,
-                    BORED_AGE_FLAG = "Adjusted field age less than 0",
+                    BORED_AGE_FLAG = "Extrapolated age less than 0",
+                    BORED_AGE_SOURCE = "Not Applicable")]
+  siteAgeTrees[TOTAL_AG <= 0,
+               ':='(TOTAL_AG = NA,
+                    BORED_AGE_FLAG = "Extrapolated age less than 0",
                     BORED_AGE_SOURCE = "Not Applicable")]
   return(siteAgeTrees)
 }

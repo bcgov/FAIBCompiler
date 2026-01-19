@@ -56,7 +56,7 @@ This is a basic example which shows you how to solve a common problem:
 
    PTH, must have either lab age or field age.
    
-   NOP, must have eigher lab age or field age, plus lab/field missing age.
+   NOP, must have either lab age or field age, plus lab/field missing age.
    
    WHO, must have field age.
    
@@ -68,8 +68,19 @@ This is a basic example which shows you how to solve a common problem:
    
    EST, must have either lab or field age.'
    
-2) improvement on the best age for multiple age measurements with different measure codes. The order of age quality among different measurement codes is PTH>NOP>WHO>OUT>CRC>ROT>PHY>EST.
-3) include small tree summaries in the publish data.
+2) Improvement on the best age for multiple age measurements with different measure codes. The order of age quality among different measurement codes is PTH>NOP>WHO>OUT>CRC>ROT>PHY>EST.
+3) Include small tree summaries in the publish data.
+
+#### 2026-01-13
+Fixed site tree issues for historic PSPs
+
+1). Missing age measurement code
+
+    If a site tree has either lab age or field age but no measurement code. The measurement code is assumed as "PTH"
+
+2). CRC and ROT before 2020
+    
+    Normally, the age for CRC and ROT should be pro-rated based on ring count, ring length and diameter. However, the historical PSPs missed one of these three items, preventing it from using the pro-rating method. For those trees, either lab or field age is available. Hence, in the compilation, the age is taken from either lab or field age.
 
 
 ### Getting Help or Reporting an Issue

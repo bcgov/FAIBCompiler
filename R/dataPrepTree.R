@@ -666,6 +666,10 @@ dataPrepTree <- function(compilationType,
                    AGE_CORE_TAKEN_IND,
                    LAB_AGE_EDIT = as.character(NA))]
   }
+  ## assign CALC for age measurement code here
+  vi_h[is.na(AGE_MEASURE_CODE) & is.na(BORED_HT),
+       AGE_MEASURE_CODE := "CALC"]
+
   vi_h_th <- treemeasurements[!is.na(AGE_MEASMT_HEIGHT) | !is.na(AGE_MEASURE_CODE),
                               .(CLSTR_ID, PLOT,
                                 TREE_NO = TREE_NUMBER,

@@ -72,17 +72,45 @@ setMethod(
                 AGE_BOR := boredAgeCalculator_Bore(officeBoredAge = as.numeric(BORE_AGE_LAB))]
     siteAgeData[BORED_AGE_SOURCE == "Field Age",
                 AGE_BOR := boredAgeCalculator_Bore(fieldBoredAge = as.numeric(BORE_AGE_FLD))]
+    siteAgeData[BORED_AGE_SOURCE == "Estimated Age", # for the estiamted age, the field age is used
+                AGE_BOR := boredAgeCalculator_Bore(fieldBoredAge = as.numeric(BORE_AGE_FLD))]
     siteAgeData[BORED_AGE_SOURCE == "Total Age",
                 AGE_BOR := boredAgeCalculator_Total(as.numeric(TOTAL_AG))]
     siteAgeData[BORED_AGE_SOURCE == "Physiologic Age",
                 AGE_BOR := boredAgeCalculator_Phys(as.numeric(PHYS_AGE))]
     ## for the rot and crc, if prorated age is missing
     siteAgeData[BORED_AGE_SOURCE == "Prorated Age from CRC/ROT" &
-                  BORED_AGE_FLAG == "Reference",
+                  BORED_AGE_FLAG == "Reference" &
+                  PRO_LEN > 0 &
+                  PRO_RING > 0 &
+                  BNG_DIAM > 0,
                 AGE_BOR := boredAgeCalculator_Prorated(ringLength_prorated = PRO_LEN,
                                                        ringCount_prorated = PRO_RING,
                                                        boreDiameter = BNG_DIAM,
                                                        barkThickness = BARK_TEMP)]
+    ## for historical PSP, PRO_LEN, PRO_RING and BNG_DIAM are not available,
+    ## hence, either lab age or field age is used AGE_BOR
+    if(compilationType == "PSP"){
+      siteAgeData[BORED_AGE_SOURCE == "Prorated Age from CRC/ROT" &
+                    BORED_AGE_FLAG == "Reference" &
+                    is.na(AGE_BOR) &
+                    BORE_AGE_LAB > 0,
+                  ':='(AGE_BOR = BORE_AGE_LAB,
+                       BORED_AGE_SOURCE = "Lab Age for CRC/ROT")]
+      siteAgeData[BORED_AGE_SOURCE == "Prorated Age from CRC/ROT" &
+                    BORED_AGE_FLAG == "Reference" &
+                    is.na(AGE_BOR) &
+                    BORE_AGE_FLD > 0,
+                  ':='(AGE_BOR = BORE_AGE_FLD,
+                       BORED_AGE_SOURCE = "Field Age for CRC/ROT")]
+      trees_lab_crcrot <- unique(siteAgeData[BORED_AGE_SOURCE == "Lab Age for CRC/ROT"]$unitreeid)
+      trees_fld_crcrot <- unique(siteAgeData[BORED_AGE_SOURCE == "Field Age for CRC/ROT"]$unitreeid)
+      siteAgeData[unitreeid %in% trees_lab_crcrot,
+                  BORED_AGE_SOURCE := "Lab Age for CRC/ROT"]
+      siteAgeData[unitreeid %in% trees_fld_crcrot,
+                  BORED_AGE_SOURCE := "Field Age for CRC/ROT"]
+      rm(trees_lab_crcrot, trees_fld_crcrot)
+    }
     ## use microscope_age as prorated age for NOP trees
     siteAgeData[BORED_AGE_SOURCE == "Lab Prorated Age from NOP",
                 AGE_BOR := BORE_AGE_LAB]
@@ -93,15 +121,20 @@ setMethod(
                 age_ref := AGE_BOR]
     siteAgeData[, age_ref := mean(age_ref, na.rm = TRUE),
                 by = "unitreeid"]
-
     siteAgeData[BORED_AGE_FLAG != "Reference" &
-                  BORED_AGE_SOURCE == "Prorated Age from CRC/ROT",
+                  BORED_AGE_SOURCE %in% c("Prorated Age from CRC/ROT",
+                                          "Lab Age for CRC/ROT",
+                                          "Field Age for CRC/ROT"),
                 ':='(AGE_BOR = age_ref - (MEAS_YR_REF - MEAS_YR),
-                     BORED_AGE_FLAG = "Prorated age from Reference")]
-    siteAgeData[BORED_AGE_SOURCE == "Prorated Age from CRC/ROT" &
+                     BORED_AGE_FLAG = "Prorated age missing Extrapolated from Reference")]
+
+
+    siteAgeData[BORED_AGE_SOURCE %in% c("Prorated Age from CRC/ROT",
+                                        "Lab Age for CRC/ROT",
+                                        "Field Age for CRC/ROT") &
                   AGE_BOR < 0,
                 ':='(AGE_BOR = NA,
-                     BORED_AGE_FLAG = "Adjusted prorated age less than 0",
+                     BORED_AGE_FLAG = "Extrapolated age less than 0",
                      BORED_AGE_SOURCE = "Not Applicable")]
     siteAgeData[,':='(BORED_AGE_FINAL = AGE_BOR)]
     ## call boredagecalculator_crted

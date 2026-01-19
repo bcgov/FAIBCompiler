@@ -477,7 +477,8 @@ ISMCCompiler <- function(compilationType,
   ## to adjust the previous measurements
   tree_ah1 <- vihPrep(msmtInterval = unique(samples[,.(CLSTR_ID, MEAS_YR)],
                                             by = "CLSTR_ID"),
-                      siteAgeTrees = data.table::copy(tree_ah1))
+                      siteAgeTrees = data.table::copy(tree_ah1),
+                      compilationType = compilationType)
   treelist_db <- readRDS(file.path(compilationPaths$compilation_db,
                                    "treelist.rds"))
   if(compilationType == "PSP"){
