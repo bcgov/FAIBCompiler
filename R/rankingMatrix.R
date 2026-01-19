@@ -76,6 +76,10 @@ rankingMatrix <- function(archivedPSPPath,
                                                     "77-A", "79-A"),
                                    "Y",
                                    "N")]
+  ## 2025-01
+  ## Anya discovered site 4005939 went to private land
+  sample_sites[SITE_IDENTIFIER == 4005939,
+               PRIVATE := "Y"]
   # for samples that have no ownership code assigned, assign VGIS based samples all as MOF owned
   sample_sites[, OWNER_org := OWNER]
   sample_sites[, OWNER := NULL]
