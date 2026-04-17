@@ -872,12 +872,18 @@ rankingMatrix <- function(archivedPSPPath,
          is.na(PROTECT_CODE),
        ':='(PROTECT_PSP = "Y",
             PROTECT_CODE = "D")]
+  psp5[RANK_PSP == 2 &
+         NO_MEAS == 1 &
+         is.na(PROTECT_CODE),
+       ':='(PROTECT_PSP = "Y",
+            PROTECT_CODE = "F")] # rank2 single msmt
   psp5[RANK_PSP %in% c(3, 4, 5) &
          NO_MEAS > 1 &
          TOTAL_PERIOD >= 30 &
          is.na(PROTECT_CODE),
        ':='(PROTECT_PSP = "Y",
             PROTECT_CODE = "E")]
+
   psp5[PROTECT_CODE == "A",
        PROTECT_CRITERIA := "Rank1_multiple_msmt"]
   psp5[PROTECT_CODE == "B",
@@ -886,8 +892,11 @@ rankingMatrix <- function(archivedPSPPath,
        PROTECT_CRITERIA := "New_DR_CW_Projects"]
   psp5[PROTECT_CODE == "D",
        PROTECT_CRITERIA := "Rank2_multiple_msmt"]
+  psp5[PROTECT_CODE == "F",
+       PROTECT_CRITERIA := "Rank2_single_msmt"]
   psp5[PROTECT_CODE == "E",
        PROTECT_CRITERIA := "30yr_plus_period"]
+
   psp5[substr(MEAS_DT_LAST, 1, 4) <= 1995,
        LAST_MSMT_GRP := "<=1995"]
   psp5[substr(MEAS_DT_LAST, 1, 4) >= 1996 & substr(MEAS_DT_LAST, 1, 4) <= 2000,
@@ -1016,15 +1025,14 @@ rankingMatrix <- function(archivedPSPPath,
                                     `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
 
-  backupsites <- netdown1[PROTECT_CODE %in% c("D", "E"),]
-  netdown1 <- netdown1[PROTECT_CODE %in% c("A", "B", "C"),]
+  backupsites <- netdown1[PROTECT_CODE %in% c("E"),]
+  netdown1 <- netdown1[PROTECT_CODE %in% c("A", "B", "C", "D", "F"),]
   netdown_table <- rbind(netdown_table,
                          data.table(`Retention Criteria` = "Total PSPs to re-measure",
-                                    `Removal Criteria` = "protect criteria: D,E",
+                                    `Removal Criteria` = "protect criteria = E",
                                     `# Site Removed` = sampleRemain - nrow(netdown1),
                                     `# Site Remaining` = nrow(netdown1)))
   sampleRemain <- nrow(netdown1)
-
   protect_sites <- data.table::copy(netdown_protect)
   detail_of_psp_protect_list <- netdown_protect[,.(`# Sites` = length(RATING)),
                                                 by = "PROTECT_CODE"]
@@ -1038,6 +1046,8 @@ rankingMatrix <- function(archivedPSPPath,
                              PROTECT_CODE_DESCRIPTION := "Rank 2 PSPs with at least two measurements"]
   detail_of_psp_protect_list[PROTECT_CODE == "E",
                              PROTECT_CODE_DESCRIPTION := "Rank 3-5 PSPs with at least 30years of a total re-measurement period"]
+  detail_of_psp_protect_list[PROTECT_CODE == "F",
+                             PROTECT_CODE_DESCRIPTION := "Rank 2 PSPs with one measurement"]
   detail_of_psp_protect_list <- rbind(detail_of_psp_protect_list[order(PROTECT_CODE),
                                                                  .(PROTECT_CODE, PROTECT_CODE_DESCRIPTION,
                                                                    `# Sites`)],
@@ -1046,10 +1056,10 @@ rankingMatrix <- function(archivedPSPPath,
                                                  `# Sites` = nrow(netdown_protect)))
 
   remeasured_sites <- data.table::copy(netdown1)
-  protectsites <- rbind(remeasured_sites[, .(`Site priority` = "Remeasured sites (A, B, and C)",
+  protectsites <- rbind(remeasured_sites[, .(`Site priority` = "Remeasured sites (A, B, C, D and F)",
                                              LAST_MSMT_GRP,
                                              PROTECT_CODE)],
-                        backupsites[, .(`Site priority` = "Backup sites (D and E)",
+                        backupsites[, .(`Site priority` = "Backup sites (E)",
                                         LAST_MSMT_GRP,
                                         PROTECT_CODE)])
 
@@ -1059,11 +1069,11 @@ rankingMatrix <- function(archivedPSPPath,
                                                             .(`Site priority`,
                                                               `Last measurement year` = LAST_MSMT_GRP,
                                                               `# Sites`)]
-  detail_of_psp_remeas_psp <- rbind(detail_of_psp_remeas_psp_temp[`Site priority` == "Remeasured sites (A, B, and C)",],
+  detail_of_psp_remeas_psp <- rbind(detail_of_psp_remeas_psp_temp[`Site priority` == "Remeasured sites (A, B, C, D and F)",],
                                     data.table(`Site priority` = "Total # sites",
                                                `Last measurement year` = "",
                                                `# Sites` = nrow(remeasured_sites)),
-                                    detail_of_psp_remeas_psp_temp[`Site priority` == "Backup sites (D and E)",],
+                                    detail_of_psp_remeas_psp_temp[`Site priority` == "Backup sites (E)",],
                                     data.table(`Site priority` = "Total # sites",
                                                `Last measurement year` = "",
                                                `# Sites` = nrow(backupsites)))
@@ -1135,7 +1145,7 @@ rankingMatrix <- function(archivedPSPPath,
                             BEC_ZONE, BEC_SBZ, TSA, MGMT_UNIT,
                             CELL_KEY, PROTECT_CODE, PROTECT_CRITERIA,
                             MEAS_YR_LAST, LAST_MSMT_GRP)]
-  protected_sites[PROTECT_CODE %in% c("A", "B", "C"),
+  protected_sites[PROTECT_CODE %in% c("A", "B", "C", "D", "F"),
                   SITE_PRIORITY := "REMEASURE"]
   protected_sites[is.na(SITE_PRIORITY),
                   SITE_PRIORITY := "BACKUP"]
