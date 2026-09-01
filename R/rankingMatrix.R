@@ -375,7 +375,6 @@ rankingMatrix <- function(archivedPSPPath,
                             LEAD_HTOP3,
                             BH_STAND_AGE,
                             TREE_COUNT_LAST_MSMT = TREE_COUNT)]
-
   # treatment strata
   sample_sites[, TRT_STRATA := ifelse(TREATMENT == "THINNED" & !is.na(TREATMENT), "T",
                                       "U")]
@@ -430,14 +429,16 @@ rankingMatrix <- function(archivedPSPPath,
                         AGE_STRATA_new = AGE_STRATA,
                         DEN_STRATA_new = DEN_STRATA,
                         SI_STRATA_new = SI_STRATA)]
+    # Anya and Yong discovered that the selectively_log can happen during the measurement
+    # see example 4032794, so good way to keep the treatment strata up-to-date
+
     sample_sites[!is.na(CELL_KEY_org),
                  ':='(CELL_COMPLETE = CELL_COMPLETE_org,
-                      TRT_STRATA = TRT_STRATA_org,
-                      BEC_STRATA = BEC_STRATA_org,
-                      SPC_STRATA = SPC_STRATA_org,
-                      AGE_STRATA = AGE_STRATA_org,
-                      DEN_STRATA = DEN_STRATA_org,
-                      SI_STRATA = SI_STRATA_org)]
+                      BEC_STRATA = BEC_STRATA_org, # does not change through time
+                      SPC_STRATA = SPC_STRATA_org, # does not change through time
+                      AGE_STRATA = AGE_STRATA_org, # does not change through time
+                      DEN_STRATA = DEN_STRATA_org, # does not change through time
+                      SI_STRATA = SI_STRATA_org)] # does not change through time
     sample_sites[, CELL_KEY := paste(STS_STRATA, # from last measurement
                                      TRT_STRATA, # from last measurement
                                      BEC_STRATA, # from first measurement
